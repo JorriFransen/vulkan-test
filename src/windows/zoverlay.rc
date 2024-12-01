@@ -1,0 +1,20 @@
+#include "resource.h"
+
+IDI_TRAY_ICON       ICON    "../../comptime_res/tach.ico"
+IDI_TRAY_ICON_MONO  ICON    "../../comptime_res/tach_mono.ico"
+
+
+STRINGTABLE
+BEGIN
+    IDS_TRAY_TIP    "ZOverlay"
+END
+
+IDC_TRAY_CONTEXT_MENU MENU
+BEGIN
+    POPUP "xyz"
+    BEGIN
+        MENUITEM "Settings", IDM_SETTINGS
+        MENUITEM "Edit layout (ctrl-F7)", IDM_EDIT
+        MENUITEM "Exit (ctrl-F8)", IDM_EXIT
+    END
+END
