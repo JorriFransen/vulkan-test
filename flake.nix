@@ -26,7 +26,11 @@
       ];
 
       shellHook = ''
+        # export LD_LIBRARY_PATH="$(nix-build '<nixpkgs>' -A wayland)/lib"
+        # rm result
+        unset WAYLAND_DISPLAY;
         $SHELL
+        exit
       '';
     };
   };
