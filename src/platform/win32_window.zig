@@ -4,7 +4,7 @@ const elog = std.log.err;
 const ilog = std.log.info;
 const W = std.unicode.utf8ToUtf16LeStringLiteral;
 
-const w = @import("../windows/windows.zig");
+const w = @import("windows/windows.zig");
 
 pub export fn wWinMain(instance: w.HINSTANCE, prev_instance: ?w.HINSTANCE, cmd_line: w.PWSTR, cmd_show: w.INT) callconv(.C) w.INT {
     _ = prev_instance;

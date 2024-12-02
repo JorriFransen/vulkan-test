@@ -23,6 +23,7 @@
       packages = [
         zls
         zig
+        pkgs.glfw
       ];
 
       shellHook = ''
