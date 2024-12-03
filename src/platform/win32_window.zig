@@ -9,7 +9,7 @@ const gpa = gpa_data.allocator();
 
 const w = @import("windows/windows.zig");
 
-pub fn init() !void {
+pub fn init_system() !void {
     // if (w.AttachConsole(w.ATTACH_PARENT_PROCESS) == 0) {
     //     if (w.CreateFileW(W("nul"), w.GENERIC_READ | w.GENERIC_WRITE, 0, null, w.OPEN_EXISTING, w.FILE_ATTRIBUTE_NORMAL, null)) |nul_handle| {
     //         _ = w.SetStdHandle(w.STD_INPUT_HANDLE, nul_handle);
@@ -22,12 +22,12 @@ pub fn init() !void {
     // }
 }
 
-pub fn deinit() void {}
+pub fn deinit_system() void {}
 
 handle: ?w.HWND = null,
 close_requested: bool = false,
 
-pub fn create(_: []const u8) !*@This() {
+pub fn create(this: *@This(), _: [:0]const u8) !void {
     var instance: w.HINSTANCE = undefined;
     if (w.GetModuleHandleW(null)) |i_handle| {
         instance = @ptrCast(i_handle);
@@ -66,10 +66,9 @@ pub fn create(_: []const u8) !*@This() {
     // _ = w.ShowWindow(window_handle, @bitCast(cmd_show));
     _ = w.ShowWindow(window_handle, .{ .SHOWNORMAL = 1 });
 
-    result.* = .{
+    this.* = .{
         .handle = window_handle,
     };
-    return result;
 }
 
 pub fn should_close(this: *const @This()) bool {
