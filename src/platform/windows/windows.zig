@@ -29,7 +29,7 @@ pub const INT = c_int;
 pub const UINT = c_uint;
 pub const SIZE_T = usize;
 pub const BOOL = i32;
-pub const LONG_PTR = i64;
+pub const LONG_PTR = u64;
 pub const COLORREF = DWORD;
 pub const BYTE = u8;
 pub const LONG = c_long;
@@ -316,6 +316,7 @@ pub extern "kernel32" fn SetStdHandle(nStdHandle: DWORD, hHandle: HANDLE) callco
 pub extern "kernel32" fn GetPrivateProfileStringW(lpAppName: LPCWSTR, lpKeyName: LPCWSTR, lpDefault: LPCWSTR, lpReturnedString: LPWSTR, nSize: DWORD, lpFileName: LPCWSTR) callconv(.C) DWORD;
 pub extern "kernel32" fn WritePrivateProfileStringW(lpAppName: LPCWSTR, lpKeyName: LPCWSTR, lpString: LPCWSTR, lpFileName: LPCWSTR) callconv(.C) BOOL;
 pub extern "kernel32" fn GetFullPathNameW(lpFileName: LPCWSTR, nBufferLength: DWORD, lpBuffer: LPWSTR, lpFilePart: ?*LPWSTR) callconv(.C) DWORD;
+pub extern "kernel32" fn GetModuleHandleW(lpModuleName: ?LPCWSTR) callconv(.C) ?HMODULE;
 pub extern "user32" fn DefWindowProcW(hHwnd: ?HWND, Msg: u32, wParam: WPARAM, lParam: LPARAM) callconv(.C) LRESULT;
 pub extern "user32" fn GetLastError() callconv(.C) DWORD;
 pub extern "user32" fn SetLastError(dwErrCode: DWORD) callconv(.C) void;
