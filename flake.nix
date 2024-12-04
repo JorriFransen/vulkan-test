@@ -13,7 +13,10 @@
   let
     pkgs = nixpkgs.legacyPackages.x86_64-linux;
     # zig = inputs.zig-overlay.packages.x86_64-linux.default;
-    zig = inputs.zig-overlay.packages.x86_64-linux.master;
+
+    # aa7d138462602e086aacf738e4b92bfa3372bebe
+    zig = inputs.zig-overlay.packages.x86_64-linux.master-2024-12-01;
+
     zls = inputs.zls-overlay.packages.x86_64-linux.zls.overrideAttrs (old: {
             nativeBuildInputs = [ zig ];
           });
