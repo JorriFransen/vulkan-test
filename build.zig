@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 var target: std.Build.ResolvedTarget = undefined;
 var optimize: std.builtin.OptimizeMode = undefined;
@@ -36,7 +37,8 @@ pub fn build(b: *std.Build) void {
 
     const clean_step = b.step("clean", "Clean zig-out and .zig-cache");
     clean_step.dependOn(&b.addRemoveDirTree(std.Build.LazyPath{ .cwd_relative = b.install_path }).step);
-    clean_step.dependOn(&b.addRemoveDirTree(b.path(".zig-cache")).step);
+    if (builtin.os.tag != .windows)
+        clean_step.dependOn(&b.addRemoveDirTree(std.Build.LazyPath{ .cwd_relative = b.cache_root.path.? }).step);
 }
 
 fn use_glfw(b: *std.Build, cstep: *std.Build.Step.Compile) void {
