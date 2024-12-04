@@ -1,4 +1,6 @@
 const std = @import("std");
+const elog = std.log.err;
+
 const builtin = @import("builtin");
 
 var target: std.Build.ResolvedTarget = undefined;
@@ -21,16 +23,7 @@ pub fn build(b: *std.Build) !void {
 
     if (target.result.os.tag == .linux) use_glfw(b, exe);
 
-    const vk_lib_name = if (target.result.os.tag == .windows) "vulkan-1" else "vulkan";
-    exe.linkSystemLibrary(vk_lib_name);
-    const env_var_map = try std.process.getEnvMap(b.allocator);
-    if (env_var_map.get("VK_SDK_PATH")) |path| {
-        exe.addLibraryPath(.{ .cwd_relative = try std.fmt.allocPrint(b.allocator, "{s}/lib", .{path}) });
-        exe.addLibraryPath(.{ .cwd_relative = try std.fmt.allocPrint(b.allocator, "{s}/include", .{path}) });
-    } else {
-        std.log.err("Unable to find vulkan library", .{});
-        return error.Vulkan_Lib_Not_Found;
-    }
+    try use_vulkan(b, exe);
 
     const alloc_mod = b.createModule(.{
         .root_source_file = b.path("src/alloc.zig"),
@@ -75,4 +68,55 @@ fn use_glfw(b: *std.Build, cstep: *std.Build.Step.Compile) void {
 
     cstep.root_module.addImport("glfw", zglfw_module);
     cstep.linkLibrary(zglfw_lib);
+}
+
+fn use_vulkan(b: *std.Build, cstep: *std.Build.Step.Compile) !void {
+    const vk_lib_name = if (target.result.os.tag == .windows) "vulkan-1" else "vulkan";
+    var lib_path: []const u8 = undefined;
+    var include_path: []const u8 = undefined;
+
+    const env_var_map = try std.process.getEnvMap(b.allocator);
+    if (env_var_map.get("VK_SDK_PATH")) |path| {
+        lib_path = try std.fmt.allocPrint(b.allocator, "{s}/lib", .{path});
+        include_path = try std.fmt.allocPrint(b.allocator, "{s}/include", .{path});
+    } else {
+
+        // Nix
+        if (env_var_map.get("VK_LIB_PATH")) |path| {
+            lib_path = path;
+        } else {
+            return error.VK_LIB_PATH_Not_Set;
+        }
+
+        if (env_var_map.get("VK_INCLUDE_PATH")) |path| {
+            include_path = path;
+        } else {
+            return error.VK_INCLUDE_PATH_Not_Set;
+        }
+    }
+
+    try check_path(lib_path);
+    try check_path(include_path);
+
+    cstep.linkSystemLibrary(vk_lib_name);
+    cstep.addLibraryPath(.{ .cwd_relative = lib_path });
+    cstep.addLibraryPath(.{ .cwd_relative = include_path });
+}
+
+pub const Check_Path_Error = error{ File_Not_Found, Unhandled_File_Error };
+
+fn check_path(p: []const u8) Check_Path_Error!void {
+    var myerr: ?Check_Path_Error = null;
+
+    std.fs.accessAbsolute(p, .{}) catch |err| switch (err) {
+        error.FileNotFound => {
+            elog("unable to open path '{s}': FileNotFound", .{p});
+            myerr = error.File_Not_Found;
+        },
+        else => {
+            myerr = error.Unhandled_File_Error;
+        },
+    };
+
+    if (myerr) |e| return e;
 }

@@ -23,14 +23,22 @@
       packages = [
         zls
         zig
+      ];
+
+      buildInputs = [
         pkgs.glfw
+
         pkgs.vulkan-tools
+        pkgs.vulkan-headers
+        pkgs.vulkan-loader
         pkgs.shaderc
       ];
 
+
+      VK_INCLUDE_PATH = "${pkgs.vulkan-headers}/include";
+      VK_LIB_PATH = "${pkgs.vulkan-loader}/lib";
+
       shellHook = ''
-        # export LD_LIBRARY_PATH="$(nix-build '<nixpkgs>' -A wayland)/lib"
-        # rm result
         unset WAYLAND_DISPLAY;
         $SHELL
         exit
