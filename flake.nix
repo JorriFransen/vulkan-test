@@ -24,6 +24,8 @@
         zls
         zig
         pkgs.glfw
+        pkgs.vulkan-tools
+        pkgs.shaderc
       ];
 
       shellHook = ''
