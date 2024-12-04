@@ -22,7 +22,7 @@ pub fn deinit_system() void {
     glfw.glfwTerminate();
 }
 
-handle: ?*glfw.GLFWwindow = null,
+handle: *glfw.GLFWwindow,
 
 pub fn create(this: *@This(), title: [:0]const u8) !void {
     glfw.glfwWindowHint(glfw.CLIENT_API, glfw.NO_API);
