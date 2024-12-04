@@ -1,11 +1,12 @@
 const std = @import("std");
-const dlog = std.log.debug;
-const elog = std.log.err;
-const ilog = std.log.info;
+const log = std.log.scoped(.window);
+const dlog = log.debug;
+const elog = log.err;
+const ilog = log.info;
 
 const glfw = @import("glfw");
 
-pub fn init() !void {
+pub fn init_system() !void {
     if (glfw.glfwInit() == 0) {
         elog("glfwInit() failed...", .{});
 
@@ -17,19 +18,18 @@ pub fn init() !void {
     }
 }
 
-pub fn deinit() void {
+pub fn deinit_system() void {
     glfw.glfwTerminate();
 }
 
 handle: *glfw.GLFWwindow,
 
-pub fn create(title: []const u8) !@This() {
+pub fn create(this: *@This(), title: [:0]const u8) !void {
     glfw.glfwWindowHint(glfw.CLIENT_API, glfw.NO_API);
 
     var handle: *glfw.GLFWwindow = undefined;
 
-    _ = title;
-    if (glfw.glfwCreateWindow(500, 500, "test", null, null)) |h| {
+    if (glfw.glfwCreateWindow(500, 500, title, null, null)) |h| {
         handle = h;
     } else {
         var cstr: [*:0]const u8 = undefined;
@@ -38,11 +38,9 @@ pub fn create(title: []const u8) !@This() {
         return error.Glfw_Create_Window_Failed;
     }
 
-    const result = @This(){
+    this.* = .{
         .handle = handle,
     };
-
-    return result;
 }
 
 pub fn should_close(this: *const @This()) bool {

@@ -20,6 +20,13 @@ pub fn build(b: *std.Build) void {
 
     if (target.result.os.tag == .linux) use_glfw(b, exe);
 
+    const alloc_mod = b.createModule(.{
+        .root_source_file = b.path("src/alloc.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    exe.root_module.addImport("alloc", alloc_mod);
+
     const run_cmd = b.addRunArtifact(exe);
     run_cmd.step.dependOn(b.getInstallStep());
     if (b.args) |args| run_cmd.addArgs(args);
