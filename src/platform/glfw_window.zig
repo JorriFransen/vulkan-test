@@ -44,13 +44,8 @@ pub fn create(this: *@This(), title: [:0]const u8) !void {
 }
 
 pub fn should_close(this: *const @This()) bool {
-    if (this.handle) |h| {
-        const res = glfw.glfwWindowShouldClose(h);
-        return res != 0;
-    } else {
-        elog("should_close(): Invalid handle", .{});
-        return true;
-    }
+    const res = glfw.glfwWindowShouldClose(this.handle);
+    return res != 0;
 }
 
 pub fn update(this: *@This()) void {
@@ -59,9 +54,5 @@ pub fn update(this: *@This()) void {
 }
 
 pub fn close(this: *@This()) void {
-    if (this.handle) |h| {
-        glfw.glfwDestroyWindow(h);
-    } else {
-        elog("close(): Invalid handle", .{});
-    }
+    glfw.glfwDestroyWindow(this.handle);
 }
