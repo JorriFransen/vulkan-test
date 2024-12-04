@@ -4,7 +4,7 @@ const builtin = @import("builtin");
 var target: std.Build.ResolvedTarget = undefined;
 var optimize: std.builtin.OptimizeMode = undefined;
 
-pub fn build(b: *std.Build) void {
+pub fn build(b: *std.Build) !void {
     target = b.standardTargetOptions(.{});
     optimize = b.standardOptimizeOption(.{});
 
@@ -20,6 +20,17 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(exe);
 
     if (target.result.os.tag == .linux) use_glfw(b, exe);
+
+    const vk_lib_name = if (target.result.os.tag == .windows) "vulkan-1" else "vulkan";
+    exe.linkSystemLibrary(vk_lib_name);
+    const env_var_map = try std.process.getEnvMap(b.allocator);
+    if (env_var_map.get("VK_SDK_PATH")) |path| {
+        exe.addLibraryPath(.{ .cwd_relative = try std.fmt.allocPrint(b.allocator, "{s}/lib", .{path}) });
+        exe.addLibraryPath(.{ .cwd_relative = try std.fmt.allocPrint(b.allocator, "{s}/include", .{path}) });
+    } else {
+        std.log.err("Unable to find vulkan library", .{});
+        return error.Vulkan_Lib_Not_Found;
+    }
 
     const alloc_mod = b.createModule(.{
         .root_source_file = b.path("src/alloc.zig"),
