@@ -10,5 +10,8 @@ pub extern fn glfwPollEvents() callconv(.C) void;
 pub extern fn glfwDestroyWindow(window: *GLFWwindow) callconv(.C) void;
 pub extern fn glfwTerminate() callconv(.C) void;
 
+pub extern fn glfwVulkanSupported() callconv(.C) c_int;
+pub extern fn glfwGetRequiredInstanceExtensions(count: *u32) callconv(.C) [*c][*c]const u8;
+
 pub const GLFWwindow = extern struct { dummy: c_long = 0 };
 pub const GLFWmonitor = extern struct { dummy: c_long = 0 };
