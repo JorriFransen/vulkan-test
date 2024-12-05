@@ -60,8 +60,7 @@ fn add_private_module(b: *std.Build, cstep: *std.Build.Step.Compile, path: []con
 fn use_glfw(b: *std.Build, cstep: *std.Build.Step.Compile) *std.Build.Module {
     const zglfw_root_source_file = b.path("src/platform/glfw.zig");
 
-    const zglfw_lib = b.addStaticLibrary(.{
-        .name = "zglfw",
+    const zglfw_module = b.createModule(.{
         .root_source_file = zglfw_root_source_file,
         .target = target,
         .optimize = optimize,
@@ -69,17 +68,7 @@ fn use_glfw(b: *std.Build, cstep: *std.Build.Step.Compile) *std.Build.Module {
 
     cstep.linkLibC();
     cstep.linkSystemLibrary2("glfw", .{ .preferred_link_mode = .static });
-
-    b.installArtifact(zglfw_lib);
-
-    const zglfw_module = b.createModule(.{
-        .root_source_file = zglfw_root_source_file,
-        .target = target,
-        .optimize = optimize,
-    });
-
     cstep.root_module.addImport("glfw", zglfw_module);
-    cstep.linkLibrary(zglfw_lib);
 
     return zglfw_module;
 }
