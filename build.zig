@@ -61,8 +61,8 @@ fn use_glfw(b: *std.Build, cstep: *std.Build.Step.Compile) void {
         .optimize = optimize,
     });
 
-    zglfw_lib.linkLibC();
-    zglfw_lib.linkSystemLibrary("glfw");
+    cstep.linkLibC();
+    cstep.linkSystemLibrary2("glfw", .{ .preferred_link_mode = .static });
 
     b.installArtifact(zglfw_lib);
 
