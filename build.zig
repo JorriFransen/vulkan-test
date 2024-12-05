@@ -21,10 +21,16 @@ pub fn build(b: *std.Build) !void {
 
     b.installArtifact(exe);
 
-    _ = add_private_module(b, exe, "src/alloc.zig", "alloc", null);
+    const alloc_mod = add_private_module(b, exe, "src/alloc.zig", "alloc", null);
+    const window_mod = add_private_module(b, exe, "src/window.zig", "window", null);
 
-    if (target.result.os.tag == .linux) use_glfw(b, exe);
-    try use_vulkan(b, exe);
+    if (target.result.os.tag == .linux) {
+        const glfw_mod = use_glfw(b, exe);
+        window_mod.addImport("glfw", glfw_mod);
+    }
+    const vulkan_mod = try use_vulkan(b, exe);
+    vulkan_mod.addImport("alloc", alloc_mod);
+    vulkan_mod.addImport("window", window_mod);
 
     const run_cmd = b.addRunArtifact(exe);
     run_cmd.step.dependOn(b.getInstallStep());
@@ -51,7 +57,7 @@ fn add_private_module(b: *std.Build, cstep: *std.Build.Step.Compile, path: []con
     return mod;
 }
 
-fn use_glfw(b: *std.Build, cstep: *std.Build.Step.Compile) void {
+fn use_glfw(b: *std.Build, cstep: *std.Build.Step.Compile) *std.Build.Module {
     const zglfw_root_source_file = b.path("src/platform/glfw.zig");
 
     const zglfw_lib = b.addStaticLibrary(.{
@@ -74,9 +80,11 @@ fn use_glfw(b: *std.Build, cstep: *std.Build.Step.Compile) void {
 
     cstep.root_module.addImport("glfw", zglfw_module);
     cstep.linkLibrary(zglfw_lib);
+
+    return zglfw_module;
 }
 
-fn use_vulkan(b: *std.Build, cstep: *std.Build.Step.Compile) !void {
+fn use_vulkan(b: *std.Build, cstep: *std.Build.Step.Compile) !*std.Build.Module {
     const vk_lib_name = if (target.result.os.tag == .windows) "vulkan-1" else "vulkan";
     var lib_path: []const u8 = undefined;
     var include_path: []const u8 = undefined;
@@ -109,6 +117,8 @@ fn use_vulkan(b: *std.Build, cstep: *std.Build.Step.Compile) !void {
     vk_mod.addIncludePath(.{ .cwd_relative = include_path });
     vk_mod.linkSystemLibrary(vk_lib_name, .{});
     vk_mod.link_libc = true;
+
+    return vk_mod;
 }
 
 pub const Check_Path_Error = error{ File_Not_Found, Unhandled_File_Error };

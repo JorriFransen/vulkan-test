@@ -4,6 +4,8 @@ const assert = std.debug.assert;
 
 const c = @import("vulkan/c.zig");
 
+pub const helper = @import("vulkan/helper.zig");
+
 pub const loader = struct {
     pub const debug_utils = @import("vulkan/ext_debug_utils.zig");
 
