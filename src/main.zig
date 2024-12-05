@@ -3,6 +3,7 @@ const assert = std.debug.assert;
 const dlog = std.log.debug;
 const elog = std.log.err;
 const ilog = std.log.info;
+const vlog = std.log.scoped(.vulkan);
 
 const builtin = @import("builtin");
 
@@ -121,6 +122,15 @@ pub fn main() !u8 {
         }
     }
 
+    const debug_messenger_create_info = vke.DebugUtilsMessengerCreateInfo{
+        .sType = vke.Structure_Type.DEBUG_UTILS_MESSENGER_CREATE_INFO,
+        .messageSeverity = vke.DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT | vke.DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT | vke.DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT,
+        .messageType = vke.DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT | vke.DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT | vke.DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT,
+        .pfnUserCallback = vk_debug_callback,
+        .pUserData = null,
+    };
+    const instance_debug_messenger_create_info = debug_messenger_create_info;
+
     const create_info = vk.InstanceCreateInfo{
         .sType = vk.Structure_Type.INSTANCE_CREATE_INFO,
         .pApplicationInfo = &app_info,
@@ -129,11 +139,15 @@ pub fn main() !u8 {
         .ppEnabledExtensionNames = required_instance_extensions.items.ptr,
         .enabledLayerCount = validation_layers.len,
         .ppEnabledLayerNames = validation_layers.ptr,
+        .pNext = if (debug) &instance_debug_messenger_create_info else null,
     };
 
     var instance: vk.Instance = undefined;
+    dlog("vkCreateInstance: ...", .{});
     switch (vk.createInstance(&create_info, null, &instance)) {
-        vk.SUCCESS => {}, //ok
+        vk.SUCCESS => {
+            dlog("vkCreateInstance: OK", .{});
+        },
         else => |v| {
             elog("vkCreateInstance returned '{}'", .{v});
             return error.vkCreateInstance_Failed;
@@ -141,19 +155,13 @@ pub fn main() !u8 {
     }
     defer vk.destroyInstance(instance, null);
 
-    const debug_messenger_create_info = vke.DebugUtilsMessengerCreateInfo{
-        .sType = vke.Structure_Type.DEBUG_UTILS_MESSENGER_CREATE_INFO,
-        .messageSeverity = vke.DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT | vke.DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT | vke.DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT,
-        .messageType = vke.DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT | vke.DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT | vke.DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT,
-        .pfnUserCallback = vk_debug_callback,
-        .pUserData = null,
-    };
-
     vk.loader.load(instance, required_instance_extensions.items);
 
     var debug_messenger: vke.DebugUtilsMessenger = undefined;
-    _ = vke.createDebugUtilsMessenger(instance, &debug_messenger_create_info, null, &debug_messenger);
-    defer vke.destroyDebugUtilsMessenger(instance, debug_messenger, null);
+    if (debug) {
+        _ = vke.createDebugUtilsMessenger(instance, &debug_messenger_create_info, null, &debug_messenger);
+    }
+    defer if (debug) vke.destroyDebugUtilsMessenger(instance, debug_messenger, null);
 
     while (!window.should_close()) {
         window.update();
@@ -163,13 +171,23 @@ pub fn main() !u8 {
 }
 
 fn vk_debug_callback(message_severity: vke.DebugUtilsMessageSeverityFlagBits, message_type: vke.DebugUtilsMessageTypeFlags, _callback_data: [*c]const vke.DebugUtilsMessengerCallbackData, user_data: ?*anyopaque) callconv(.C) vk.Bool32 {
-    _ = message_severity;
     _ = message_type;
     _ = user_data;
 
     const callback_data: *const vke.DebugUtilsMessengerCallbackData = _callback_data;
 
-    elog("{s}", .{callback_data.pMessage});
+    const fmt = "{s}";
+    const args = .{callback_data.pMessage};
+
+    switch (message_severity) {
+        vke.DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT => vlog.debug(fmt, args),
+        vke.DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT => vlog.warn(fmt, args),
+        vke.DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT => vlog.err(fmt, args),
+        else => {
+            elog("Invalid message severity '{}'", .{message_severity});
+            vlog.err(fmt, args);
+        },
+    }
 
     return vk.FALSE;
 }
