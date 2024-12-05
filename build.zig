@@ -21,16 +21,11 @@ pub fn build(b: *std.Build) !void {
 
     b.installArtifact(exe);
 
+    add_private_module(b, exe, "src/alloc.zig", "alloc", null);
+    add_private_module(b, exe, "src/vulkan.zig", "vulkan", "vk");
+
     if (target.result.os.tag == .linux) use_glfw(b, exe);
-
     try use_vulkan(b, exe);
-
-    const alloc_mod = b.createModule(.{
-        .root_source_file = b.path("src/alloc.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    exe.root_module.addImport("alloc", alloc_mod);
 
     const run_cmd = b.addRunArtifact(exe);
     run_cmd.step.dependOn(b.getInstallStep());
@@ -43,6 +38,16 @@ pub fn build(b: *std.Build) !void {
     clean_step.dependOn(&b.addRemoveDirTree(std.Build.LazyPath{ .cwd_relative = b.install_path }).step);
     if (builtin.os.tag != .windows)
         clean_step.dependOn(&b.addRemoveDirTree(std.Build.LazyPath{ .cwd_relative = b.cache_root.path.? }).step);
+}
+
+fn add_private_module(b: *std.Build, cstep: *std.Build.Step.Compile, path: []const u8, name: []const u8, internal_name: ?[]const u8) void {
+    const mod = b.createModule(.{
+        .root_source_file = b.path(path),
+        .target = target,
+        .optimize = optimize,
+    });
+    cstep.root_module.addImport(name, mod);
+    if (internal_name) |n| mod.addImport(n, mod);
 }
 
 fn use_glfw(b: *std.Build, cstep: *std.Build.Step.Compile) void {

@@ -34,12 +34,14 @@
         pkgs.vulkan-tools
         pkgs.vulkan-headers
         pkgs.vulkan-loader
+        pkgs.vulkan-validation-layers
         pkgs.shaderc
       ];
 
 
       VK_INCLUDE_PATH = "${pkgs.vulkan-headers}/include";
       VK_LIB_PATH = "${pkgs.vulkan-loader}/lib";
+      VK_LAYER_PATH = "${pkgs.vulkan-validation-layers}/share/vulkan/explicit_layer.d";
 
       shellHook = ''
         unset WAYLAND_DISPLAY;
