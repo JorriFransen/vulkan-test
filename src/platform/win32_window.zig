@@ -24,6 +24,13 @@ pub fn init_system() !void {
 
 pub fn deinit_system() void {}
 
+pub fn required_instance_extensions() ![]const [*:0]const u8 {
+    return &.{
+        "VK_KHR_surface",
+        "VK_KHR_win32_surface",
+    };
+}
+
 handle: w.HWND,
 title: [:0]u16,
 close_requested: bool = false,

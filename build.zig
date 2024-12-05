@@ -21,8 +21,7 @@ pub fn build(b: *std.Build) !void {
 
     b.installArtifact(exe);
 
-    add_private_module(b, exe, "src/alloc.zig", "alloc", null);
-    add_private_module(b, exe, "src/vulkan.zig", "vulkan", "vk");
+    _ = add_private_module(b, exe, "src/alloc.zig", "alloc", null);
 
     if (target.result.os.tag == .linux) use_glfw(b, exe);
     try use_vulkan(b, exe);
@@ -40,7 +39,7 @@ pub fn build(b: *std.Build) !void {
         clean_step.dependOn(&b.addRemoveDirTree(std.Build.LazyPath{ .cwd_relative = b.cache_root.path.? }).step);
 }
 
-fn add_private_module(b: *std.Build, cstep: *std.Build.Step.Compile, path: []const u8, name: []const u8, internal_name: ?[]const u8) void {
+fn add_private_module(b: *std.Build, cstep: *std.Build.Step.Compile, path: []const u8, name: []const u8, internal_name: ?[]const u8) *std.Build.Module {
     const mod = b.createModule(.{
         .root_source_file = b.path(path),
         .target = target,
@@ -48,6 +47,8 @@ fn add_private_module(b: *std.Build, cstep: *std.Build.Step.Compile, path: []con
     });
     cstep.root_module.addImport(name, mod);
     if (internal_name) |n| mod.addImport(n, mod);
+
+    return mod;
 }
 
 fn use_glfw(b: *std.Build, cstep: *std.Build.Step.Compile) void {
@@ -103,9 +104,11 @@ fn use_vulkan(b: *std.Build, cstep: *std.Build.Step.Compile) !void {
     try check_path(lib_path);
     try check_path(include_path);
 
-    cstep.linkSystemLibrary(vk_lib_name);
-    cstep.addLibraryPath(.{ .cwd_relative = lib_path });
-    cstep.addLibraryPath(.{ .cwd_relative = include_path });
+    const vk_mod = add_private_module(b, cstep, "src/vulkan.zig", "vulkan", "vk");
+    vk_mod.addLibraryPath(.{ .cwd_relative = lib_path });
+    vk_mod.addIncludePath(.{ .cwd_relative = include_path });
+    vk_mod.linkSystemLibrary(vk_lib_name, .{});
+    vk_mod.link_libc = true;
 }
 
 pub const Check_Path_Error = error{ File_Not_Found, Unhandled_File_Error };
