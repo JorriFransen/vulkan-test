@@ -11,21 +11,21 @@
     ...
   }:
   let
-    pkgs = nixpkgs.legacyPackages.x86_64-linux;
+    pkgs = inputs.nixpkgs.legacyPackages.x86_64-linux;
     # zig = inputs.zig-overlay.packages.x86_64-linux.default;
 
     # aa7d138462602e086aacf738e4b92bfa3372bebe
-    zig = inputs.zig-overlay.packages.x86_64-linux.master-2024-12-01;
-
-    zls = inputs.zls-overlay.packages.x86_64-linux.zls.overrideAttrs (old: {
-            nativeBuildInputs = [ zig ];
-          });
+    # zig = inputs.zig-overlay.packages.x86_64-linux.master-2024-12-01;
+    #
+    # zls = inputs.zls-overlay.packages.x86_64-linux.zls.overrideAttrs (old: {
+    #         nativeBuildInputs = [ inputs.zig-overlay.packages.x86_64-linux.master-2024-12-01 ];
+    #       });
   in
   {
     devShells.x86_64-linux.default = pkgs.mkShell {
       packages = [
-        zls
-        zig
+        # zls
+        # zig
       ];
 
       buildInputs = [
