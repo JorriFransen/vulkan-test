@@ -23,6 +23,7 @@ pub fn build(b: *std.Build) !void {
 
     const alloc_mod = add_private_module(b, exe, "src/alloc.zig", "alloc", null);
     const window_mod = add_private_module(b, exe, "src/window.zig", "window", "window");
+    window_mod.addImport("alloc", alloc_mod);
 
     if (target.result.os.tag == .linux) {
         const glfw_mod = use_glfw(b, exe);
