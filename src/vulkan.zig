@@ -45,23 +45,32 @@ pub const extensions = struct {
 };
 
 // Types
-pub const Bool32 = c.VkBool32;
-pub const Result = c.VkResult;
+pub const Bool32 = u32;
+pub const Result = c_int;
 
 // Structs
 pub const ApplicationInfo = c.VkApplicationInfo;
 pub const ExtensionProperties = c.VkExtensionProperties;
 pub const LayerProperties = c.VkLayerProperties;
 pub const InstanceCreateInfo = c.VkInstanceCreateInfo;
-pub const Instance = c.VkInstance;
 pub const AllocationCallbacks = c.VkAllocationCallbacks;
 
+pub const Instance_T = opaque {};
+pub const PhysicalDevice_T = opaque {};
+pub const Instance = ?*Instance_T;
+pub const PhysicalDevice = ?*PhysicalDevice_T;
+
 // Functions
-pub const getInstanceProcAddr = c.vkGetInstanceProcAddr;
-pub const enumerateInstanceExtensionProperties = c.vkEnumerateInstanceExtensionProperties;
-pub const enumerateInstanceLayerProperties = c.vkEnumerateInstanceLayerProperties;
-pub const createInstance = c.vkCreateInstance;
-pub const destroyInstance = c.vkDestroyInstance;
+pub const createInstance = f("vkCreateInstance", fn (create_info: *const InstanceCreateInfo, allocator: ?*const AllocationCallbacks, instance: *Instance) callconv(.C) Result);
+pub const destroyInstance = f("vkDestroyInstance", fn (instance: Instance, allocator: ?*const AllocationCallbacks) callconv(.C) void);
+pub const getInstanceProcAddr = f("vkGetInstanceProcAddr", fn (instance: Instance, name: [*:0]const u8) callconv(.C) c.PFN_vkVoidFunction);
+pub const enumerateInstanceExtensionProperties = f("vkEnumerateInstanceExtensionProperties", fn (layer_name: ?[*:0]const u8, ext_count: *u32, extensions: ?[*]ExtensionProperties) callconv(.C) Result);
+pub const enumerateInstanceLayerProperties = f("vkEnumerateInstanceLayerProperties", fn (count: *u32, layers: ?[*]LayerProperties) callconv(.C) Result);
+pub const enumeratePhysicalDevices = f("vkEnumeratePhysicalDevices", fn (instance: Instance, count: *u32, devices: ?[*]PhysicalDevice) callconv(.C) Result);
+
+fn f(comptime name: []const u8, comptime T: type) *const T {
+    return @extern(*const T, .{ .name = name });
+}
 
 // Macros
 pub const MAKE_VERSION = c.VK_MAKE_VERSION;
@@ -72,9 +81,9 @@ pub const API_VERSION_1_1 = c.VK_API_VERSION_1_1;
 pub const API_VERSION_1_2 = c.VK_API_VERSION_1_2;
 pub const API_VERSION_1_3 = c.VK_API_VERSION_1_3;
 
-pub const TRUE = c.VK_TRUE;
-pub const FALSE = c.VK_FALSE;
-pub const SUCCESS = c.VK_SUCCESS;
+pub const TRUE = 1;
+pub const FALSE = 0;
+pub const SUCCESS = 0;
 
 // Create Instance flags
 pub const INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR = c.VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;

@@ -14,9 +14,11 @@ const elog = vlog.err;
 const builtin = @import("builtin");
 
 var instance: vk.Instance = undefined;
+var physical_device: vk.PhysicalDevice = null;
 var debug_messenger: vke.DebugUtilsMessenger = undefined;
 
 const debug = builtin.mode == .Debug;
+const debug_verbose = debug and false;
 const is_mac = builtin.target.os.tag == .macos;
 
 pub fn init_system() !void {
@@ -152,6 +154,38 @@ pub fn init_system() !void {
     if (debug) {
         _ = vke.createDebugUtilsMessenger(instance, &debug_messenger_create_info, null, &debug_messenger);
     }
+
+    var device_count: u32 = 0;
+    _ = vk.enumeratePhysicalDevices(instance, &device_count, null);
+    if (device_count == 0) {
+        elog("Failed to find gpu(s) with Vulkan support!", .{});
+        return error.No_Vulkan_Support_Gpu_Found;
+    }
+
+    const devices = try alloc.gpa.alloc(vk.PhysicalDevice, device_count);
+    defer alloc.gpa.free(devices);
+
+    const is_suitable = struct {
+        fn f(device: *const vk.PhysicalDevice) bool {
+            _ = device;
+            return true;
+        }
+    }.f;
+
+    for (devices) |d| if (is_suitable(&d)) {
+        physical_device = d;
+        break;
+    };
+
+    if (physical_device == null) {
+        elog("Failed to find suitable gpu!", .{});
+        return error.No_Suitable_Gpu_Found;
+    }
+}
+
+pub fn deinit_system() void {
+    if (debug) vke.destroyDebugUtilsMessenger(instance, debug_messenger, null);
+    vk.destroyInstance(instance, null);
 }
 
 fn vk_debug_callback(message_severity: vke.DebugUtilsMessageSeverityFlagBits, message_type: vke.DebugUtilsMessageTypeFlags, _callback_data: [*c]const vke.DebugUtilsMessengerCallbackData, user_data: ?*anyopaque) callconv(.C) vk.Bool32 {
@@ -164,7 +198,7 @@ fn vk_debug_callback(message_severity: vke.DebugUtilsMessageSeverityFlagBits, me
     const args = .{callback_data.pMessage};
 
     switch (message_severity) {
-        vke.DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT => vlog.debug(fmt, args),
+        vke.DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT => if (debug_verbose) vlog.debug(fmt, args),
         vke.DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT => vlog.warn(fmt, args),
         vke.DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT => vlog.err(fmt, args),
         else => {
@@ -174,9 +208,4 @@ fn vk_debug_callback(message_severity: vke.DebugUtilsMessageSeverityFlagBits, me
     }
 
     return vk.FALSE;
-}
-
-pub fn deinit_system() void {
-    if (debug) vke.destroyDebugUtilsMessenger(instance, debug_messenger, null);
-    vk.destroyInstance(instance, null);
 }
