@@ -20,6 +20,10 @@ pub fn main() !u8 {
 
     while (!window.should_close()) {
         window.update();
+
+        if (window.input.escape_pressed) {
+            window.request_close();
+        }
     }
 
     return 0;

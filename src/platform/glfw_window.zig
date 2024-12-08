@@ -6,6 +6,7 @@ const dlog = log.debug;
 const elog = log.err;
 const ilog = log.info;
 
+const w = @import("window");
 const glfw = @import("glfw");
 
 pub fn init_system() !void {
@@ -32,6 +33,8 @@ pub fn required_instance_extensions() ![]const [*:0]const u8 {
 }
 
 handle: *glfw.GLFWwindow,
+input: w.Input_State = .{},
+last_input: w.Input_State = .{},
 
 pub fn create(this: *@This(), title: [:0]const u8) !void {
     glfw.glfwWindowHint(glfw.CLIENT_API, glfw.NO_API);
@@ -47,6 +50,10 @@ pub fn create(this: *@This(), title: [:0]const u8) !void {
         return error.Glfw_Create_Window_Failed;
     }
 
+    _ = glfw.glfwSetKeyCallback(handle, key_callback);
+
+    glfw.glfwSetWindowUserPointer(handle, this);
+
     this.* = .{
         .handle = handle,
     };
@@ -57,11 +64,29 @@ pub fn should_close(this: *const @This()) bool {
     return res != 0;
 }
 
+pub fn request_close(this: *@This()) void {
+    glfw.glfwSetWindowShouldClose(this.handle, 1);
+}
+
 pub fn update(this: *@This()) void {
-    _ = this;
+    this.last_input = this.input;
+    this.input = .{};
+
     glfw.glfwPollEvents();
 }
 
 pub fn close(this: *@This()) void {
     glfw.glfwDestroyWindow(this.handle);
+}
+
+fn key_callback(window: *glfw.GLFWwindow, key: glfw.Key, scancode: c_int, action: glfw.Action, mods: c_int) callconv(.C) void {
+    _ = scancode;
+    _ = mods;
+
+    const this: *@This() = @alignCast(@ptrCast(glfw.glfwGetWindowUserPointer(window)));
+    assert(window == this.handle);
+
+    if (key == .escape) {
+        this.input.escape_pressed = action == .press;
+    }
 }
