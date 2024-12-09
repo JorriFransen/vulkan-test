@@ -7,6 +7,15 @@ const ilog = std.log.info;
 const Window = @import("window").Window;
 const vkh = @import("vulkan").helper;
 
+const builtin = @import("builtin");
+
+const debug_log: bool = true;
+const log_level = if (builtin.mode == .Debug and debug_log) .debug else .info;
+
+pub const std_options = std.Options{
+    .log_level = log_level,
+};
+
 pub fn main() !u8 {
     try Window.init_system();
     defer Window.deinit_system();

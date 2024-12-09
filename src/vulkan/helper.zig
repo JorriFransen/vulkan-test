@@ -1,25 +1,26 @@
+const std = @import("std");
+const assert = std.debug.assert;
+const builtin = @import("builtin");
+
+const alloc = @import("alloc");
 const vk = @import("vk");
 const vke = vk.extensions;
 const vkd = vk.loader.debug_utils;
-
-const alloc = @import("alloc");
 const Window = @import("window").Window;
 
-const std = @import("std");
-const assert = std.debug.assert;
 const vlog = std.log.scoped(.vulkan);
 const dlog = vlog.debug;
 const elog = vlog.err;
-
-const builtin = @import("builtin");
-
-var instance: vk.Instance = undefined;
-var physical_device: vk.PhysicalDevice = null;
-var debug_messenger: vke.DebugUtilsMessenger = undefined;
+const ilog = vlog.info;
 
 const debug = builtin.mode == .Debug;
 const debug_verbose = debug and false;
 const is_mac = builtin.target.os.tag == .macos;
+
+var instance: vk.Instance = undefined;
+var physical_device: vk.PhysicalDevice = null;
+var device: vk.Device = null;
+var debug_messenger: vke.DebugUtilsMessenger = undefined;
 
 pub fn init_system() !void {
     var extension_count: u32 = undefined;
@@ -165,22 +166,93 @@ pub fn init_system() !void {
     const devices = try alloc.gpa.alloc(vk.PhysicalDevice, device_count);
     defer alloc.gpa.free(devices);
 
-    const is_suitable = struct {
-        fn f(device: *const vk.PhysicalDevice) bool {
-            _ = device;
-            return true;
-        }
-    }.f;
+    _ = vk.enumeratePhysicalDevices(instance, &device_count, devices.ptr);
 
-    for (devices) |d| if (is_suitable(&d)) {
-        physical_device = d;
-        break;
+    const PDev_Info = struct {
+        score: u32,
+        graphics_que_family_index: u32,
+        name: [256]u8 = std.mem.zeroes([256]u8),
     };
 
-    if (physical_device == null) {
+    var suitable_device_found = false;
+    var best_device_index: usize = undefined;
+    var best_device_info: PDev_Info = undefined;
+
+    for (devices, 0..) |pdev, i| {
+        var props: vk.PhysicalDeviceProperties = undefined;
+        vk.getPhysicalDeviceProperties(@ptrCast(pdev), &props);
+
+        var features: vk.PhysicalDeviceFeatures = undefined;
+        vk.getPhysicalDeviceFeatures(@ptrCast(pdev), &features);
+
+        dlog("pd_props[{}]: name: {s}", .{ i, props.deviceName });
+        dlog("pd_props[{}]: type: {s}", .{ i, @tagName(props.deviceType) });
+        dlog("pd_props[{}]: limits.maxImageDimension2D: {}", .{ i, props.limits.maxImageDimension2D });
+        dlog("pd_feat[{}]: geometryShader: {}", .{ i, features.geometryShader });
+
+        const type_score: u32 =
+            switch (props.deviceType) {
+            .OTHER => 1,
+            .VIRTUAL_GPU => 2,
+            .CPU => 3,
+            .INTEGRATED_GPU => 4,
+            .DISCRETE_GPU => 5,
+            .MAX_ENUM => @panic("Invalid vulkan device type"),
+        };
+
+        const image_dim_score = props.limits.maxImageDimension2D / 4096;
+
+        var que_family_count: u32 = undefined;
+        vk.getPhysicalDeviceQueueFamilyProperties(pdev, &que_family_count, null);
+
+        const queue_families = try alloc.gpa.alloc(vk.QueueFamilyProperties, que_family_count);
+        defer alloc.gpa.free(queue_families);
+        vk.getPhysicalDeviceQueueFamilyProperties(pdev, &que_family_count, queue_families.ptr);
+
+        var graphics_que_found = false;
+        var graphics_que_family_index: u32 = undefined;
+
+        for (queue_families, 0..) |qf, qi| {
+            if (qf.queueFlags & vk.c.VK_QUEUE_GRAPHICS_BIT != 0) {
+                graphics_que_family_index = @intCast(qi);
+                graphics_que_found = true;
+            }
+        }
+
+        if (!graphics_que_found) {
+            dlog("pd[{}] has no graphics queue family, skipping...", .{i});
+            continue;
+        }
+
+        dlog("pd[{}] has {} queue families", .{ i, que_family_count });
+        dlog("pd[{}]: idim_score: {}", .{ i, image_dim_score });
+
+        const score = type_score * image_dim_score;
+        dlog("pd[{}]: score: {}", .{ i, score });
+
+        dlog("===========================", .{});
+
+        const info = PDev_Info{
+            .score = score,
+            .graphics_que_family_index = graphics_que_family_index,
+            .name = props.deviceName,
+        };
+
+        const new_best = if (suitable_device_found) info.score > best_device_info.score else true;
+        if (new_best) {
+            suitable_device_found = true;
+            best_device_info = info;
+            best_device_index = i;
+        }
+    }
+
+    if (!suitable_device_found) {
         elog("Failed to find suitable gpu!", .{});
         return error.No_Suitable_Gpu_Found;
     }
+
+    physical_device = devices[best_device_index];
+    ilog("using device: {} ({s})", .{ best_device_index, best_device_info.name });
 }
 
 pub fn deinit_system() void {

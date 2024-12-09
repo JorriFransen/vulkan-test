@@ -2,7 +2,7 @@ const std = @import("std");
 const dlog = std.log.debug;
 const assert = std.debug.assert;
 
-const c = @import("vulkan/c.zig");
+pub const c = @import("vulkan/c.zig");
 
 pub const helper = @import("vulkan/helper.zig");
 
@@ -48,17 +48,33 @@ pub const extensions = struct {
 pub const Bool32 = u32;
 pub const Result = c_int;
 
+// Handles
+pub const Instance_T = opaque {};
+pub const PhysicalDevice_T = opaque {};
+pub const Device_T = opaque {};
+pub const Instance = ?*Instance_T;
+pub const PhysicalDevice = ?*PhysicalDevice_T;
+pub const Device = ?*Device_T;
+
 // Structs
 pub const ApplicationInfo = c.VkApplicationInfo;
 pub const ExtensionProperties = c.VkExtensionProperties;
 pub const LayerProperties = c.VkLayerProperties;
 pub const InstanceCreateInfo = c.VkInstanceCreateInfo;
 pub const AllocationCallbacks = c.VkAllocationCallbacks;
-
-pub const Instance_T = opaque {};
-pub const PhysicalDevice_T = opaque {};
-pub const Instance = ?*Instance_T;
-pub const PhysicalDevice = ?*PhysicalDevice_T;
+pub const PhysicalDeviceProperties = extern struct {
+    apiVersion: u32 = 0,
+    driverVersion: u32 = 0,
+    vendorID: u32 = 0,
+    deviceID: u32 = 0,
+    deviceType: PhysicalDeviceType = std.mem.zeroes(PhysicalDeviceType),
+    deviceName: [256]u8 = std.mem.zeroes([256]u8),
+    pipelineCacheUUID: [16]u8 = std.mem.zeroes([16]u8),
+    limits: c.VkPhysicalDeviceLimits = std.mem.zeroes(c.VkPhysicalDeviceLimits),
+    sparseProperties: c.VkPhysicalDeviceSparseProperties = std.mem.zeroes(c.VkPhysicalDeviceSparseProperties),
+};
+pub const PhysicalDeviceFeatures = c.VkPhysicalDeviceFeatures;
+pub const QueueFamilyProperties = c.VkQueueFamilyProperties;
 
 // Functions
 pub const createInstance = f("vkCreateInstance", fn (create_info: *const InstanceCreateInfo, allocator: ?*const AllocationCallbacks, instance: *Instance) callconv(.C) Result);
@@ -67,6 +83,9 @@ pub const getInstanceProcAddr = f("vkGetInstanceProcAddr", fn (instance: Instanc
 pub const enumerateInstanceExtensionProperties = f("vkEnumerateInstanceExtensionProperties", fn (layer_name: ?[*:0]const u8, ext_count: *u32, extensions: ?[*]ExtensionProperties) callconv(.C) Result);
 pub const enumerateInstanceLayerProperties = f("vkEnumerateInstanceLayerProperties", fn (count: *u32, layers: ?[*]LayerProperties) callconv(.C) Result);
 pub const enumeratePhysicalDevices = f("vkEnumeratePhysicalDevices", fn (instance: Instance, count: *u32, devices: ?[*]PhysicalDevice) callconv(.C) Result);
+pub const getPhysicalDeviceProperties = f("vkGetPhysicalDeviceProperties", fn (device: PhysicalDevice, properties: *PhysicalDeviceProperties) callconv(.C) void);
+pub const getPhysicalDeviceFeatures = f("vkGetPhysicalDeviceFeatures", fn (device: PhysicalDevice, properties: *PhysicalDeviceFeatures) callconv(.C) void);
+pub const getPhysicalDeviceQueueFamilyProperties = f("vkGetPhysicalDeviceQueueFamilyProperties", fn (device: PhysicalDevice, count: *u32, properties: ?[*]QueueFamilyProperties) callconv(.C) void);
 
 fn f(comptime name: []const u8, comptime T: type) *const T {
     return @extern(*const T, .{ .name = name });
@@ -91,4 +110,14 @@ pub const INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR = c.VK_INSTANCE_CREATE_E
 pub const Structure_Type = struct {
     pub const APPLICATION_INFO = c.VK_STRUCTURE_TYPE_APPLICATION_INFO;
     pub const INSTANCE_CREATE_INFO = c.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+};
+
+// Enums
+pub const PhysicalDeviceType = enum(c_uint) {
+    OTHER = 0,
+    INTEGRATED_GPU = 1,
+    DISCRETE_GPU = 2,
+    VIRTUAL_GPU = 3,
+    CPU = 4,
+    MAX_ENUM = 2147483647,
 };
