@@ -3,7 +3,7 @@ const assert = std.debug.assert;
 const builtin = @import("builtin");
 
 const alloc = @import("alloc");
-const vk = @import("vk");
+const vk = @import("vulkan");
 const vke = vk.extensions;
 const vkd = vk.loader.debug_utils;
 const Window = @import("window").Window;

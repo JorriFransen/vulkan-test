@@ -21,8 +21,8 @@ pub fn build(b: *std.Build) !void {
 
     b.installArtifact(exe);
 
-    const alloc_mod = add_private_module(b, exe, "src/alloc.zig", "alloc", null);
-    const window_mod = add_private_module(b, exe, "src/window.zig", "window", "window");
+    const alloc_mod = add_private_module(b, exe, "src/alloc.zig", "alloc");
+    const window_mod = add_private_module(b, exe, "src/platform/window.zig", "window");
     const vulkan_mod = try use_vulkan(b, exe);
 
     if (target.result.os.tag == .linux) {
@@ -32,7 +32,10 @@ pub fn build(b: *std.Build) !void {
 
         exe.linkSystemLibrary("X11");
         exe.linkSystemLibrary("X11-xcb");
+    } else if (target.result.os.tag == .windows) {
+        _ = add_private_module(b, exe, "src/platform/windows/windows.zig", "windows");
     }
+
     vulkan_mod.addImport("alloc", alloc_mod);
     vulkan_mod.addImport("window", window_mod);
 
@@ -52,20 +55,20 @@ pub fn build(b: *std.Build) !void {
         clean_step.dependOn(&b.addRemoveDirTree(std.Build.LazyPath{ .cwd_relative = b.cache_root.path.? }).step);
 }
 
-fn add_private_module(b: *std.Build, cstep: *std.Build.Step.Compile, path: []const u8, name: []const u8, internal_name: ?[]const u8) *std.Build.Module {
+fn add_private_module(b: *std.Build, cstep: *std.Build.Step.Compile, path: []const u8, name: []const u8) *std.Build.Module {
     const mod = b.createModule(.{
         .root_source_file = b.path(path),
         .target = target,
         .optimize = optimize,
     });
     cstep.root_module.addImport(name, mod);
-    if (internal_name) |n| mod.addImport(n, mod);
+    mod.addImport(name, mod);
 
     return mod;
 }
 
 fn use_glfw(b: *std.Build, cstep: *std.Build.Step.Compile) *std.Build.Module {
-    const zglfw_root_source_file = b.path("src/platform/glfw.zig");
+    const zglfw_root_source_file = b.path("src/platform/window/glfw.zig");
 
     const zglfw_module = b.createModule(.{
         .root_source_file = zglfw_root_source_file,
@@ -108,7 +111,7 @@ fn use_vulkan(b: *std.Build, cstep: *std.Build.Step.Compile) !*std.Build.Module 
     try check_path(lib_path);
     try check_path(include_path);
 
-    const vk_mod = add_private_module(b, cstep, "src/vulkan.zig", "vulkan", "vk");
+    const vk_mod = add_private_module(b, cstep, "src/vulkan.zig", "vulkan");
     vk_mod.addLibraryPath(.{ .cwd_relative = lib_path });
     vk_mod.addIncludePath(.{ .cwd_relative = include_path });
     vk_mod.linkSystemLibrary(vk_lib_name, .{});
