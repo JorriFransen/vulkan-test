@@ -5,10 +5,8 @@ const zeroinit = std.mem.zeroes;
 
 const builtin = @import("builtin");
 
-pub usingnamespace {
-    @import("messages.zig");
-    @import("keys.zig");
-};
+pub usingnamespace @import("messages.zig");
+pub usingnamespace @import("keys.zig");
 
 pub const ZOverlay_Error = error{
     Win32_Error,
