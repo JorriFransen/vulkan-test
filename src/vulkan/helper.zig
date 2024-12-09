@@ -14,12 +14,13 @@ const elog = vlog.err;
 const ilog = vlog.info;
 
 const debug = builtin.mode == .Debug;
-const debug_verbose = debug and false;
+const debug_verbose = debug and true;
 const is_mac = builtin.target.os.tag == .macos;
 
 var instance: vk.Instance = undefined;
 var physical_device: vk.PhysicalDevice = null;
 var device: vk.Device = null;
+var graphics_que: vk.Queue = null;
 var debug_messenger: vke.DebugUtilsMessenger = undefined;
 
 pub fn init_system() !void {
@@ -128,7 +129,7 @@ pub fn init_system() !void {
     };
     const instance_debug_messenger_create_info = debug_messenger_create_info;
 
-    const create_info = vk.InstanceCreateInfo{
+    const instance_create_info = vk.InstanceCreateInfo{
         .sType = vk.Structure_Type.INSTANCE_CREATE_INFO,
         .pApplicationInfo = &app_info,
         .flags = if (is_mac) vk.INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR else 0,
@@ -140,7 +141,7 @@ pub fn init_system() !void {
     };
 
     dlog("vkCreateInstance: ...", .{});
-    switch (vk.createInstance(&create_info, null, &instance)) {
+    switch (vk.createInstance(&instance_create_info, null, &instance)) {
         vk.SUCCESS => {
             dlog("vkCreateInstance: OK", .{});
         },
@@ -213,7 +214,7 @@ pub fn init_system() !void {
         var graphics_que_family_index: u32 = undefined;
 
         for (queue_families, 0..) |qf, qi| {
-            if (qf.queueFlags & vk.c.VK_QUEUE_GRAPHICS_BIT != 0) {
+            if (qf.queueFlags.GRAPHICS_BIT == 1) {
                 graphics_que_family_index = @intCast(qi);
                 graphics_que_found = true;
             }
@@ -253,9 +254,37 @@ pub fn init_system() !void {
 
     physical_device = devices[best_device_index];
     ilog("using device: {} ({s})", .{ best_device_index, best_device_info.name });
+
+    const que_prio: f32 = 1.0;
+    const queue_create_info = vk.DeviceQueueCreateInfo{
+        .sType = vk.Structure_Type.DEVICE_QUEUE_CREATE_INFO,
+        .queueFamilyIndex = best_device_info.graphics_que_family_index,
+        .queueCount = 1,
+        .pQueuePriorities = &que_prio,
+    };
+
+    const device_features = vk.PhysicalDeviceFeatures{};
+
+    const device_create_info = vk.DeviceCreateInfo{
+        .sType = vk.Structure_Type.DEVICE_CREATE_INFO,
+        .pQueueCreateInfos = &queue_create_info,
+        .queueCreateInfoCount = 1,
+        .pEnabledFeatures = &device_features,
+        .enabledExtensionCount = 0,
+        .enabledLayerCount = validation_layers.len,
+        .ppEnabledLayerNames = validation_layers.ptr,
+    };
+
+    if (vk.createDevice(physical_device, &device_create_info, null, &device) != vk.SUCCESS) {
+        elog("Failed to create logical device!", .{});
+        return error.Logical_Device_Creation_Failed;
+    }
+
+    vk.getDeviceQueue(device, best_device_info.graphics_que_family_index, 0, &graphics_que);
 }
 
 pub fn deinit_system() void {
+    vk.destroyDevice(device, null);
     if (debug) vke.destroyDebugUtilsMessenger(instance, debug_messenger, null);
     vk.destroyInstance(instance, null);
 }
@@ -264,18 +293,19 @@ fn vk_debug_callback(message_severity: vke.DebugUtilsMessageSeverityFlagBits, me
     _ = message_type;
     _ = user_data;
 
+    const log = std.log.scoped(.@"vulkan message");
     const callback_data: *const vke.DebugUtilsMessengerCallbackData = _callback_data;
 
     const fmt = "{s}";
     const args = .{callback_data.pMessage};
 
     switch (message_severity) {
-        vke.DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT => if (debug_verbose) vlog.debug(fmt, args),
-        vke.DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT => vlog.warn(fmt, args),
-        vke.DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT => vlog.err(fmt, args),
+        vke.DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT => if (debug_verbose) log.debug(fmt, args),
+        vke.DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT => log.warn(fmt, args),
+        vke.DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT => log.err(fmt, args),
         else => {
             elog("Invalid message severity '{}'", .{message_severity});
-            vlog.err(fmt, args);
+            log.err(fmt, args);
         },
     }
 

@@ -52,9 +52,11 @@ pub const Result = c_int;
 pub const Instance_T = opaque {};
 pub const PhysicalDevice_T = opaque {};
 pub const Device_T = opaque {};
+pub const Queue_T = opaque {};
 pub const Instance = ?*Instance_T;
 pub const PhysicalDevice = ?*PhysicalDevice_T;
 pub const Device = ?*Device_T;
+pub const Queue = ?*Queue_T;
 
 // Structs
 pub const ApplicationInfo = c.VkApplicationInfo;
@@ -74,7 +76,14 @@ pub const PhysicalDeviceProperties = extern struct {
     sparseProperties: c.VkPhysicalDeviceSparseProperties = std.mem.zeroes(c.VkPhysicalDeviceSparseProperties),
 };
 pub const PhysicalDeviceFeatures = c.VkPhysicalDeviceFeatures;
-pub const QueueFamilyProperties = c.VkQueueFamilyProperties;
+pub const QueueFamilyProperties = extern struct {
+    queueFlags: QueueFlags = std.mem.zeroes(QueueFlags),
+    queueCount: u32 = std.mem.zeroes(u32),
+    timestampValidBits: u32 = std.mem.zeroes(u32),
+    minImageTransferGranularity: c.VkExtent3D = std.mem.zeroes(c.VkExtent3D),
+};
+pub const DeviceQueueCreateInfo = c.VkDeviceQueueCreateInfo;
+pub const DeviceCreateInfo = c.VkDeviceCreateInfo;
 
 // Functions
 pub const createInstance = f("vkCreateInstance", fn (create_info: *const InstanceCreateInfo, allocator: ?*const AllocationCallbacks, instance: *Instance) callconv(.C) Result);
@@ -86,6 +95,9 @@ pub const enumeratePhysicalDevices = f("vkEnumeratePhysicalDevices", fn (instanc
 pub const getPhysicalDeviceProperties = f("vkGetPhysicalDeviceProperties", fn (device: PhysicalDevice, properties: *PhysicalDeviceProperties) callconv(.C) void);
 pub const getPhysicalDeviceFeatures = f("vkGetPhysicalDeviceFeatures", fn (device: PhysicalDevice, properties: *PhysicalDeviceFeatures) callconv(.C) void);
 pub const getPhysicalDeviceQueueFamilyProperties = f("vkGetPhysicalDeviceQueueFamilyProperties", fn (device: PhysicalDevice, count: *u32, properties: ?[*]QueueFamilyProperties) callconv(.C) void);
+pub const createDevice = f("vkCreateDevice", fn (pdev: PhysicalDevice, create_info: *const DeviceCreateInfo, allocator: ?*AllocationCallbacks, device: *Device) callconv(.C) Result);
+pub const destroyDevice = f("vkDestroyDevice", fn (device: Device, allocator: ?*AllocationCallbacks) callconv(.C) void);
+pub const getDeviceQueue = f("vkGetDeviceQueue", fn (device: Device, family_index: u32, queue_index: u32, queue: *Queue) callconv(.C) void);
 
 fn f(comptime name: []const u8, comptime T: type) *const T {
     return @extern(*const T, .{ .name = name });
@@ -110,9 +122,11 @@ pub const INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR = c.VK_INSTANCE_CREATE_E
 pub const Structure_Type = struct {
     pub const APPLICATION_INFO = c.VK_STRUCTURE_TYPE_APPLICATION_INFO;
     pub const INSTANCE_CREATE_INFO = c.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    pub const DEVICE_QUEUE_CREATE_INFO = c.VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    pub const DEVICE_CREATE_INFO = c.VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 };
 
-// Enums
+// Enums/Flags
 pub const PhysicalDeviceType = enum(c_uint) {
     OTHER = 0,
     INTEGRATED_GPU = 1,
@@ -120,4 +134,16 @@ pub const PhysicalDeviceType = enum(c_uint) {
     VIRTUAL_GPU = 3,
     CPU = 4,
     MAX_ENUM = 2147483647,
+};
+
+pub const QueueFlags = packed struct(u32) {
+    GRAPHICS_BIT: u1 = 0,
+    COMPUTE_BIT: u1 = 0,
+    TRANSFER_BIT: u1 = 0,
+    SPARSE_BINDING_BIT: u1 = 0,
+    PROTECTED_BIT: u1 = 0,
+    VIDEO_DECODE_BIT_KHR: u1 = 0,
+    VIDEO_ENCODE_BIT_KHR: u1 = 0,
+    OPTICAL_FLOW_BIT_NV: u1 = 0,
+    __reserved__: u24 = 0,
 };
