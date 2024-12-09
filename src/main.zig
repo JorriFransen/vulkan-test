@@ -24,7 +24,7 @@ pub fn main() !u8 {
     try window.create("Vulkan Test");
     defer window.close();
 
-    try vkh.init_system();
+    try vkh.init_system(&window);
     defer vkh.deinit_system();
 
     while (!window.should_close()) {

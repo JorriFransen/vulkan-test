@@ -50,10 +50,12 @@ pub const Result = c_int;
 
 // Handles
 pub const Instance_T = opaque {};
+pub const SurfaceKHR_T = opaque {};
 pub const PhysicalDevice_T = opaque {};
 pub const Device_T = opaque {};
 pub const Queue_T = opaque {};
 pub const Instance = ?*Instance_T;
+pub const SurfaceKHR = ?*SurfaceKHR_T;
 pub const PhysicalDevice = ?*PhysicalDevice_T;
 pub const Device = ?*Device_T;
 pub const Queue = ?*Queue_T;
@@ -84,6 +86,9 @@ pub const QueueFamilyProperties = extern struct {
 };
 pub const DeviceQueueCreateInfo = c.VkDeviceQueueCreateInfo;
 pub const DeviceCreateInfo = c.VkDeviceCreateInfo;
+pub const XcbSurfaceCreateInfoKHR = c.VkXcbSurfaceCreateInfoKHR;
+pub const XlibSurfaceCreateInfoKHR = c.VkXlibSurfaceCreateInfoKHR;
+pub const Win32SurfaceCreateInfoKHR = c.VkWin32SurfaceCreateInfoKHR;
 
 // Functions
 pub const createInstance = f("vkCreateInstance", fn (create_info: *const InstanceCreateInfo, allocator: ?*const AllocationCallbacks, instance: *Instance) callconv(.C) Result);
@@ -98,6 +103,9 @@ pub const getPhysicalDeviceQueueFamilyProperties = f("vkGetPhysicalDeviceQueueFa
 pub const createDevice = f("vkCreateDevice", fn (pdev: PhysicalDevice, create_info: *const DeviceCreateInfo, allocator: ?*AllocationCallbacks, device: *Device) callconv(.C) Result);
 pub const destroyDevice = f("vkDestroyDevice", fn (device: Device, allocator: ?*AllocationCallbacks) callconv(.C) void);
 pub const getDeviceQueue = f("vkGetDeviceQueue", fn (device: Device, family_index: u32, queue_index: u32, queue: *Queue) callconv(.C) void);
+pub const createXcbSurfaceKHR = f("vkCreateXcbSurfaceKHR", fn (instance: Instance, create_info: *const XcbSurfaceCreateInfoKHR, allocator: ?*const AllocationCallbacks, surface: *SurfaceKHR) callconv(.C) Result);
+pub const createXlibSurfaceKHR = f("vkCreateXlibSurfaceKHR", fn (instance: Instance, create_info: *const XlibSurfaceCreateInfoKHR, allocator: ?*const AllocationCallbacks, surface: *SurfaceKHR) callconv(.C) Result);
+pub const createWin32SurfaceKHR = f("vkCreateWin32SurfaceKHR", fn (instance: Instance, create_info: *const Win32SurfaceCreateInfoKHR, allocator: ?*const AllocationCallbacks, surface: *SurfaceKHR) callconv(.C) Result);
 
 fn f(comptime name: []const u8, comptime T: type) *const T {
     return @extern(*const T, .{ .name = name });
@@ -124,6 +132,9 @@ pub const Structure_Type = struct {
     pub const INSTANCE_CREATE_INFO = c.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     pub const DEVICE_QUEUE_CREATE_INFO = c.VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
     pub const DEVICE_CREATE_INFO = c.VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    pub const XLIB_SURFACE_CREATE_INFO_KHR = c.VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
+    pub const XCB_SURFACE_CREATE_INFO_KHR = c.VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
+    pub const WIN32_SURFACE_CREATE_INFO_KHR = c.VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
 };
 
 // Enums/Flags

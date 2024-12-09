@@ -18,12 +18,13 @@ const debug_verbose = debug and true;
 const is_mac = builtin.target.os.tag == .macos;
 
 var instance: vk.Instance = undefined;
+var surface: vk.SurfaceKHR = undefined;
 var physical_device: vk.PhysicalDevice = null;
 var device: vk.Device = null;
 var graphics_que: vk.Queue = null;
 var debug_messenger: vke.DebugUtilsMessenger = undefined;
 
-pub fn init_system() !void {
+pub fn init_system(window: *const Window) !void {
     var extension_count: u32 = undefined;
     _ = vk.enumerateInstanceExtensionProperties(null, &extension_count, null);
     dlog("{} Vulkan extensions supported", .{extension_count});
@@ -156,6 +157,8 @@ pub fn init_system() !void {
     if (debug) {
         _ = vke.createDebugUtilsMessenger(instance, &debug_messenger_create_info, null, &debug_messenger);
     }
+
+    surface = window.create_vulkan_surface(instance);
 
     var device_count: u32 = 0;
     _ = vk.enumeratePhysicalDevices(instance, &device_count, null);

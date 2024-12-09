@@ -6,6 +6,7 @@ const dlog = log.debug;
 const elog = log.err;
 const ilog = log.info;
 
+const vk = @import("vulkan");
 const w = @import("window");
 const glfw = @import("glfw");
 
@@ -77,6 +78,34 @@ pub fn update(this: *@This()) void {
 
 pub fn close(this: *@This()) void {
     glfw.glfwDestroyWindow(this.handle);
+}
+
+pub fn create_vulkan_surface(this: *const @This(), instance: vk.Instance) vk.SurfaceKHR {
+    var surface: vk.SurfaceKHR = undefined;
+
+    const display = glfw.glfwGetX11Display();
+    const connection = vk.c.XGetXCBConnection(display);
+    const create_info = vk.XcbSurfaceCreateInfoKHR{
+        .sType = vk.Structure_Type.XCB_SURFACE_CREATE_INFO_KHR,
+        .connection = connection,
+        .window = @intCast(glfw.glfwGetX11Window(this.handle)),
+    };
+
+    const err = vk.createXcbSurfaceKHR(instance, &create_info, null, &surface);
+    assert(err == 0);
+
+    return surface;
+    // const create_info = vk.XlibSurfaceCreateInfoKHR{
+    //     .sType = vk.Structure_Type.XLIB_SURFACE_CREATE_INFO_KHR,
+    //     .dpy = glfw.glfwGetX11Display(),
+    //     .window = glfw.glfwGetX11Window(this.handle),
+    // };
+    //
+    //
+    // const err = vk.createXlibSurfaceKHR(instance, &create_info, null, &surface);
+    // assert(err == 0);
+    //
+    // return surface;
 }
 
 fn key_callback(window: *glfw.GLFWwindow, key: glfw.Key, scancode: c_int, action: glfw.Action, mods: c_int) callconv(.C) void {

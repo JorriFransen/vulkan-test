@@ -23,15 +23,21 @@ pub fn build(b: *std.Build) !void {
 
     const alloc_mod = add_private_module(b, exe, "src/alloc.zig", "alloc", null);
     const window_mod = add_private_module(b, exe, "src/window.zig", "window", "window");
-    window_mod.addImport("alloc", alloc_mod);
+    const vulkan_mod = try use_vulkan(b, exe);
 
     if (target.result.os.tag == .linux) {
         const glfw_mod = use_glfw(b, exe);
+        glfw_mod.addImport("vulkan", vulkan_mod);
         window_mod.addImport("glfw", glfw_mod);
+
+        exe.linkSystemLibrary("X11");
+        exe.linkSystemLibrary("X11-xcb");
     }
-    const vulkan_mod = try use_vulkan(b, exe);
     vulkan_mod.addImport("alloc", alloc_mod);
     vulkan_mod.addImport("window", window_mod);
+
+    window_mod.addImport("alloc", alloc_mod);
+    window_mod.addImport("vulkan", vulkan_mod);
 
     const run_cmd = b.addRunArtifact(exe);
     run_cmd.step.dependOn(b.getInstallStep());

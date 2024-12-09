@@ -1,4 +1,5 @@
 const std = @import("std");
+const assert = std.debug.assert;
 const log = std.log.scoped(.window);
 const dlog = log.debug;
 const elog = log.err;
@@ -6,6 +7,7 @@ const ilog = log.info;
 const W = std.unicode.utf8ToUtf16LeStringLiteral;
 
 const gpa = @import("alloc").gpa;
+const vk = @import("vulkan");
 const w = @import("window");
 const win32 = @import("windows/windows.zig");
 
@@ -113,6 +115,21 @@ pub fn update(this: *@This()) void {
 pub fn close(this: *@This()) void {
     _ = win32.DestroyWindow(this.handle);
     gpa.free(this.title);
+}
+
+pub fn create_vulkan_surface(this: *const @This(), instance: vk.Instance) vk.SurfaceKHR {
+    var surface: vk.SurfaceKHR = undefined;
+
+    const create_info = vk.Win32SurfaceCreateInfoKHR{
+        .sType = vk.Structure_Type.WIN32_SURFACE_CREATE_INFO_KHR,
+        .hwnd = this.handle,
+        .hinstance = win32.GetModuleHandleW(null),
+    };
+
+    const err = vk.createWin32SurfaceKHR(instance, &create_info, null, &surface);
+    assert(err == 0);
+
+    return surface;
 }
 
 // pub export fn wWinMain(instance: win32.HINSTANCE, prev_instance: ?win32.HINSTANCE, cmd_line: win32.PWSTR, cmd_show: win32.INT) callconv(.C) win32.INT {

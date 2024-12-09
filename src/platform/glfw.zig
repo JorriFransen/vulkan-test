@@ -1,6 +1,8 @@
 pub const CLIENT_API: c_int = 0x00022001;
 pub const NO_API: c_int = 0;
 
+const vulkan_c = @import("vulkan").c;
+
 pub extern fn glfwInit() callconv(.C) c_int;
 pub extern fn glfwGetError(description: ?*const [*:0]const u8) callconv(.C) c_int;
 pub extern fn glfwWindowHint(hint: c_int, value: c_int) callconv(.C) void;
@@ -14,8 +16,10 @@ pub extern fn glfwTerminate() callconv(.C) void;
 
 pub extern fn glfwVulkanSupported() callconv(.C) c_int;
 pub extern fn glfwGetRequiredInstanceExtensions(count: *u32) callconv(.C) [*c][*c]const u8;
-pub extern fn glfwSetWindowUserPointer(window: *GLFWwindow, ptr: *anyopaque) void;
-pub extern fn glfwGetWindowUserPointer(window: *GLFWwindow) *anyopaque;
+pub extern fn glfwSetWindowUserPointer(window: *GLFWwindow, ptr: *anyopaque) callconv(.C) void;
+pub extern fn glfwGetWindowUserPointer(window: *GLFWwindow) callconv(.C) *anyopaque;
+pub extern fn glfwGetX11Display() callconv(.C) *vulkan_c.Display;
+pub extern fn glfwGetX11Window(window: *GLFWwindow) callconv(.C) vulkan_c.Window;
 
 pub const GLFWwindow = extern struct { dummy: c_long = 0 };
 pub const GLFWmonitor = extern struct { dummy: c_long = 0 };

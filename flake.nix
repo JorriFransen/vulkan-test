@@ -31,6 +31,8 @@
       buildInputs = [
         pkgs.glfw
 
+        pkgs.xorg.libX11
+
         pkgs.vulkan-tools
         pkgs.vulkan-headers
         pkgs.vulkan-loader
