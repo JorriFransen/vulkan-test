@@ -7,8 +7,8 @@ const elog = log.err;
 const ilog = log.info;
 
 const vk = @import("vulkan");
-const w = @import("window");
-const glfw = @import("glfw");
+const platform = @import("platform");
+const glfw = platform.glfw;
 
 pub fn init_system() !void {
     if (glfw.glfwInit() == 0) {
@@ -34,8 +34,8 @@ pub fn required_instance_extensions() ![]const [*:0]const u8 {
 }
 
 handle: *glfw.GLFWwindow,
-input: w.Input_State = .{},
-last_input: w.Input_State = .{},
+input: platform.Input_State = .{},
+last_input: platform.Input_State = .{},
 
 pub fn create(this: *@This(), title: [:0]const u8) !void {
     glfw.glfwWindowHint(glfw.CLIENT_API, glfw.NO_API);

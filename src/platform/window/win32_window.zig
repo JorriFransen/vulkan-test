@@ -8,8 +8,10 @@ const W = std.unicode.utf8ToUtf16LeStringLiteral;
 
 const gpa = @import("alloc").gpa;
 const vk = @import("vulkan");
-const w = @import("window");
-const win32 = @import("windows");
+
+const platform = @import("platform");
+const w = platform.Window;
+const win32 = platform.windows;
 
 pub fn init_system() !void {
     // if (win32.AttachConsole(win32.ATTACH_PARENT_PROCESS) == 0) {

@@ -4,7 +4,8 @@ const dlog = std.log.debug;
 const elog = std.log.err;
 const ilog = std.log.info;
 
-const Window = @import("window").Window;
+const platform = @import("platform");
+const Window = platform.Window;
 const vkh = @import("vulkan").helper;
 
 const builtin = @import("builtin");
