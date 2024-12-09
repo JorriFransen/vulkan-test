@@ -4,6 +4,7 @@ pub usingnamespace @cImport({
     @cInclude("vulkan/vulkan.h");
 
     if (builtin.target.os.tag == .windows) {
+        @cInclude("windows.h");
         @cInclude("vulkan/vulkan_win32.h");
     } else {
         @cInclude("X11/Xlib.h");

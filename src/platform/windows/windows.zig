@@ -46,10 +46,10 @@ pub const LPCVOID = *const anyopaque;
 pub const LPVOID = *anyopaque;
 pub const ResourceNamePtrW = [*:0]align(1) const WCHAR;
 
-pub const HMODULE = *opaque {};
-pub const HANDLE = *opaque {};
-pub const HINSTANCE = *opaque {};
-pub const HWND = *opaque {};
+pub const HMODULE = *align(4) opaque {};
+pub const HANDLE = *align(4) opaque {};
+pub const HINSTANCE = *align(4) opaque {};
+pub const HWND = *align(4) opaque {};
 pub const HDC = *opaque {};
 pub const HGLRC = *opaque {};
 pub const HICON = *opaque {};

@@ -122,8 +122,8 @@ pub fn create_vulkan_surface(this: *const @This(), instance: vk.Instance) vk.Sur
 
     const create_info = vk.Win32SurfaceCreateInfoKHR{
         .sType = vk.Structure_Type.WIN32_SURFACE_CREATE_INFO_KHR,
-        .hwnd = this.handle,
-        .hinstance = win32.GetModuleHandleW(null),
+        .hwnd = @ptrCast(this.handle),
+        .hinstance = @ptrCast(win32.GetModuleHandleW(null)),
     };
 
     const err = vk.createWin32SurfaceKHR(instance, &create_info, null, &surface);
