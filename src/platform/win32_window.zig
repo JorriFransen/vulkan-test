@@ -126,8 +126,10 @@ pub fn create_vulkan_surface(this: *const @This(), instance: vk.Instance) vk.Sur
         .hinstance = @ptrCast(win32.GetModuleHandleW(null)),
     };
 
-    const err = vk.createWin32SurfaceKHR(instance, &create_info, null, &surface);
-    assert(err == 0);
+    if (vk.createWin32SurfaceKHR(instance, &create_info, null, &surface) != vk.SUCCESS) {
+        elog("vkCreateWin32SurfaceKHR failed!", .{});
+        return error.Vulkan_Surface_Creation_Failed;
+    }
 
     return surface;
 }

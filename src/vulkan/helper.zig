@@ -158,7 +158,7 @@ pub fn init_system(window: *const Window) !void {
         _ = vke.createDebugUtilsMessenger(instance, &debug_messenger_create_info, null, &debug_messenger);
     }
 
-    surface = window.create_vulkan_surface(instance);
+    surface = try window.create_vulkan_surface(instance);
 
     var device_count: u32 = 0;
     _ = vk.enumeratePhysicalDevices(instance, &device_count, null);
