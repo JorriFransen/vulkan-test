@@ -1,20 +1,14 @@
 const std = @import("std");
 const assert = std.debug.assert;
 const ccast = std.zig.c_translation.cast;
+const zeroinit = std.mem.zeroes;
 
 const builtin = @import("builtin");
 
-const zeroinit = std.mem.zeroes;
-
-// pub const c = @cImport({
-//     @cInclude("windows.h");
-//     @cInclude("windowsx.h");
-//     @cInclude("commctrl.h");
-// });
-
-pub usingnamespace @import("messages.zig");
-pub usingnamespace @import("keys.zig");
-// pub usingnamespace @cImport(@cInclude("resource.h"));
+pub usingnamespace {
+    @import("messages.zig");
+    @import("keys.zig");
+};
 
 pub const ZOverlay_Error = error{
     Win32_Error,

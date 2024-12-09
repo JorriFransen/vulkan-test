@@ -1,16 +1,16 @@
 const std = @import("std");
 const assert = std.debug.assert;
+const W = std.unicode.utf8ToUtf16LeStringLiteral;
+
 const log = std.log.scoped(.window);
 const dlog = log.debug;
 const elog = log.err;
 const ilog = log.info;
-const W = std.unicode.utf8ToUtf16LeStringLiteral;
 
 const gpa = @import("alloc").gpa;
 const vk = @import("vulkan");
 
-const platform = @import("platform");
-const w = platform.Window;
+const platform = @import("platform").windows;
 const win32 = platform.windows;
 
 pub fn init_system() !void {
@@ -39,8 +39,8 @@ handle: win32.HWND,
 title: [:0]u16,
 close_requested: bool = false,
 
-input: w.Input_State = .{},
-last_input: w.Input_State = .{},
+input: platform.Input_State = .{},
+last_input: platform.Input_State = .{},
 
 pub fn create(this: *@This(), title: [:0]const u8) !void {
     var instance: win32.HINSTANCE = undefined;

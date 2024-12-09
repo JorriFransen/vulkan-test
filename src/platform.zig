@@ -1,6 +1,7 @@
 const builtin = @import("builtin");
 
-pub const windows = @import("windows");
+pub const c = @import("platform/c.zig");
+pub const windows = @import("platform/windows/windows.zig");
 pub const glfw = @import("platform/window/glfw.zig");
 
 pub const Window = if (builtin.os.tag == .windows)

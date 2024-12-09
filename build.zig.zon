@@ -6,11 +6,4 @@
         "build.zig",
         "build.zig.zon",
     },
-
-    .dependencies = .{
-        // .zglfw = .{
-        //     .url = "https://github.com/IridescenceTech/zglfw/archive/refs/heads/master.tar.gz",
-        //     .hash = "1220f863540d2c2ae8b8345ec33df146ecb2ace77702c2d4c232d868862edb397ddd",
-        // },
-    },
 }

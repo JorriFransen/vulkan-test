@@ -1,14 +1,24 @@
 const std = @import("std");
-
 const assert = std.debug.assert;
+
+const builtin = @import("builtin");
+
 const log = std.log.scoped(.window);
 const dlog = log.debug;
 const elog = log.err;
 const ilog = log.info;
 
+const f = @import("util").extern_f;
+
 const vk = @import("vulkan");
+
 const platform = @import("platform");
+const c = platform.c;
 const glfw = platform.glfw;
+
+pub const X = if (builtin.os.tag == .linux) struct {
+    pub const getXCBConnection = f("XGetXCBConnection", fn (display: *c.Display) callconv(.C) *c.xcb_connection_t);
+};
 
 pub fn init_system() !void {
     if (glfw.glfwInit() == 0) {
@@ -81,39 +91,42 @@ pub fn close(this: *@This()) void {
 }
 
 pub fn create_vulkan_surface(this: *const @This(), instance: vk.Instance) !vk.SurfaceKHR {
+    // var surface: vk.SurfaceKHR = undefined;
+    // if (glfw.glfwCreateWindowSurface(instance, this.handle, null, &surface) != vk.SUCCESS) {
+    //     elog("glfwCreateWindowSurface failed!", .{});
+    //     return error.Vulkan_Surface_Creation_Failed;
+    // }
+    // return surface;
+
     var surface: vk.SurfaceKHR = undefined;
-    if (glfw.glfwCreateWindowSurface(instance, this.handle, null, &surface) != vk.SUCCESS) {
+
+    const display = glfw.glfwGetX11Display();
+    const connection = X.getXCBConnection(display);
+
+    const create_info = vk.XcbSurfaceCreateInfoKHR{
+        .sType = vk.Structure_Type.XCB_SURFACE_CREATE_INFO_KHR,
+        .connection = connection,
+        .window = @intCast(glfw.glfwGetX11Window(this.handle)),
+    };
+
+    if (vk.createXcbSurfaceKHR(instance, &create_info, null, &surface) != vk.SUCCESS) {
         elog("glfwCreateWindowSurface failed!", .{});
         return error.Vulkan_Surface_Creation_Failed;
     }
+
     return surface;
 
     // var surface: vk.SurfaceKHR = undefined;
-    //
-    // const display = glfw.glfwGetX11Display();
-    // const connection = vk.c.XGetXCBConnection(display);
-    // const create_info = vk.XcbSurfaceCreateInfoKHR{
-    //     .sType = vk.Structure_Type.XCB_SURFACE_CREATE_INFO_KHR,
-    //     .connection = connection,
-    //     .window = @intCast(glfw.glfwGetX11Window(this.handle)),
-    // };
-    //
-    // const err = vk.createXcbSurfaceKHR(instance, &create_info, null, &surface);
-    // assert(err == 0);
-    //
-    // return surface;
-    //
-
-    //
     // const create_info = vk.XlibSurfaceCreateInfoKHR{
     //     .sType = vk.Structure_Type.XLIB_SURFACE_CREATE_INFO_KHR,
     //     .dpy = glfw.glfwGetX11Display(),
     //     .window = glfw.glfwGetX11Window(this.handle),
     // };
     //
-    //
-    // const err = vk.createXlibSurfaceKHR(instance, &create_info, null, &surface);
-    // assert(err == 0);
+    // if (vk.createXlibSurfaceKHR(instance, &create_info, null, &surface) != vk.SUCCESS) {
+    //     elog("glfwCreateWindowSurface failed!", .{});
+    //     return error.Vulkan_Surface_Creation_Failed;
+    // }
     //
     // return surface;
 }

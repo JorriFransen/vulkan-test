@@ -2,8 +2,9 @@ const std = @import("std");
 const dlog = std.log.debug;
 const assert = std.debug.assert;
 
-pub const c = @import("vulkan/c.zig");
+const f = @import("util").extern_f;
 
+const c = @import("platform").c;
 pub const helper = @import("vulkan/helper.zig");
 
 pub const loader = struct {
@@ -106,10 +107,6 @@ pub const getDeviceQueue = f("vkGetDeviceQueue", fn (device: Device, family_inde
 pub const createXcbSurfaceKHR = f("vkCreateXcbSurfaceKHR", fn (instance: Instance, create_info: *const XcbSurfaceCreateInfoKHR, allocator: ?*const AllocationCallbacks, surface: *SurfaceKHR) callconv(.C) Result);
 pub const createXlibSurfaceKHR = f("vkCreateXlibSurfaceKHR", fn (instance: Instance, create_info: *const XlibSurfaceCreateInfoKHR, allocator: ?*const AllocationCallbacks, surface: *SurfaceKHR) callconv(.C) Result);
 pub const createWin32SurfaceKHR = f("vkCreateWin32SurfaceKHR", fn (instance: Instance, create_info: *const Win32SurfaceCreateInfoKHR, allocator: ?*const AllocationCallbacks, surface: *SurfaceKHR) callconv(.C) Result);
-
-fn f(comptime name: []const u8, comptime T: type) *const T {
-    return @extern(*const T, .{ .name = name });
-}
 
 // Macros
 pub const MAKE_VERSION = c.VK_MAKE_VERSION;

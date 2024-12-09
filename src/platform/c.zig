@@ -9,7 +9,6 @@ pub usingnamespace @cImport({
     } else {
         @cInclude("X11/Xlib.h");
         @cInclude("X11/Xlib-xcb.h");
-        @cInclude("xcb/xcb.h");
 
         @cInclude("vulkan/vulkan_xcb.h");
         @cInclude("vulkan/vulkan_xlib.h");

@@ -3,7 +3,7 @@ const assert = std.debug.assert;
 const log = std.log.scoped(.VK_EXT_Debug_utils);
 
 const vk = @import("vulkan");
-const c = @import("c.zig");
+const c = @import("platform").c;
 
 pub const extension_name = "VK_EXT_debug_utils";
 pub var extension_loaded = false;

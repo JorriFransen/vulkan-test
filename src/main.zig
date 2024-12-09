@@ -4,11 +4,12 @@ const dlog = std.log.debug;
 const elog = std.log.err;
 const ilog = std.log.info;
 
+const builtin = @import("builtin");
+
 const platform = @import("platform");
 const Window = platform.Window;
-const vkh = @import("vulkan").helper;
 
-const builtin = @import("builtin");
+const vkh = @import("vulkan").helper;
 
 const debug_log: bool = true;
 const log_level = if (builtin.mode == .Debug and debug_log) .debug else .info;
