@@ -24,6 +24,7 @@ var surface: vk.SurfaceKHR = undefined;
 var physical_device: vk.PhysicalDevice = null;
 var device: vk.Device = null;
 var graphics_que: vk.Queue = null;
+var present_que: vk.Queue = null;
 var debug_messenger: vke.DebugUtilsMessenger = undefined;
 
 pub fn init_system(window: *const Window) !void {
@@ -177,6 +178,7 @@ pub fn init_system(window: *const Window) !void {
     const PDev_Info = struct {
         score: u32,
         graphics_que_family_index: u32,
+        present_que_family_index: u32,
         name: [256]u8 = std.mem.zeroes([256]u8),
     };
 
@@ -215,18 +217,31 @@ pub fn init_system(window: *const Window) !void {
         defer alloc.gpa.free(queue_families);
         vk.getPhysicalDeviceQueueFamilyProperties(pdev, &que_family_count, queue_families.ptr);
 
-        var graphics_que_found = false;
         var graphics_que_family_index: u32 = undefined;
+        var present_que_family_index: u32 = undefined;
+        var graphics_que_found = false;
+        var present_que_found = false;
 
         for (queue_families, 0..) |qf, qi| {
             if (qf.queueFlags.GRAPHICS_BIT == 1) {
                 graphics_que_family_index = @intCast(qi);
                 graphics_que_found = true;
             }
+
+            if (!present_que_found) {
+                var supported: vk.Bool32 = vk.FALSE;
+                _ = vk.getPhysicalDeviceSurfaceSupportKHR(pdev, @intCast(qi), surface, &supported);
+                if (supported == vk.TRUE) {
+                    present_que_family_index = @intCast(qi);
+                    present_que_found = true;
+                }
+            }
         }
 
-        if (!graphics_que_found) {
-            dlog("pd[{}] has no graphics queue family, skipping...", .{i});
+        const queues_found = graphics_que_found and present_que_found;
+
+        if (!queues_found) {
+            dlog("pd[{}] does not have required queue families, skipping...", .{i});
             continue;
         }
 
@@ -241,6 +256,7 @@ pub fn init_system(window: *const Window) !void {
         const info = PDev_Info{
             .score = score,
             .graphics_que_family_index = graphics_que_family_index,
+            .present_que_family_index = present_que_family_index,
             .name = props.deviceName,
         };
 
@@ -260,10 +276,36 @@ pub fn init_system(window: *const Window) !void {
     physical_device = devices[best_device_index];
     ilog("using device: {} ({s})", .{ best_device_index, best_device_info.name });
 
+    var fam_indices = [_]u32{ best_device_info.graphics_que_family_index, best_device_info.present_que_family_index };
+    var fin: []u32 = &fam_indices;
+    std.mem.sort(u32, fin, .{}, struct {
+        fn f(_: @TypeOf(.{}), l: u32, r: u32) bool {
+            return l < r;
+        }
+    }.f);
+
+    { // Rewrite the sorted list to unique number only
+        var last_fi: i32 = -1;
+        var fi_write_index: usize = 0;
+        for (fin) |fi| {
+            defer last_fi = @intCast(fi);
+
+            if (fi == last_fi) continue;
+
+            fin[fi_write_index] = fi;
+            fi_write_index += 1;
+        }
+        fin = fin[0..fi_write_index];
+        dlog("fin: {any}", .{fin});
+    }
+
+    var qci_array: [fam_indices.len]vk.DeviceQueueCreateInfo = undefined;
+    const qcis: []vk.DeviceQueueCreateInfo = qci_array[0..fin.len];
     const que_prio: f32 = 1.0;
-    const queue_create_info = vk.DeviceQueueCreateInfo{
+
+    for (qcis, fin) |*qci, fi| qci.* = .{
         .sType = vk.Structure_Type.DEVICE_QUEUE_CREATE_INFO,
-        .queueFamilyIndex = best_device_info.graphics_que_family_index,
+        .queueFamilyIndex = fi,
         .queueCount = 1,
         .pQueuePriorities = &que_prio,
     };
@@ -272,8 +314,8 @@ pub fn init_system(window: *const Window) !void {
 
     const device_create_info = vk.DeviceCreateInfo{
         .sType = vk.Structure_Type.DEVICE_CREATE_INFO,
-        .pQueueCreateInfos = &queue_create_info,
-        .queueCreateInfoCount = 1,
+        .pQueueCreateInfos = qcis.ptr,
+        .queueCreateInfoCount = @intCast(qcis.len),
         .pEnabledFeatures = &device_features,
         .enabledExtensionCount = 0,
         .enabledLayerCount = validation_layers.len,
@@ -286,10 +328,12 @@ pub fn init_system(window: *const Window) !void {
     }
 
     vk.getDeviceQueue(device, best_device_info.graphics_que_family_index, 0, &graphics_que);
+    vk.getDeviceQueue(device, best_device_info.present_que_family_index, 0, &present_que);
 }
 
 pub fn deinit_system() void {
     vk.destroyDevice(device, null);
+    vk.destroySurfaceKHR(instance, surface, null);
     if (debug) vke.destroyDebugUtilsMessenger(instance, debug_messenger, null);
     vk.destroyInstance(instance, null);
 }

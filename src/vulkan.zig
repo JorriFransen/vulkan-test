@@ -107,6 +107,8 @@ pub const getDeviceQueue = f("vkGetDeviceQueue", fn (device: Device, family_inde
 pub const createXcbSurfaceKHR = f("vkCreateXcbSurfaceKHR", fn (instance: Instance, create_info: *const XcbSurfaceCreateInfoKHR, allocator: ?*const AllocationCallbacks, surface: *SurfaceKHR) callconv(.C) Result);
 pub const createXlibSurfaceKHR = f("vkCreateXlibSurfaceKHR", fn (instance: Instance, create_info: *const XlibSurfaceCreateInfoKHR, allocator: ?*const AllocationCallbacks, surface: *SurfaceKHR) callconv(.C) Result);
 pub const createWin32SurfaceKHR = f("vkCreateWin32SurfaceKHR", fn (instance: Instance, create_info: *const Win32SurfaceCreateInfoKHR, allocator: ?*const AllocationCallbacks, surface: *SurfaceKHR) callconv(.C) Result);
+pub const destroySurfaceKHR = f("vkDestroySurfaceKHR", fn (instance: Instance, surface: SurfaceKHR, allocator: ?*AllocationCallbacks) callconv(.C) void);
+pub const getPhysicalDeviceSurfaceSupportKHR = f("vkGetPhysicalDeviceSurfaceSupportKHR", fn (device: PhysicalDevice, qf_index: u32, surface: SurfaceKHR, supported: *Bool32) callconv(.C) Result);
 
 // Macros
 pub const MAKE_VERSION = c.VK_MAKE_VERSION;
