@@ -98,6 +98,7 @@ pub const getInstanceProcAddr = f("vkGetInstanceProcAddr", fn (instance: Instanc
 pub const enumerateInstanceExtensionProperties = f("vkEnumerateInstanceExtensionProperties", fn (layer_name: ?[*:0]const u8, ext_count: *u32, extensions: ?[*]ExtensionProperties) callconv(.C) Result);
 pub const enumerateInstanceLayerProperties = f("vkEnumerateInstanceLayerProperties", fn (count: *u32, layers: ?[*]LayerProperties) callconv(.C) Result);
 pub const enumeratePhysicalDevices = f("vkEnumeratePhysicalDevices", fn (instance: Instance, count: *u32, devices: ?[*]PhysicalDevice) callconv(.C) Result);
+pub const enumerateDeviceExtensionProperties = f("vkEnumerateDeviceExtensionProperties", fn (device: PhysicalDevice, layer_name: ?[*:0]const u8, count: *u32, properties: ?[*]ExtensionProperties) callconv(.c) Result);
 pub const getPhysicalDeviceProperties = f("vkGetPhysicalDeviceProperties", fn (device: PhysicalDevice, properties: *PhysicalDeviceProperties) callconv(.C) void);
 pub const getPhysicalDeviceFeatures = f("vkGetPhysicalDeviceFeatures", fn (device: PhysicalDevice, properties: *PhysicalDeviceFeatures) callconv(.C) void);
 pub const getPhysicalDeviceQueueFamilyProperties = f("vkGetPhysicalDeviceQueueFamilyProperties", fn (device: PhysicalDevice, count: *u32, properties: ?[*]QueueFamilyProperties) callconv(.C) void);
@@ -123,8 +124,8 @@ pub const TRUE = 1;
 pub const FALSE = 0;
 pub const SUCCESS = 0;
 
-// Create Instance flags
 pub const INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR = c.VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+pub const KHR_SWAPCHAIN_EXTENSION_NAME = c.VK_KHR_SWAPCHAIN_EXTENSION_NAME;
 
 pub const Structure_Type = struct {
     pub const APPLICATION_INFO = c.VK_STRUCTURE_TYPE_APPLICATION_INFO;

@@ -27,7 +27,31 @@ var graphics_que: vk.Queue = null;
 var present_que: vk.Queue = null;
 var debug_messenger: vke.DebugUtilsMessenger = undefined;
 
+const validation_layers: []const [*:0]const u8 = if (debug) &.{
+    "VK_LAYER_KHRONOS_validation",
+} else &.{};
+
+const mac_instance_extensions: []const [*:0]const u8 = if (is_mac) &.{
+    vk.KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME,
+} else &.{};
+
+const debug_instance_extensions: []const [*:0]const u8 = if (debug) &.{
+    vke.EXT_DEBUG_UTILS_EXTENSION_NAME,
+} else &.{};
+
+const required_device_extensions: []const [*:0]const u8 = &.{
+    vk.KHR_SWAPCHAIN_EXTENSION_NAME,
+};
+
 pub fn init_system(window: *const Window) !void {
+    try create_instance();
+    surface = try window.create_vulkan_surface(instance);
+
+    const device_info = try choose_physical_device();
+    try create_logical_device(device_info);
+}
+
+fn create_instance() !void {
     var extension_count: u32 = undefined;
     _ = vk.enumerateInstanceExtensionProperties(null, &extension_count, null);
     dlog("{} Vulkan extensions supported", .{extension_count});
@@ -49,21 +73,13 @@ pub fn init_system(window: *const Window) !void {
 
     const window_required_extensions = try Window.required_instance_extensions();
 
-    const mac_extensions: []const [*:0]const u8 = if (is_mac) &.{
-        vk.KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME,
-    } else &.{};
-
-    const debug_extensions: []const [*:0]const u8 = if (debug) &.{
-        vke.EXT_DEBUG_UTILS_EXTENSION_NAME,
-    } else &.{};
-
-    const instance_ext_count = window_required_extensions.len + mac_extensions.len + debug_extensions.len;
+    const instance_ext_count = window_required_extensions.len + mac_instance_extensions.len + debug_instance_extensions.len;
 
     var required_instance_extensions = try std.ArrayList([*:0]const u8).initCapacity(alloc.gpa, instance_ext_count);
     defer required_instance_extensions.deinit();
     required_instance_extensions.appendSliceAssumeCapacity(window_required_extensions);
-    required_instance_extensions.appendSliceAssumeCapacity(mac_extensions);
-    required_instance_extensions.appendSliceAssumeCapacity(debug_extensions);
+    required_instance_extensions.appendSliceAssumeCapacity(mac_instance_extensions);
+    required_instance_extensions.appendSliceAssumeCapacity(debug_instance_extensions);
 
     for (required_instance_extensions.items) |required| {
         var found = false;
@@ -99,10 +115,6 @@ pub fn init_system(window: *const Window) !void {
         // for (available_layers) |l| dlog("available layer '{s}'", .{@as([*:0]const u8, @ptrCast(&l.layerName))});
     }
     defer if (debug) alloc.gpa.free(available_layers);
-
-    const validation_layers: []const [*:0]const u8 = if (debug) &.{
-        "VK_LAYER_KHRONOS_validation",
-    } else &.{};
 
     for (validation_layers) |rl| {
         var found = false;
@@ -160,9 +172,16 @@ pub fn init_system(window: *const Window) !void {
     if (debug) {
         _ = vke.createDebugUtilsMessenger(instance, &debug_messenger_create_info, null, &debug_messenger);
     }
+}
 
-    surface = try window.create_vulkan_surface(instance);
+const PDev_Info = struct {
+    score: u32,
+    graphics_que_family_index: u32,
+    present_que_family_index: u32,
+    name: [256]u8 = std.mem.zeroes([256]u8),
+};
 
+fn choose_physical_device() !PDev_Info {
     var device_count: u32 = 0;
     _ = vk.enumeratePhysicalDevices(instance, &device_count, null);
     if (device_count == 0) {
@@ -174,13 +193,6 @@ pub fn init_system(window: *const Window) !void {
     defer alloc.gpa.free(devices);
 
     _ = vk.enumeratePhysicalDevices(instance, &device_count, devices.ptr);
-
-    const PDev_Info = struct {
-        score: u32,
-        graphics_que_family_index: u32,
-        present_que_family_index: u32,
-        name: [256]u8 = std.mem.zeroes([256]u8),
-    };
 
     var suitable_device_found = false;
     var best_device_index: usize = undefined;
@@ -245,9 +257,36 @@ pub fn init_system(window: *const Window) !void {
             continue;
         }
 
-        dlog("pd[{}] has {} queue families", .{ i, que_family_count });
-        dlog("pd[{}]: idim_score: {}", .{ i, image_dim_score });
+        var prop_count: u32 = undefined;
+        _ = vk.enumerateDeviceExtensionProperties(pdev, null, &prop_count, null);
 
+        const dev_extension_props = try alloc.gpa.alloc(vk.ExtensionProperties, prop_count);
+        defer alloc.gpa.free(dev_extension_props);
+        _ = vk.enumerateDeviceExtensionProperties(pdev, null, &prop_count, dev_extension_props.ptr);
+
+        var has_required_extensions = true;
+        for (required_device_extensions) |re| {
+            var found = false;
+            const r: []const u8 = std.mem.span(re);
+            for (dev_extension_props) |*prop| {
+                const a: []const u8 = std.mem.span(@as([*:0]const u8, @ptrCast(&prop.extensionName)));
+                if (std.mem.eql(u8, r, a)) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                has_required_extensions = false;
+                break;
+            }
+        }
+
+        if (!has_required_extensions) {
+            dlog("pd[{}] does not have required extensions, skipping...", .{i});
+            continue;
+        }
+
+        dlog("pd[{}]: idim_score: {}", .{ i, image_dim_score });
         const score = type_score * image_dim_score;
         dlog("pd[{}]: score: {}", .{ i, score });
 
@@ -276,8 +315,12 @@ pub fn init_system(window: *const Window) !void {
     physical_device = devices[best_device_index];
     ilog("using device: {} ({s})", .{ best_device_index, best_device_info.name });
 
-    var fam_indices = [_]u32{ best_device_info.graphics_que_family_index, best_device_info.present_que_family_index };
-    var fin: []u32 = &fam_indices;
+    return best_device_info;
+}
+
+fn create_logical_device(pdev_info: PDev_Info) !void {
+    var fin_array = [_]u32{ pdev_info.graphics_que_family_index, pdev_info.present_que_family_index };
+    var fin: []u32 = &fin_array;
     std.mem.sort(u32, fin, .{}, struct {
         fn f(_: @TypeOf(.{}), l: u32, r: u32) bool {
             return l < r;
@@ -299,7 +342,7 @@ pub fn init_system(window: *const Window) !void {
         dlog("fin: {any}", .{fin});
     }
 
-    var qci_array: [fam_indices.len]vk.DeviceQueueCreateInfo = undefined;
+    var qci_array: [fin_array.len]vk.DeviceQueueCreateInfo = undefined;
     const qcis: []vk.DeviceQueueCreateInfo = qci_array[0..fin.len];
     const que_prio: f32 = 1.0;
 
@@ -327,8 +370,8 @@ pub fn init_system(window: *const Window) !void {
         return error.Logical_Device_Creation_Failed;
     }
 
-    vk.getDeviceQueue(device, best_device_info.graphics_que_family_index, 0, &graphics_que);
-    vk.getDeviceQueue(device, best_device_info.present_que_family_index, 0, &present_que);
+    vk.getDeviceQueue(device, pdev_info.graphics_que_family_index, 0, &graphics_que);
+    vk.getDeviceQueue(device, pdev_info.present_que_family_index, 0, &present_que);
 }
 
 pub fn deinit_system() void {
