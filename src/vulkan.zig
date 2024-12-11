@@ -90,6 +90,9 @@ pub const DeviceCreateInfo = c.VkDeviceCreateInfo;
 pub const XcbSurfaceCreateInfoKHR = c.VkXcbSurfaceCreateInfoKHR;
 pub const XlibSurfaceCreateInfoKHR = c.VkXlibSurfaceCreateInfoKHR;
 pub const Win32SurfaceCreateInfoKHR = c.VkWin32SurfaceCreateInfoKHR;
+pub const SurfaceCapabilitiesKHR = c.VkSurfaceCapabilitiesKHR;
+pub const SurfaceFormatKHR = c.VkSurfaceFormatKHR;
+pub const PresentModeKHR = c.VkPresentModeKHR;
 
 // Functions
 pub const createInstance = f("vkCreateInstance", fn (create_info: *const InstanceCreateInfo, allocator: ?*const AllocationCallbacks, instance: *Instance) callconv(.C) Result);
@@ -110,6 +113,9 @@ pub const createXlibSurfaceKHR = f("vkCreateXlibSurfaceKHR", fn (instance: Insta
 pub const createWin32SurfaceKHR = f("vkCreateWin32SurfaceKHR", fn (instance: Instance, create_info: *const Win32SurfaceCreateInfoKHR, allocator: ?*const AllocationCallbacks, surface: *SurfaceKHR) callconv(.C) Result);
 pub const destroySurfaceKHR = f("vkDestroySurfaceKHR", fn (instance: Instance, surface: SurfaceKHR, allocator: ?*AllocationCallbacks) callconv(.C) void);
 pub const getPhysicalDeviceSurfaceSupportKHR = f("vkGetPhysicalDeviceSurfaceSupportKHR", fn (device: PhysicalDevice, qf_index: u32, surface: SurfaceKHR, supported: *Bool32) callconv(.C) Result);
+pub const getPhysicalDeviceSurfaceCapabilitiesKHR = f("vkGetPhysicalDeviceSurfaceCapabilitiesKHR", fn (device: PhysicalDevice, surface: SurfaceKHR, capabailities: *SurfaceCapabilitiesKHR) callconv(.C) Result);
+pub const getPhysicalDeviceSurfaceFormatsKHR = f("vkGetPhysicalDeviceSurfaceFormatsKHR", fn (device: PhysicalDevice, surface: SurfaceKHR, count: *u32, formats: ?*SurfaceFormatKHR) callconv(.C) Result);
+pub const getPhysicalDeviceSurfacePresentModesKHR = f("vkGetPhysicalDeviceSurfacePresentModesKHR", fn (device: PhysicalDevice, surface: SurfaceKHR, count: *u32, modes: ?*PresentModeKHR) callconv(.C) Result);
 
 // Macros
 pub const MAKE_VERSION = c.VK_MAKE_VERSION;

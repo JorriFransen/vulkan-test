@@ -6,6 +6,8 @@ const ilog = std.log.info;
 
 const builtin = @import("builtin");
 
+const alloc = @import("alloc");
+
 const platform = @import("platform");
 const Window = platform.Window;
 
@@ -35,6 +37,10 @@ pub fn main() !u8 {
         if (window.input.escape_pressed) {
             window.request_close();
         }
+    }
+
+    if (builtin.mode == .Debug and alloc.detectLeaks()) {
+        return 1;
     }
 
     return 0;
