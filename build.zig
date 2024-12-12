@@ -6,21 +6,18 @@ const builtin = @import("builtin");
 var target: std.Build.ResolvedTarget = undefined;
 var optimize: std.builtin.OptimizeMode = undefined;
 
-const GLFW_Window_Api = enum {
-    default,
-    wayland,
-    x11,
-};
-
 pub fn build(b: *std.Build) !void {
     target = b.standardTargetOptions(.{});
     optimize = b.standardOptimizeOption(.{});
 
-    // TODO: This shoudl be a command line option instead of a build option?
-    const glfw_window_api = b.option(GLFW_Window_Api, "glfw_window_api", "Glfw window api") orelse .default;
+    const vulkan_verbose = b.option(bool, "vulkan_verbose", "Enable verbose vulkan messages") orelse false;
 
     const options = b.addOptions();
-    options.addOption(GLFW_Window_Api, "glfw_window_api", glfw_window_api);
+    options.addOption(bool, "vulkan_verbose", vulkan_verbose);
+    const options_mod = options.createModule();
+
+    const flags_dep = b.dependency("flags", .{ .target = target, .optimize = optimize });
+    const flags_mod = flags_dep.module("flags");
 
     const root_source_file = b.path("src/main.zig");
 
@@ -46,17 +43,18 @@ pub fn build(b: *std.Build) !void {
     const vulkan_info = try use_vulkan(b);
     const vulkan_mod = vulkan_info.module;
 
-    platform_mod.addIncludePath(vulkan_info.include_path);
-    platform_mod.addOptions("options", options);
-
     exe.root_module.addImport("alloc", alloc_mod);
     exe.root_module.addImport("platform", platform_mod);
     exe.root_module.addImport("vulkan", vulkan_mod);
+    exe.root_module.addImport("flags", flags_mod);
+    exe.root_module.addImport("options", options_mod);
 
     vulkan_mod.addImport("alloc", alloc_mod);
     vulkan_mod.addImport("util", util_mod);
     vulkan_mod.addImport("platform", platform_mod);
+    vulkan_mod.addImport("options", options_mod);
 
+    platform_mod.addIncludePath(vulkan_info.include_path);
     platform_mod.addImport("util", util_mod);
     platform_mod.addImport("vulkan", vulkan_mod);
 

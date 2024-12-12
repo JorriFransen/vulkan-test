@@ -1,6 +1,12 @@
 .{
     .name = "zwindow",
     .version = "0.0.1",
+    .dependencies = .{
+        .flags = .{
+            .url = "https://github.com/n0s4/flags/archive/refs/tags/v0.10.0.tar.gz",
+            .hash = "12200d3243c5919d6ae3254f991bdf95956f349ccd6d3463f9beb5454d300a0f1e64",
+        },
+    },
     .paths = .{
         "src/",
         "build.zig",

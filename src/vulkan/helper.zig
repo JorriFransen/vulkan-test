@@ -15,8 +15,10 @@ const dlog = vlog.debug;
 const elog = vlog.err;
 const ilog = vlog.info;
 
+const options = @import("options");
+
 const debug = builtin.mode == .Debug;
-const debug_verbose = debug and true;
+const debug_verbose = debug and options.vulkan_verbose;
 const is_mac = builtin.target.os.tag == .macos;
 
 var instance: vk.Instance = undefined;

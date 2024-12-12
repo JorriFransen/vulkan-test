@@ -13,14 +13,42 @@ const Window = platform.Window;
 
 const vkh = @import("vulkan").helper;
 
+const options = @import("options");
+const flags = @import("flags");
+pub var cmd_line_options: Cmd_Line_Options = undefined;
+
+const Cmd_Line_Options = struct {
+    pub const description = "Testing vulkan api";
+
+    glfw_window_api: enum {
+        default,
+        wayland,
+        x11,
+        pub const descriptions = .{
+            .default = "Use wayland if available, fallback to x11",
+        };
+    } = .default,
+
+    pub const descriptions = .{ .glfw_window_api = "Specify the underlying api glfw should use" };
+};
+
 const debug_log: bool = true;
 const log_level = if (builtin.mode == .Debug and debug_log) .debug else .info;
 
 pub const std_options = std.Options{
     .log_level = log_level,
+    .log_scope_levels = &.{
+        .{ .scope = .default, .level = log_level },
+        .{ .scope = .vulkan, .level = if (options.vulkan_verbose) log_level else .info },
+    },
 };
 
-pub fn main() !u8 {
+pub fn vmain() !u8 {
+    var args = try std.process.argsWithAllocator(alloc.gpa);
+    defer args.deinit();
+
+    cmd_line_options = flags.parseOrExit(&args, "vulkan-test", Cmd_Line_Options, .{});
+
     try Window.init_system();
     defer Window.deinit_system();
 
@@ -41,9 +69,11 @@ pub fn main() !u8 {
         window.swap_buffers();
     }
 
-    if (builtin.mode == .Debug and alloc.detectLeaks()) {
-        return 1;
-    }
-
     return 0;
+}
+
+pub fn main() !u8 {
+    const result = try vmain();
+    alloc.deinit();
+    return result;
 }

@@ -3,11 +3,12 @@ const assert = std.debug.assert;
 const builtin = @import("builtin");
 
 const f = @import("util").extern_f;
-const options = @import("options");
 const platform = @import("platform");
 const c = platform.c;
 const glfw = platform.glfw;
 const vk = @import("vulkan");
+
+const root = @import("root");
 
 const log = std.log.scoped(.window);
 const dlog = log.debug;
@@ -25,7 +26,7 @@ pub fn init_system() !void {
     dlog("glfw wayland support: {}", .{wayland_support});
     dlog("glfw x11 support: {}", .{x11_support});
 
-    var api = options.glfw_window_api;
+    var api = root.cmd_line_options.glfw_window_api;
     switch (api) {
         .default => {
             if (wayland_support) {
