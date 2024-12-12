@@ -27,8 +27,39 @@ var physical_device: vk.PhysicalDevice = null;
 var device: vk.Device = null;
 var graphics_que: vk.Queue = null;
 var present_que: vk.Queue = null;
-var swapchain: vk.SwapchainKHR = null;
+var swapchain: Swapchain_Data = undefined;
 var debug_messenger: vke.DebugUtilsMessenger = undefined;
+
+const PDev_Info = struct {
+    score: u32,
+    name: [256]u8 = std.mem.zeroes([256]u8),
+    queue_info: Queue_Family_Info,
+    swapchain_info: Swapchain_Info,
+};
+
+const Queue_Family_Info = struct {
+    graphics_index: u32 = undefined,
+    present_index: u32 = undefined,
+};
+
+const Swapchain_Info = struct {
+    min_image_count: u32,
+    surface_capabilities: vk.SurfaceCapabilitiesKHR,
+    surface_format: vk.SurfaceFormatKHR,
+    present_mode: vk.PresentModeKHR,
+};
+
+const Swapchain_Data = struct {
+    handle: vk.SwapchainKHR = null,
+    images: []vk.Image = std.mem.zeroes([]vk.Image),
+    image_format: vk.Format,
+    extent: vk.Extent2D,
+
+    pub fn deinit(this: *@This(), allocator: std.mem.Allocator) void {
+        allocator.free(this.images);
+        vk.destroySwapchainKHR(device, this.handle, null);
+    }
+};
 
 const validation_layers: []const [*:0]const u8 = if (debug) &.{
     "VK_LAYER_KHRONOS_validation",
@@ -54,7 +85,8 @@ pub fn init_system(window: *const Window) !void {
 
     const device_info = try choose_physical_device();
     try create_logical_device(&device_info);
-    try create_swapchain(window, &device_info);
+
+    swapchain = try create_swapchain(window, &device_info);
 }
 
 fn create_instance(window: *const Window) !void {
@@ -178,24 +210,6 @@ fn create_instance(window: *const Window) !void {
         _ = vke.createDebugUtilsMessenger(instance, &debug_messenger_create_info, null, &debug_messenger);
     }
 }
-
-const PDev_Info = struct {
-    score: u32,
-    name: [256]u8 = std.mem.zeroes([256]u8),
-    queue_info: Queue_Family_Info,
-    swapchain_info: Swapchain_Info,
-};
-
-const Queue_Family_Info = struct {
-    graphics_index: u32 = undefined,
-    present_index: u32 = undefined,
-};
-
-const Swapchain_Info = struct {
-    surface_capabilities: vk.SurfaceCapabilitiesKHR,
-    surface_format: vk.SurfaceFormatKHR,
-    present_mode: vk.PresentModeKHR,
-};
 
 fn choose_physical_device() !PDev_Info {
     var device_count: u32 = 0;
@@ -392,7 +406,13 @@ fn query_swapchain_info(pdev: vk.PhysicalDevice) !?Swapchain_Info {
 
     dlog("chosen present mode: {}", .{chosen_present_mode});
 
+    var image_count = surface_capabilities.minImageCount + 1;
+    if (surface_capabilities.maxImageCount > 0 and image_count > surface_capabilities.maxImageCount)
+        image_count = surface_capabilities.maxImageCount;
+    dlog("swapchain image_count: {}", .{image_count});
+
     return .{
+        .min_image_count = image_count,
         .surface_capabilities = surface_capabilities,
         .surface_format = chosen_format,
         .present_mode = chosen_present_mode,
@@ -456,8 +476,9 @@ fn create_logical_device(pdev_info: *const PDev_Info) !void {
     vk.getDeviceQueue(device, pdev_info.queue_info.present_index, 0, &present_que);
 }
 
-pub fn create_swapchain(window: *const Window, info: *const PDev_Info) !void {
+pub fn create_swapchain(window: *const Window, info: *const PDev_Info) !Swapchain_Data {
     const cap = &info.swapchain_info.surface_capabilities;
+    dlog("cap.currentExtent: {}", .{cap.currentExtent});
     const extent = switch (cap.currentExtent.width) {
         std.math.maxInt(u32) => blk: {
             var width: c_int = undefined;
@@ -475,16 +496,12 @@ pub fn create_swapchain(window: *const Window, info: *const PDev_Info) !void {
 
     dlog("swapchain extent: {}", .{extent});
 
-    var image_count = cap.minImageCount + 1;
-    if (cap.maxImageCount > 0 and image_count > cap.maxImageCount) image_count = cap.maxImageCount;
-    dlog("swapchain image_count: {}", .{image_count});
-
     const same_family = info.queue_info.graphics_index == info.queue_info.present_index;
 
     const create_info = vk.SwapchainCreateInfoKHR{
         .sType = vk.Structure_Type.SWAPCHAIN_CREATE_INFO_KHR,
         .surface = surface,
-        .minImageCount = image_count,
+        .minImageCount = info.swapchain_info.min_image_count,
         .imageFormat = info.swapchain_info.surface_format.format,
         .imageColorSpace = info.swapchain_info.surface_format.colorSpace,
         .imageExtent = extent,
@@ -500,13 +517,32 @@ pub fn create_swapchain(window: *const Window, info: *const PDev_Info) !void {
         .oldSwapchain = null,
     };
 
-    if (vk.createSwapchainKHR(device, &create_info, null, &swapchain) != vk.SUCCESS) {
+    var swapchain_handle: vk.SwapchainKHR = undefined;
+    if (vk.createSwapchainKHR(device, &create_info, null, &swapchain_handle) != vk.SUCCESS) {
         return error.Create_Swapchain_Failed;
     }
+
+    var image_count: u32 = undefined;
+    if (vk.getSwapchainImagesKHR(device, swapchain_handle, &image_count, null) != vk.SUCCESS) {
+        return error.Get_Swapchain_Images_Failed;
+    }
+
+    const images = try alloc.gpa.alloc(vk.Image, image_count);
+    if (vk.getSwapchainImagesKHR(device, swapchain_handle, &image_count, images.ptr) != vk.SUCCESS) {
+        return error.Get_Swapchain_Images_Failed;
+    }
+    assert(image_count == images.len);
+
+    return .{
+        .handle = swapchain_handle,
+        .images = images,
+        .image_format = info.swapchain_info.surface_format.format,
+        .extent = extent,
+    };
 }
 
 pub fn deinit_system() void {
-    vk.destroySwapchainKHR(device, swapchain, null);
+    swapchain.deinit(alloc.gpa);
     vk.destroyDevice(device, null);
     vk.destroySurfaceKHR(instance, surface, null);
     if (debug) vke.destroyDebugUtilsMessenger(instance, debug_messenger, null);

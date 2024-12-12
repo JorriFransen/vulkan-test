@@ -56,12 +56,14 @@ pub const PhysicalDevice_T = opaque {};
 pub const Device_T = opaque {};
 pub const Queue_T = opaque {};
 pub const SwapchainKHR_T = opaque {};
+pub const Image_T = opaque {};
 pub const Instance = ?*Instance_T;
 pub const SurfaceKHR = ?*SurfaceKHR_T;
 pub const PhysicalDevice = ?*PhysicalDevice_T;
 pub const Device = ?*Device_T;
 pub const Queue = ?*Queue_T;
 pub const SwapchainKHR = ?*SwapchainKHR_T;
+pub const Image = ?*Image_T;
 
 // Structs
 pub const ApplicationInfo = c.VkApplicationInfo;
@@ -119,7 +121,7 @@ pub const SwapchainCreateInfoKHR = extern struct {
     oldSwapchain: c.VkSwapchainKHR = std.mem.zeroes(c.VkSwapchainKHR),
 };
 
-// Functionc.s
+// Functions
 pub const createInstance = f("vkCreateInstance", fn (create_info: *const InstanceCreateInfo, allocator: ?*const AllocationCallbacks, instance: *Instance) callconv(.C) Result);
 pub const destroyInstance = f("vkDestroyInstance", fn (instance: Instance, allocator: ?*const AllocationCallbacks) callconv(.C) void);
 pub const getInstanceProcAddr = f("vkGetInstanceProcAddr", fn (instance: Instance, name: [*:0]const u8) callconv(.C) c.PFN_vkVoidFunction);
@@ -143,6 +145,7 @@ pub const getPhysicalDeviceSurfaceFormatsKHR = f("vkGetPhysicalDeviceSurfaceForm
 pub const getPhysicalDeviceSurfacePresentModesKHR = f("vkGetPhysicalDeviceSurfacePresentModesKHR", fn (device: PhysicalDevice, surface: SurfaceKHR, count: *u32, modes: ?*PresentModeKHR) callconv(.C) Result);
 pub const createSwapchainKHR = f("vkCreateSwapchainKHR", fn (device: Device, create_info: *const SwapchainCreateInfoKHR, allocator: ?*AllocationCallbacks, swapchain: *SwapchainKHR) callconv(.C) Result);
 pub const destroySwapchainKHR = f("vkDestroySwapchainKHR", fn (device: Device, swapchain: SwapchainKHR, allocator: ?*AllocationCallbacks) callconv(.C) void);
+pub const getSwapchainImagesKHR = f("vkGetSwapchainImagesKHR", fn (device: Device, swapchain: SwapchainKHR, count: *u32, images: ?[*]Image) callconv(.C) Result);
 
 // Macros
 pub const MAKE_VERSION = c.VK_MAKE_VERSION;
