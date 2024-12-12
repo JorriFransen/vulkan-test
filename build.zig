@@ -6,9 +6,21 @@ const builtin = @import("builtin");
 var target: std.Build.ResolvedTarget = undefined;
 var optimize: std.builtin.OptimizeMode = undefined;
 
+const GLFW_Window_Api = enum {
+    default,
+    wayland,
+    x11,
+};
+
 pub fn build(b: *std.Build) !void {
     target = b.standardTargetOptions(.{});
     optimize = b.standardOptimizeOption(.{});
+
+    // TODO: This shoudl be a command line option instead of a build option?
+    const glfw_window_api = b.option(GLFW_Window_Api, "glfw_window_api", "Glfw window api") orelse .default;
+
+    const options = b.addOptions();
+    options.addOption(GLFW_Window_Api, "glfw_window_api", glfw_window_api);
 
     const root_source_file = b.path("src/main.zig");
 
@@ -35,6 +47,7 @@ pub fn build(b: *std.Build) !void {
     const vulkan_mod = vulkan_info.module;
 
     platform_mod.addIncludePath(vulkan_info.include_path);
+    platform_mod.addOptions("options", options);
 
     exe.root_module.addImport("alloc", alloc_mod);
     exe.root_module.addImport("platform", platform_mod);

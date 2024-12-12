@@ -37,6 +37,8 @@ pub fn main() !u8 {
         if (window.input.escape_pressed) {
             window.request_close();
         }
+
+        window.swap_buffers();
     }
 
     if (builtin.mode == .Debug and alloc.detectLeaks()) {

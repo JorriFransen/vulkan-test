@@ -1,26 +1,51 @@
 const std = @import("std");
 const assert = std.debug.assert;
-
 const builtin = @import("builtin");
+
+const f = @import("util").extern_f;
+const options = @import("options");
+const platform = @import("platform");
+const c = platform.c;
+const glfw = platform.glfw;
+const vk = @import("vulkan");
 
 const log = std.log.scoped(.window);
 const dlog = log.debug;
 const elog = log.err;
 const ilog = log.info;
 
-const f = @import("util").extern_f;
-
-const vk = @import("vulkan");
-
-const platform = @import("platform");
-const c = platform.c;
-const glfw = platform.glfw;
-
 pub const X = if (builtin.os.tag == .linux) struct {
     pub const getXCBConnection = f("XGetXCBConnection", fn (display: *c.Display) callconv(.C) *c.xcb_connection_t);
 };
 
 pub fn init_system() !void {
+    const wayland_support = glfw.glfwPlatformSupported(.WAYLAND) == 1;
+    const x11_support = glfw.glfwPlatformSupported(.X11) == 1;
+
+    dlog("glfw wayland support: {}", .{wayland_support});
+    dlog("glfw x11 support: {}", .{x11_support});
+
+    var api = options.glfw_window_api;
+    switch (api) {
+        .default => {
+            if (wayland_support) {
+                api = .wayland;
+            } else api = .x11;
+        },
+        .wayland => assert(wayland_support),
+        .x11 => assert(x11_support),
+    }
+
+    const window_platform = switch (api) {
+        else => {
+            @panic("Expected .wayland or .x11 at this point!");
+        },
+        .wayland => glfw.Platform.WAYLAND,
+        .x11 => glfw.Platform.X11,
+    };
+
+    glfw.glfwInitHint(glfw.PLATFORM, @intFromEnum(window_platform));
+
     if (glfw.glfwInit() == 0) {
         elog("glfwInit() failed...", .{});
 
@@ -43,6 +68,8 @@ last_input: platform.Input_State = .{},
 pub fn create(this: *@This(), title: [:0]const u8) !void {
     glfw.glfwWindowHint(glfw.CLIENT_API, glfw.NO_API);
 
+    glfw.glfwWindowHintString(glfw.WAYLAND_APP_ID, "my_app_id");
+
     var handle: *glfw.GLFWwindow = undefined;
 
     if (glfw.glfwCreateWindow(500, 500, title, null, null)) |h| {
@@ -53,6 +80,11 @@ pub fn create(this: *@This(), title: [:0]const u8) !void {
         elog("glfw err: {}: {s}", .{ code, cstr });
         return error.Glfw_Create_Window_Failed;
     }
+
+    dlog("created glfw window", .{});
+
+    const glfw_platform = glfw.glfwGetPlatform();
+    dlog("glfw platform: {}", .{glfw_platform});
 
     _ = glfw.glfwSetKeyCallback(handle, key_callback);
 
@@ -77,6 +109,10 @@ pub fn update(this: *@This()) void {
     this.input = .{};
 
     glfw.glfwPollEvents();
+}
+
+pub fn swap_buffers(this: *@This()) void {
+    glfw.glfwSwapBuffers(this.handle);
 }
 
 pub fn close(this: *@This()) void {
