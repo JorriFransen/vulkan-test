@@ -112,10 +112,6 @@ pub fn update(this: *@This()) void {
     glfw.glfwPollEvents();
 }
 
-pub fn swap_buffers(this: *@This()) void {
-    glfw.glfwSwapBuffers(this.handle);
-}
-
 pub fn close(this: *@This()) void {
     glfw.glfwDestroyWindow(this.handle);
 }

@@ -59,14 +59,17 @@ pub fn vmain() !u8 {
     try vkh.init_system(&window);
     defer vkh.deinit_system();
 
+    // var width: i32 = undefined;
+    // var height: i32 = undefined;
+    // window.frame_buffer_size(&width, &height);
+    // dlog("window size: {}, {}", .{ width, height });
+
     while (!window.should_close()) {
         window.update();
 
         if (window.input.escape_pressed) {
             window.request_close();
         }
-
-        window.swap_buffers();
     }
 
     return 0;

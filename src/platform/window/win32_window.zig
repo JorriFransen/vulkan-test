@@ -116,6 +116,18 @@ pub fn close(this: *@This()) void {
     _ = win32.DestroyWindow(this.handle);
 }
 
+pub fn frame_buffer_size(this: *const @This(), width: *i32, height: *i32) void {
+    var rect: win32.RECT = undefined;
+    const res = win32.GetClientRect(this.handle, &rect);
+    assert(res == win32.TRUE);
+
+    assert(rect.left == 0);
+    assert(rect.top == 0);
+
+    width.* = rect.right;
+    height.* = rect.bottom;
+}
+
 pub fn required_vulkan_instance_extensions(_: *const @This()) ![]const [*:0]const u8 {
     return &.{
         "VK_KHR_surface",
@@ -123,7 +135,7 @@ pub fn required_vulkan_instance_extensions(_: *const @This()) ![]const [*:0]cons
     };
 }
 
-pub fn create_vulkan_surface(this: *const @This(), instance: vk.Instance) vk.SurfaceKHR {
+pub fn create_vulkan_surface(this: *const @This(), instance: vk.Instance) !vk.SurfaceKHR {
     var surface: vk.SurfaceKHR = undefined;
 
     const create_info = vk.Win32SurfaceCreateInfoKHR{
@@ -188,6 +200,10 @@ fn window_proc(_hwnd: ?win32.HWND, uMsg: u32, wParam: win32.WPARAM, lParam: win3
     const this: *@This() = @ptrFromInt(data_int);
 
     switch (uMsg) {
+        // win32.WM_SIZE => {
+        //     dlog("wm_size: {}, {}", .{ win32.LOWORD(lParam), win32.HIWORD(lParam) });
+        //     return 0;
+        // },
         win32.WM_DESTROY => {
             win32.PostQuitMessage(0);
             this.close_requested = true;
