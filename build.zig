@@ -22,28 +22,30 @@ pub fn build(b: *std.Build) !void {
 
     b.installArtifact(exe);
 
-    const alloc_mod = add_private_module(b, "src/alloc.zig", "alloc");
-    const util_mod = add_private_module(b, "src/util.zig", "util");
-    const platform_mod = add_private_module(b, "src/platform.zig", "platform");
-    const vulkan_mod = try use_vulkan(b);
-
-    exe.root_module.addImport("alloc", alloc_mod);
-    exe.root_module.addImport("util", util_mod);
-    exe.root_module.addImport("platform", platform_mod);
-    exe.root_module.addImport("vulkan", vulkan_mod);
-
     if (target.result.os.tag == .linux) {
         exe.linkSystemLibrary2("glfw", .{ .preferred_link_mode = .static });
         exe.linkSystemLibrary("X11");
         exe.linkSystemLibrary("X11-xcb");
     }
 
+    const alloc_mod = add_private_module(b, "src/alloc.zig", "alloc");
+    const util_mod = add_private_module(b, "src/util.zig", "util");
+    const platform_mod = add_private_module(b, "src/platform.zig", "platform");
+    const vulkan_info = try use_vulkan(b);
+    const vulkan_mod = vulkan_info.module;
+
+    platform_mod.addIncludePath(vulkan_info.include_path);
+
+    exe.root_module.addImport("alloc", alloc_mod);
+    exe.root_module.addImport("platform", platform_mod);
+    exe.root_module.addImport("vulkan", vulkan_mod);
+
     vulkan_mod.addImport("alloc", alloc_mod);
     vulkan_mod.addImport("util", util_mod);
     vulkan_mod.addImport("platform", platform_mod);
 
-    platform_mod.addImport("vulkan", vulkan_mod);
     platform_mod.addImport("util", util_mod);
+    platform_mod.addImport("vulkan", vulkan_mod);
 
     const run_cmd = b.addRunArtifact(exe);
     run_cmd.step.dependOn(b.getInstallStep());
@@ -69,7 +71,13 @@ fn add_private_module(b: *std.Build, path: []const u8, name: []const u8) *std.Bu
     return mod;
 }
 
-fn use_vulkan(b: *std.Build) !*std.Build.Module {
+const Vulkan_Info = struct {
+    module: *std.Build.Module,
+    include_path: std.Build.LazyPath,
+    lib_path: std.Build.LazyPath,
+};
+
+fn use_vulkan(b: *std.Build) !Vulkan_Info {
     const vk_lib_name = if (target.result.os.tag == .windows) "vulkan-1" else "vulkan";
     var lib_path: []const u8 = undefined;
     var include_path: []const u8 = undefined;
@@ -97,12 +105,19 @@ fn use_vulkan(b: *std.Build) !*std.Build.Module {
     try check_path(lib_path);
     try check_path(include_path);
 
+    const lazy_lib_path = std.Build.LazyPath{ .cwd_relative = lib_path };
+    const lazy_include_path = std.Build.LazyPath{ .cwd_relative = include_path };
+
     const vk_mod = add_private_module(b, "src/vulkan.zig", "vulkan");
-    vk_mod.addLibraryPath(.{ .cwd_relative = lib_path });
-    vk_mod.addIncludePath(.{ .cwd_relative = include_path });
+    vk_mod.addLibraryPath(lazy_lib_path);
+    vk_mod.addIncludePath(lazy_include_path);
     vk_mod.linkSystemLibrary(vk_lib_name, .{});
 
-    return vk_mod;
+    return .{
+        .module = vk_mod,
+        .include_path = lazy_include_path,
+        .lib_path = lazy_lib_path,
+    };
 }
 
 pub const Check_Path_Error = error{ File_Not_Found, Unhandled_File_Error };

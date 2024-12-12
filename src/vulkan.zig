@@ -55,11 +55,13 @@ pub const SurfaceKHR_T = opaque {};
 pub const PhysicalDevice_T = opaque {};
 pub const Device_T = opaque {};
 pub const Queue_T = opaque {};
+pub const SwapchainKHR_T = opaque {};
 pub const Instance = ?*Instance_T;
 pub const SurfaceKHR = ?*SurfaceKHR_T;
 pub const PhysicalDevice = ?*PhysicalDevice_T;
 pub const Device = ?*Device_T;
 pub const Queue = ?*Queue_T;
+pub const SwapchainKHR = ?*SwapchainKHR_T;
 
 // Structs
 pub const ApplicationInfo = c.VkApplicationInfo;
@@ -91,10 +93,33 @@ pub const XcbSurfaceCreateInfoKHR = c.VkXcbSurfaceCreateInfoKHR;
 pub const XlibSurfaceCreateInfoKHR = c.VkXlibSurfaceCreateInfoKHR;
 pub const Win32SurfaceCreateInfoKHR = c.VkWin32SurfaceCreateInfoKHR;
 pub const SurfaceCapabilitiesKHR = c.VkSurfaceCapabilitiesKHR;
-pub const SurfaceFormatKHR = c.VkSurfaceFormatKHR;
-pub const PresentModeKHR = c.VkPresentModeKHR;
+pub const SurfaceFormatKHR = extern struct {
+    format: Format = std.mem.zeroes(Format),
+    colorSpace: ColorSpaceKHR = std.mem.zeroes(ColorSpaceKHR),
+};
+pub const Extent2D = c.VkExtent2D;
+pub const SwapchainCreateInfoKHR = extern struct {
+    sType: c.VkStructureType = std.mem.zeroes(c.VkStructureType),
+    pNext: ?*const anyopaque = std.mem.zeroes(?*const anyopaque),
+    flags: c.VkSwapchainCreateFlagsKHR = std.mem.zeroes(c.VkSwapchainCreateFlagsKHR),
+    surface: SurfaceKHR = std.mem.zeroes(SurfaceKHR),
+    minImageCount: u32 = std.mem.zeroes(u32),
+    imageFormat: Format = std.mem.zeroes(Format),
+    imageColorSpace: ColorSpaceKHR = std.mem.zeroes(ColorSpaceKHR),
+    imageExtent: c.VkExtent2D = std.mem.zeroes(c.VkExtent2D),
+    imageArrayLayers: u32 = std.mem.zeroes(u32),
+    imageUsage: c.VkImageUsageFlags = std.mem.zeroes(c.VkImageUsageFlags),
+    imageSharingMode: c.VkSharingMode = std.mem.zeroes(c.VkSharingMode),
+    queueFamilyIndexCount: u32 = std.mem.zeroes(u32),
+    pQueueFamilyIndices: [*c]const u32 = std.mem.zeroes([*c]const u32),
+    preTransform: c.VkSurfaceTransformFlagBitsKHR = std.mem.zeroes(c.VkSurfaceTransformFlagBitsKHR),
+    compositeAlpha: c.VkCompositeAlphaFlagBitsKHR = std.mem.zeroes(c.VkCompositeAlphaFlagBitsKHR),
+    presentMode: PresentModeKHR = std.mem.zeroes(PresentModeKHR),
+    clipped: c.VkBool32 = std.mem.zeroes(c.VkBool32),
+    oldSwapchain: c.VkSwapchainKHR = std.mem.zeroes(c.VkSwapchainKHR),
+};
 
-// Functions
+// Functionc.s
 pub const createInstance = f("vkCreateInstance", fn (create_info: *const InstanceCreateInfo, allocator: ?*const AllocationCallbacks, instance: *Instance) callconv(.C) Result);
 pub const destroyInstance = f("vkDestroyInstance", fn (instance: Instance, allocator: ?*const AllocationCallbacks) callconv(.C) void);
 pub const getInstanceProcAddr = f("vkGetInstanceProcAddr", fn (instance: Instance, name: [*:0]const u8) callconv(.C) c.PFN_vkVoidFunction);
@@ -116,51 +141,17 @@ pub const getPhysicalDeviceSurfaceSupportKHR = f("vkGetPhysicalDeviceSurfaceSupp
 pub const getPhysicalDeviceSurfaceCapabilitiesKHR = f("vkGetPhysicalDeviceSurfaceCapabilitiesKHR", fn (device: PhysicalDevice, surface: SurfaceKHR, capabailities: *SurfaceCapabilitiesKHR) callconv(.C) Result);
 pub const getPhysicalDeviceSurfaceFormatsKHR = f("vkGetPhysicalDeviceSurfaceFormatsKHR", fn (device: PhysicalDevice, surface: SurfaceKHR, count: *u32, formats: ?*SurfaceFormatKHR) callconv(.C) Result);
 pub const getPhysicalDeviceSurfacePresentModesKHR = f("vkGetPhysicalDeviceSurfacePresentModesKHR", fn (device: PhysicalDevice, surface: SurfaceKHR, count: *u32, modes: ?*PresentModeKHR) callconv(.C) Result);
+pub const createSwapchainKHR = f("vkCreateSwapchainKHR", fn (device: Device, create_info: *const SwapchainCreateInfoKHR, allocator: ?*AllocationCallbacks, swapchain: *SwapchainKHR) callconv(.C) Result);
+pub const destroySwapchainKHR = f("vkDestroySwapchainKHR", fn (device: Device, swapchain: SwapchainKHR, allocator: ?*AllocationCallbacks) callconv(.C) void);
 
 // Macros
 pub const MAKE_VERSION = c.VK_MAKE_VERSION;
 
 // Constants
-pub const API_VERSION_1_0 = c.VK_API_VERSION_1_0;
-pub const API_VERSION_1_1 = c.VK_API_VERSION_1_1;
-pub const API_VERSION_1_2 = c.VK_API_VERSION_1_2;
-pub const API_VERSION_1_3 = c.VK_API_VERSION_1_3;
-
-pub const TRUE = 1;
-pub const FALSE = 0;
-pub const SUCCESS = 0;
-
-pub const INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR = c.VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
-pub const KHR_SWAPCHAIN_EXTENSION_NAME = c.VK_KHR_SWAPCHAIN_EXTENSION_NAME;
-
-pub const Structure_Type = struct {
-    pub const APPLICATION_INFO = c.VK_STRUCTURE_TYPE_APPLICATION_INFO;
-    pub const INSTANCE_CREATE_INFO = c.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-    pub const DEVICE_QUEUE_CREATE_INFO = c.VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-    pub const DEVICE_CREATE_INFO = c.VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-    pub const XLIB_SURFACE_CREATE_INFO_KHR = c.VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
-    pub const XCB_SURFACE_CREATE_INFO_KHR = c.VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
-    pub const WIN32_SURFACE_CREATE_INFO_KHR = c.VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-};
-
-// Enums/Flags
-pub const PhysicalDeviceType = enum(c_uint) {
-    OTHER = 0,
-    INTEGRATED_GPU = 1,
-    DISCRETE_GPU = 2,
-    VIRTUAL_GPU = 3,
-    CPU = 4,
-    MAX_ENUM = 2147483647,
-};
-
-pub const QueueFlags = packed struct(u32) {
-    GRAPHICS_BIT: u1 = 0,
-    COMPUTE_BIT: u1 = 0,
-    TRANSFER_BIT: u1 = 0,
-    SPARSE_BINDING_BIT: u1 = 0,
-    PROTECTED_BIT: u1 = 0,
-    VIDEO_DECODE_BIT_KHR: u1 = 0,
-    VIDEO_ENCODE_BIT_KHR: u1 = 0,
-    OPTICAL_FLOW_BIT_NV: u1 = 0,
-    __reserved__: u24 = 0,
-};
+pub usingnamespace @import("vulkan/constants.zig");
+const self = @This();
+const PhysicalDeviceType = self.PhysicalDeviceType;
+const QueueFlags = self.QueueFlags;
+const PresentModeKHR = self.PresentModeKHR;
+const Format = self.Format;
+const ColorSpaceKHR = self.ColorSpaceKHR;

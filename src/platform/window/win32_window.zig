@@ -7,10 +7,9 @@ const dlog = log.debug;
 const elog = log.err;
 const ilog = log.info;
 
-const gpa = @import("alloc").gpa;
 const vk = @import("vulkan");
 
-const platform = @import("platform").windows;
+const platform = @import("platform");
 const win32 = platform.windows;
 
 pub fn init_system() !void {
@@ -28,16 +27,11 @@ pub fn init_system() !void {
 
 pub fn deinit_system() void {}
 
-pub fn required_instance_extensions() ![]const [*:0]const u8 {
-    return &.{
-        "VK_KHR_surface",
-        "VK_KHR_win32_surface",
-    };
-}
+const MAX_TITLE = 1024;
 
 handle: win32.HWND,
-title: [:0]u16,
 close_requested: bool = false,
+title: [MAX_TITLE]u16 = std.mem.zeroes([MAX_TITLE]u16),
 
 input: platform.Input_State = .{},
 last_input: platform.Input_State = .{},
@@ -65,27 +59,31 @@ pub fn create(this: *@This(), title: [:0]const u8) !void {
         try win32.report_error();
     }
 
-    const titleW = try std.unicode.utf8ToUtf16LeAllocZ(gpa, title);
+    if (try std.unicode.checkUtf8ToUtf16LeOverflow(title, &this.title)) {
+        elog("Title too long!", .{});
+        return error.Title_Too_Long;
+    }
+
+    const title_len = try std.unicode.utf8ToUtf16Le(&this.title, title);
+    if (title_len >= MAX_TITLE) {
+        elog("Title too long!", .{});
+        return error.Title_Too_Long;
+    }
+    this.title[title_len] = 0;
 
     const style = win32.WINDOW_STYLE.OVERLAPPED_WINDOW();
 
-    var window_handle: win32.HWND = undefined;
-    if (win32.CreateWindowExW(.{}, window_class.lpszClassName, titleW, style, win32.CW_USEDEFAULT, win32.CW_USEDEFAULT, 800, 600, null, null, instance, null)) |handle| {
-        window_handle = handle;
+    if (win32.CreateWindowExW(.{}, window_class.lpszClassName, @ptrCast(&this.title), style, win32.CW_USEDEFAULT, win32.CW_USEDEFAULT, 800, 600, null, null, instance, null)) |handle| {
+        this.handle = handle;
     } else {
         try win32.report_error();
     }
 
     const setval = @intFromPtr(this);
-    _ = win32.SetWindowLongPtrW(window_handle, 0, setval);
+    _ = win32.SetWindowLongPtrW(this.handle, 0, setval);
 
     // _ = win32.ShowWindow(window_handle, @bitCast(cmd_show));
-    _ = win32.ShowWindow(window_handle, .{ .SHOWNORMAL = 1 });
-
-    this.* = .{
-        .handle = window_handle,
-        .title = titleW,
-    };
+    _ = win32.ShowWindow(this.handle, .{ .SHOWNORMAL = 1 });
 }
 
 pub fn should_close(this: *const @This()) bool {
@@ -116,7 +114,13 @@ pub fn update(this: *@This()) void {
 
 pub fn close(this: *@This()) void {
     _ = win32.DestroyWindow(this.handle);
-    gpa.free(this.title);
+}
+
+pub fn required_vulkan_instance_extensions(_: *const @This()) ![]const [*:0]const u8 {
+    return &.{
+        "VK_KHR_surface",
+        "VK_KHR_win32_surface",
+    };
 }
 
 pub fn create_vulkan_surface(this: *const @This(), instance: vk.Instance) vk.SurfaceKHR {

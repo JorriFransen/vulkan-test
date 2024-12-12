@@ -25,6 +25,7 @@ var physical_device: vk.PhysicalDevice = null;
 var device: vk.Device = null;
 var graphics_que: vk.Queue = null;
 var present_que: vk.Queue = null;
+var swapchain: vk.SwapchainKHR = null;
 var debug_messenger: vke.DebugUtilsMessenger = undefined;
 
 const validation_layers: []const [*:0]const u8 = if (debug) &.{
@@ -46,14 +47,15 @@ const required_device_extensions: []const [*:0]const u8 = &.{
 };
 
 pub fn init_system(window: *const Window) !void {
-    try create_instance();
+    try create_instance(window);
     surface = try window.create_vulkan_surface(instance);
 
     const device_info = try choose_physical_device();
-    try create_logical_device(device_info);
+    try create_logical_device(&device_info);
+    try create_swapchain(window, &device_info);
 }
 
-fn create_instance() !void {
+fn create_instance(window: *const Window) !void {
     var extension_count: u32 = undefined;
     _ = vk.enumerateInstanceExtensionProperties(null, &extension_count, null);
     dlog("{} Vulkan extensions supported", .{extension_count});
@@ -73,7 +75,7 @@ fn create_instance() !void {
         .apiVersion = vk.API_VERSION_1_0,
     };
 
-    const window_required_extensions = try Window.required_instance_extensions();
+    const window_required_extensions = try window.required_vulkan_instance_extensions();
 
     const instance_ext_count = window_required_extensions.len + instance_extensions.len;
 
@@ -179,11 +181,18 @@ const PDev_Info = struct {
     score: u32,
     name: [256]u8 = std.mem.zeroes([256]u8),
     queue_info: Queue_Family_Info,
+    swapchain_info: Swapchain_Info,
 };
 
 const Queue_Family_Info = struct {
     graphics_index: u32 = undefined,
     present_index: u32 = undefined,
+};
+
+const Swapchain_Info = struct {
+    surface_capabilities: vk.SurfaceCapabilitiesKHR,
+    surface_format: vk.SurfaceFormatKHR,
+    present_mode: vk.PresentModeKHR,
 };
 
 fn choose_physical_device() !PDev_Info {
@@ -227,21 +236,22 @@ fn choose_physical_device() !PDev_Info {
 
         const image_dim_score = props.limits.maxImageDimension2D / 4096;
 
-        const queue_info_opt = try queue_families_info(pdev);
+        const queue_info_opt = try query_queue_families_info(pdev);
         const queue_info = queue_info_opt orelse {
             dlog("pd[{}] does not have required queue families, skipping...", .{i});
             continue;
         };
 
-        if (!try device_extensions_suitable(pdev)) {
+        if (!try query_device_extensions_suitable(pdev)) {
             dlog("pd[{}] does not have required extensions, skipping...", .{i});
             continue;
         }
 
-        if (!try swapchain_suitable(pdev)) {
+        const swapchain_info_opt = try query_swapchain_info(pdev);
+        const swapchain_info = swapchain_info_opt orelse {
             dlog("pd[{}] does not meet swapchain requirements, skipping...", .{i});
             continue;
-        }
+        };
 
         const score = type_score * image_dim_score;
         dlog("pd[{}]: score: {}", .{ i, score });
@@ -250,8 +260,9 @@ fn choose_physical_device() !PDev_Info {
 
         const info = PDev_Info{
             .score = score,
-            .queue_info = queue_info,
             .name = props.deviceName,
+            .queue_info = queue_info,
+            .swapchain_info = swapchain_info,
         };
 
         const new_best = if (suitable_device_found) info.score > best_device_info.score else true;
@@ -273,7 +284,7 @@ fn choose_physical_device() !PDev_Info {
     return best_device_info;
 }
 
-fn queue_families_info(pdev: vk.PhysicalDevice) !?Queue_Family_Info {
+fn query_queue_families_info(pdev: vk.PhysicalDevice) !?Queue_Family_Info {
     var que_family_count: u32 = undefined;
     vk.getPhysicalDeviceQueueFamilyProperties(pdev, &que_family_count, null);
 
@@ -305,7 +316,7 @@ fn queue_families_info(pdev: vk.PhysicalDevice) !?Queue_Family_Info {
     return if (graphics_que_found and present_que_found) result else null;
 }
 
-fn device_extensions_suitable(pdev: vk.PhysicalDevice) !bool {
+fn query_device_extensions_suitable(pdev: vk.PhysicalDevice) !bool {
     var prop_count: u32 = undefined;
     _ = vk.enumerateDeviceExtensionProperties(pdev, null, &prop_count, null);
 
@@ -331,7 +342,7 @@ fn device_extensions_suitable(pdev: vk.PhysicalDevice) !bool {
     return true;
 }
 
-fn swapchain_suitable(pdev: vk.PhysicalDevice) !bool {
+fn query_swapchain_info(pdev: vk.PhysicalDevice) !?Swapchain_Info {
     var surface_capabilities: vk.SurfaceCapabilitiesKHR = undefined;
     if (vk.getPhysicalDeviceSurfaceCapabilitiesKHR(pdev, surface, &surface_capabilities) != vk.SUCCESS) {
         return error.Get_Physical_Device_Surface_Capabilities_Failed;
@@ -341,32 +352,52 @@ fn swapchain_suitable(pdev: vk.PhysicalDevice) !bool {
     if (vk.getPhysicalDeviceSurfaceFormatsKHR(pdev, surface, &format_count, null) != vk.SUCCESS) {
         return error.Get_Physical_Device_Surface_Formats_Failed;
     }
+    if (format_count == 0) return null;
+
     var formats: []vk.SurfaceFormatKHR = undefined;
-    if (format_count > 0) {
-        formats = try alloc.gpa.alloc(vk.SurfaceFormatKHR, format_count);
-        if (vk.getPhysicalDeviceSurfaceFormatsKHR(pdev, surface, &format_count, @ptrCast(formats.ptr)) != vk.SUCCESS) {
-            return error.Get_Physical_Device_Surface_Formats_Failed;
-        }
+    formats = try alloc.gpa.alloc(vk.SurfaceFormatKHR, format_count);
+    if (vk.getPhysicalDeviceSurfaceFormatsKHR(pdev, surface, &format_count, @ptrCast(formats.ptr)) != vk.SUCCESS) {
+        return error.Get_Physical_Device_Surface_Formats_Failed;
     }
-    defer if (format_count > 0) alloc.gpa.free(formats);
+    defer alloc.gpa.free(formats);
 
     var present_mode_count: u32 = undefined;
     if (vk.getPhysicalDeviceSurfacePresentModesKHR(pdev, surface, &present_mode_count, null) != vk.SUCCESS) {
         return error.Get_Physical_Device_Surface_Presentmodes_Failed;
     }
-    var present_modes: []vk.PresentModeKHR = undefined;
-    if (present_mode_count > 0) {
-        present_modes = try alloc.gpa.alloc(vk.PresentModeKHR, present_mode_count);
-        if (vk.getPhysicalDeviceSurfacePresentModesKHR(pdev, surface, &present_mode_count, @ptrCast(present_modes.ptr)) != vk.SUCCESS) {
-            return error.Get_Physical_Device_Surface_Presentmodes_Failed;
-        }
-    }
-    defer if (present_mode_count > 0) alloc.gpa.free(present_modes);
+    if (present_mode_count == 0) return null;
 
-    return format_count != 0 and present_mode_count != 0;
+    var present_modes: []vk.PresentModeKHR = undefined;
+    present_modes = try alloc.gpa.alloc(vk.PresentModeKHR, present_mode_count);
+    if (vk.getPhysicalDeviceSurfacePresentModesKHR(pdev, surface, &present_mode_count, @ptrCast(present_modes.ptr)) != vk.SUCCESS) {
+        return error.Get_Physical_Device_Surface_Presentmodes_Failed;
+    }
+    defer alloc.gpa.free(present_modes);
+
+    const chosen_format = for (formats) |format| {
+        if (format.format == .B8G8R8A8_SRGB and format.colorSpace == .SRGB_NONLINEAR_KHR) {
+            break format;
+        }
+    } else formats[0];
+
+    dlog("chosen format: {}", .{chosen_format});
+
+    const chosen_present_mode = for (present_modes) |mode| {
+        if (mode == .MAILBOX_KHR) {
+            break mode;
+        }
+    } else .IMMEDIATE_KHR;
+
+    dlog("chosen present mode: {}", .{chosen_present_mode});
+
+    return .{
+        .surface_capabilities = surface_capabilities,
+        .surface_format = chosen_format,
+        .present_mode = chosen_present_mode,
+    };
 }
 
-fn create_logical_device(pdev_info: PDev_Info) !void {
+fn create_logical_device(pdev_info: *const PDev_Info) !void {
     var fin_array = [_]u32{ pdev_info.queue_info.graphics_index, pdev_info.queue_info.present_index };
     var fin: []u32 = &fin_array;
     std.mem.sort(u32, fin, .{}, struct {
@@ -387,7 +418,7 @@ fn create_logical_device(pdev_info: PDev_Info) !void {
             fi_write_index += 1;
         }
         fin = fin[0..fi_write_index];
-        dlog("fin: {any}", .{fin});
+        // dlog("fin: {any}", .{fin});
     }
 
     var qci_array: [fin_array.len]vk.DeviceQueueCreateInfo = undefined;
@@ -423,7 +454,57 @@ fn create_logical_device(pdev_info: PDev_Info) !void {
     vk.getDeviceQueue(device, pdev_info.queue_info.present_index, 0, &present_que);
 }
 
+pub fn create_swapchain(window: *const Window, info: *const PDev_Info) !void {
+    const cap = &info.swapchain_info.surface_capabilities;
+    const extent = switch (cap.currentExtent.width) {
+        std.math.maxInt(u32) => blk: {
+            var width: c_int = undefined;
+            var height: c_int = undefined;
+            window.frame_buffer_size(&width, &height);
+
+            var actual_extent = vk.Extent2D{ .width = @intCast(width), .height = @intCast(height) };
+            actual_extent.width = std.math.clamp(actual_extent.width, cap.minImageExtent.width, cap.maxImageExtent.width);
+            actual_extent.height = std.math.clamp(actual_extent.height, cap.minImageExtent.height, cap.maxImageExtent.height);
+
+            break :blk actual_extent;
+        },
+        else => cap.currentExtent,
+    };
+
+    dlog("swapchain extent: {}", .{extent});
+
+    var image_count = cap.minImageCount + 1;
+    if (cap.maxImageCount > 0 and image_count > cap.maxImageCount) image_count = cap.maxImageCount;
+    dlog("swapchain image_count: {}", .{image_count});
+
+    const same_family = info.queue_info.graphics_index == info.queue_info.present_index;
+
+    const create_info = vk.SwapchainCreateInfoKHR{
+        .sType = vk.Structure_Type.SWAPCHAIN_CREATE_INFO_KHR,
+        .surface = surface,
+        .minImageCount = image_count,
+        .imageFormat = info.swapchain_info.surface_format.format,
+        .imageColorSpace = info.swapchain_info.surface_format.colorSpace,
+        .imageExtent = extent,
+        .imageArrayLayers = 1,
+        .imageUsage = vk.IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        .imageSharingMode = if (same_family) vk.SHARING_MODE_EXCLUSIVE else vk.SHARING_MODE_CONCURRENT,
+        .queueFamilyIndexCount = if (same_family) 0 else 2,
+        .pQueueFamilyIndices = if (same_family) null else @ptrCast(&.{ info.queue_info.graphics_index, info.queue_info.present_index }),
+        .preTransform = cap.currentTransform,
+        .compositeAlpha = vk.COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+        .presentMode = info.swapchain_info.present_mode,
+        .clipped = vk.TRUE,
+        .oldSwapchain = null,
+    };
+
+    if (vk.createSwapchainKHR(device, &create_info, null, &swapchain) != vk.SUCCESS) {
+        return error.Create_Swapchain_Failed;
+    }
+}
+
 pub fn deinit_system() void {
+    vk.destroySwapchainKHR(device, swapchain, null);
     vk.destroyDevice(device, null);
     vk.destroySurfaceKHR(instance, surface, null);
     if (debug) vke.destroyDebugUtilsMessenger(instance, debug_messenger, null);

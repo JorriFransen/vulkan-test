@@ -36,13 +36,6 @@ pub fn deinit_system() void {
     glfw.glfwTerminate();
 }
 
-pub fn required_instance_extensions() ![]const [*:0]const u8 {
-    assert(glfw.glfwVulkanSupported() == 1);
-    var count: u32 = undefined;
-    const ext = glfw.glfwGetRequiredInstanceExtensions(&count) orelse return error.API_UNAVAILABLE;
-    return @as([]const [*:0]const u8, @ptrCast(ext[0..count]));
-}
-
 handle: *glfw.GLFWwindow,
 input: platform.Input_State = .{},
 last_input: platform.Input_State = .{},
@@ -90,31 +83,42 @@ pub fn close(this: *@This()) void {
     glfw.glfwDestroyWindow(this.handle);
 }
 
+pub fn frame_buffer_size(this: *const @This(), width: *i32, height: *i32) void {
+    glfw.glfwGetFramebufferSize(this.handle, width, height);
+}
+
+pub fn required_vulkan_instance_extensions(_: *const @This()) ![]const [*:0]const u8 {
+    assert(glfw.glfwVulkanSupported() == 1);
+    var count: u32 = undefined;
+    const ext = glfw.glfwGetRequiredInstanceExtensions(&count) orelse return error.API_UNAVAILABLE;
+    return @as([]const [*:0]const u8, @ptrCast(ext[0..count]));
+}
+
 pub fn create_vulkan_surface(this: *const @This(), instance: vk.Instance) !vk.SurfaceKHR {
-    // var surface: vk.SurfaceKHR = undefined;
-    // if (glfw.glfwCreateWindowSurface(instance, this.handle, null, &surface) != vk.SUCCESS) {
-    //     elog("glfwCreateWindowSurface failed!", .{});
-    //     return error.Vulkan_Surface_Creation_Failed;
-    // }
-    // return surface;
-
     var surface: vk.SurfaceKHR = undefined;
-
-    const display = glfw.glfwGetX11Display();
-    const connection = X.getXCBConnection(display);
-
-    const create_info = vk.XcbSurfaceCreateInfoKHR{
-        .sType = vk.Structure_Type.XCB_SURFACE_CREATE_INFO_KHR,
-        .connection = connection,
-        .window = @intCast(glfw.glfwGetX11Window(this.handle)),
-    };
-
-    if (vk.createXcbSurfaceKHR(instance, &create_info, null, &surface) != vk.SUCCESS) {
+    if (glfw.glfwCreateWindowSurface(instance, this.handle, null, &surface) != vk.SUCCESS) {
         elog("glfwCreateWindowSurface failed!", .{});
         return error.Vulkan_Surface_Creation_Failed;
     }
-
     return surface;
+
+    // var surface: vk.SurfaceKHR = undefined;
+    //
+    // const display = glfw.glfwGetX11Display();
+    // const connection = X.getXCBConnection(display);
+    //
+    // const create_info = vk.XcbSurfaceCreateInfoKHR{
+    //     .sType = vk.Structure_Type.XCB_SURFACE_CREATE_INFO_KHR,
+    //     .connection = connection,
+    //     .window = @intCast(glfw.glfwGetX11Window(this.handle)),
+    // };
+    //
+    // if (vk.createXcbSurfaceKHR(instance, &create_info, null, &surface) != vk.SUCCESS) {
+    //     elog("glfwCreateWindowSurface failed!", .{});
+    //     return error.Vulkan_Surface_Creation_Failed;
+    // }
+    //
+    // return surface;
 
     // var surface: vk.SurfaceKHR = undefined;
     // const create_info = vk.XlibSurfaceCreateInfoKHR{

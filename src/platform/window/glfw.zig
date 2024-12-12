@@ -14,6 +14,7 @@ pub extern fn glfwPollEvents() callconv(.C) void;
 pub extern fn glfwSetKeyCallback(window: *GLFWwindow, callback: GLFWkeyfun) callconv(.C) GLFWkeyfun;
 pub extern fn glfwDestroyWindow(window: *GLFWwindow) callconv(.C) void;
 pub extern fn glfwTerminate() callconv(.C) void;
+pub extern fn glfwGetFramebufferSize(window: *const GLFWwindow, width: ?*c_int, height: ?*c_int) callconv(.C) void;
 
 pub extern fn glfwVulkanSupported() callconv(.C) c_int;
 pub extern fn glfwGetRequiredInstanceExtensions(count: *u32) callconv(.C) [*c][*c]const u8;
