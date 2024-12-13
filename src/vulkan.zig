@@ -57,6 +57,7 @@ pub const Device_T = opaque {};
 pub const Queue_T = opaque {};
 pub const SwapchainKHR_T = opaque {};
 pub const Image_T = opaque {};
+pub const ImageView_T = opaque {};
 pub const Instance = ?*Instance_T;
 pub const SurfaceKHR = ?*SurfaceKHR_T;
 pub const PhysicalDevice = ?*PhysicalDevice_T;
@@ -64,6 +65,7 @@ pub const Device = ?*Device_T;
 pub const Queue = ?*Queue_T;
 pub const SwapchainKHR = ?*SwapchainKHR_T;
 pub const Image = ?*Image_T;
+pub const ImageView = ?*ImageView_T;
 
 // Structs
 pub const ApplicationInfo = c.VkApplicationInfo;
@@ -120,6 +122,16 @@ pub const SwapchainCreateInfoKHR = extern struct {
     clipped: c.VkBool32 = std.mem.zeroes(c.VkBool32),
     oldSwapchain: c.VkSwapchainKHR = std.mem.zeroes(c.VkSwapchainKHR),
 };
+pub const ImageViewCreateInfo = extern struct {
+    sType: c.VkStructureType = std.mem.zeroes(c.VkStructureType),
+    pNext: ?*const anyopaque = std.mem.zeroes(?*const anyopaque),
+    flags: c.VkImageViewCreateFlags = std.mem.zeroes(c.VkImageViewCreateFlags),
+    image: Image = std.mem.zeroes(Image),
+    viewType: c.VkImageViewType = std.mem.zeroes(c.VkImageViewType),
+    format: Format = std.mem.zeroes(Format),
+    components: c.VkComponentMapping = std.mem.zeroes(c.VkComponentMapping),
+    subresourceRange: c.VkImageSubresourceRange = std.mem.zeroes(c.VkImageSubresourceRange),
+};
 
 // Functions
 pub const createInstance = f("vkCreateInstance", fn (create_info: *const InstanceCreateInfo, allocator: ?*const AllocationCallbacks, instance: *Instance) callconv(.C) Result);
@@ -146,6 +158,8 @@ pub const getPhysicalDeviceSurfacePresentModesKHR = f("vkGetPhysicalDeviceSurfac
 pub const createSwapchainKHR = f("vkCreateSwapchainKHR", fn (device: Device, create_info: *const SwapchainCreateInfoKHR, allocator: ?*AllocationCallbacks, swapchain: *SwapchainKHR) callconv(.C) Result);
 pub const destroySwapchainKHR = f("vkDestroySwapchainKHR", fn (device: Device, swapchain: SwapchainKHR, allocator: ?*AllocationCallbacks) callconv(.C) void);
 pub const getSwapchainImagesKHR = f("vkGetSwapchainImagesKHR", fn (device: Device, swapchain: SwapchainKHR, count: *u32, images: ?[*]Image) callconv(.C) Result);
+pub const createImageView = f("vkCreateImageView", fn (device: Device, create_info: *const ImageViewCreateInfo, allocator: ?*AllocationCallbacks, view: *ImageView) callconv(.C) Result);
+pub const destroyImageView = f("vkDestroyImageView", fn (device: Device, view: ImageView, allocator: ?*AllocationCallbacks) callconv(.C) void);
 
 // Macros
 pub const MAKE_VERSION = c.VK_MAKE_VERSION;

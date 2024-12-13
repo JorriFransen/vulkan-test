@@ -51,11 +51,15 @@ const Swapchain_Info = struct {
 
 const Swapchain_Data = struct {
     handle: vk.SwapchainKHR = null,
-    images: []vk.Image = std.mem.zeroes([]vk.Image),
     image_format: vk.Format,
     extent: vk.Extent2D,
 
+    images: []vk.Image = std.mem.zeroes([]vk.Image),
+    image_views: []vk.ImageView = std.mem.zeroes([]vk.ImageView),
+
     pub fn deinit(this: *@This(), allocator: std.mem.Allocator) void {
+        for (this.image_views) |v| vk.destroyImageView(device, v, null);
+        allocator.free(this.image_views);
         allocator.free(this.images);
         vk.destroySwapchainKHR(device, this.handle, null);
     }
@@ -533,9 +537,37 @@ pub fn create_swapchain(window: *const Window, info: *const PDev_Info) !Swapchai
     }
     assert(image_count == images.len);
 
+    const image_views = try alloc.gpa.alloc(vk.ImageView, image_count);
+    for (images, image_views) |image, *view| {
+        const view_create_info = vk.ImageViewCreateInfo{
+            .sType = vk.Structure_Type.IMAGE_VIEW_CREATE_INFO,
+            .image = image,
+            .viewType = vk.IMAGE_VIEW_TYPE_2D,
+            .format = info.swapchain_info.surface_format.format,
+            .components = .{
+                .r = vk.COMPONENT_SWIZZLE_IDENTITY,
+                .g = vk.COMPONENT_SWIZZLE_IDENTITY,
+                .b = vk.COMPONENT_SWIZZLE_IDENTITY,
+                .a = vk.COMPONENT_SWIZZLE_IDENTITY,
+            },
+            .subresourceRange = .{
+                .aspectMask = vk.IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+        };
+
+        if (vk.createImageView(device, &view_create_info, null, view) != vk.SUCCESS) {
+            return error.Create_Image_View_Failed;
+        }
+    }
+
     return .{
         .handle = swapchain_handle,
         .images = images,
+        .image_views = image_views,
         .image_format = info.swapchain_info.surface_format.format,
         .extent = extent,
     };
