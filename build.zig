@@ -6,6 +6,11 @@ const builtin = @import("builtin");
 var target: std.Build.ResolvedTarget = undefined;
 var optimize: std.builtin.OptimizeMode = undefined;
 
+const shader_files = [_][]const u8{
+    "res/triangle.vert",
+    "res/triangle.frag",
+};
+
 pub fn build(b: *std.Build) !void {
     target = b.standardTargetOptions(.{});
     optimize = b.standardOptimizeOption(.{});
@@ -29,7 +34,8 @@ pub fn build(b: *std.Build) !void {
         .link_libc = true,
     });
 
-    b.installArtifact(exe);
+    const exe_install_artifact = b.addInstallArtifact(exe, .{});
+    b.getInstallStep().dependOn(&exe_install_artifact.step);
 
     if (target.result.os.tag == .linux) {
         exe.linkSystemLibrary2("glfw", .{ .preferred_link_mode = .static });
@@ -57,6 +63,29 @@ pub fn build(b: *std.Build) !void {
     platform_mod.addIncludePath(vulkan_info.include_path);
     platform_mod.addImport("util", util_mod);
     platform_mod.addImport("vulkan", vulkan_mod);
+
+    const shaders_compile = b.step("shaders", "compile shaders");
+    const shaders_wf = b.addWriteFiles();
+    const shaders_cache_path = shaders_wf.getDirectory();
+    for (shader_files) |f| {
+        const compile_step = b.addSystemCommand(&.{"glslc"});
+        compile_step.setName(b.fmt("compile ({s})", .{f}));
+        compile_step.rename_step_with_output_arg = false;
+        shaders_compile.dependOn(&compile_step.step);
+
+        const in_file_lpath = b.path(f);
+        const out_file_path = b.fmt("{s}.spv", .{f});
+
+        compile_step.addFileArg(in_file_lpath);
+        compile_step.addArg("-o");
+        const spv = compile_step.addOutputFileArg(std.fs.path.basename(out_file_path));
+
+        _ = shaders_wf.addCopyFile(spv, out_file_path);
+    }
+    exe.step.dependOn(shaders_compile);
+
+    const shaders_install = b.addInstallDirectory(.{ .source_dir = shaders_cache_path, .install_dir = .bin, .install_subdir = "shaders" });
+    b.getInstallStep().dependOn(&shaders_install.step);
 
     const run_cmd = b.addRunArtifact(exe);
     run_cmd.step.dependOn(b.getInstallStep());

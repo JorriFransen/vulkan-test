@@ -28,12 +28,13 @@
         pkgs.vulkan-headers
         pkgs.vulkan-loader
         pkgs.vulkan-validation-layers
-        pkgs.shaderc
+        pkgs.shaderc.bin
       ];
 
 
       VK_INCLUDE_PATH = "${pkgs.vulkan-headers}/include";
       VK_LIB_PATH = "${pkgs.vulkan-loader}/lib";
+      VK_BIN_PATH = "${pkgs.shaderc.bin}/bin";
       VK_LAYER_PATH = "${pkgs.vulkan-validation-layers}/share/vulkan/explicit_layer.d";
 
       shellHook = ''

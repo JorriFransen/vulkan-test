@@ -91,6 +91,8 @@ pub fn init_system(window: *const Window) !void {
     try create_logical_device(&device_info);
 
     swapchain = try create_swapchain(window, &device_info);
+
+    create_graphics_pipline();
 }
 
 fn create_instance(window: *const Window) !void {
@@ -572,6 +574,8 @@ pub fn create_swapchain(window: *const Window, info: *const PDev_Info) !Swapchai
         .extent = extent,
     };
 }
+
+pub fn create_graphics_pipline() void {}
 
 pub fn deinit_system() void {
     swapchain.deinit(alloc.gpa);
