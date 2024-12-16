@@ -92,7 +92,7 @@ pub fn init_system(window: *const Window) !void {
 
     swapchain = try create_swapchain(window, &device_info);
 
-    create_graphics_pipline();
+    create_graphics_pipeline();
 }
 
 fn create_instance(window: *const Window) !void {
@@ -575,7 +575,10 @@ pub fn create_swapchain(window: *const Window, info: *const PDev_Info) !Swapchai
     };
 }
 
-pub fn create_graphics_pipline() void {}
+pub fn create_graphics_pipeline() void {
+    const tvc = @import("shaders").@"shaders/triangle.vert.spv";
+    dlog("tvc: '{any}'", .{tvc});
+}
 
 pub fn deinit_system() void {
     swapchain.deinit(alloc.gpa);

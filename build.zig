@@ -8,7 +8,7 @@ var target: std.Build.ResolvedTarget = undefined;
 var optimize: std.builtin.OptimizeMode = undefined;
 
 var shaders_compile_step: *std.Build.Step = undefined;
-var shaders_wf: *std.Build.Step.WriteFile = undefined;
+var shaders_module_step: *std.Build.Step = undefined;
 
 const shader_extensions: []const []const u8 = &.{ ".vert", ".frag" };
 
@@ -22,8 +22,8 @@ pub fn build(b: *std.Build) !void {
     target = b.standardTargetOptions(.{});
     optimize = b.standardOptimizeOption(.{});
 
-    const window_verbose = b.option(bool, "window_verbose", "Enable verbose window logging") orelse false;
-    const vulkan_verbose = b.option(bool, "vulkan_verbose", "Enable verbose vulkan logging") orelse false;
+    const window_verbose = b.option(bool, "window-verbose", "Enable verbose window logging") orelse false;
+    const vulkan_verbose = b.option(bool, "vulkan-verbose", "Enable verbose vulkan logging") orelse false;
 
     const options = b.addOptions();
     options.addOption(bool, "window_verbose", window_verbose);
@@ -52,14 +52,15 @@ pub fn build(b: *std.Build) !void {
         exe.linkSystemLibrary("X11-xcb");
     }
 
-    setup_shader_steps(b, exe);
-    try add_shader_dirs(b, &shader_dirs);
-
     const alloc_mod = add_private_module(b, "src/alloc.zig", "alloc");
     const util_mod = add_private_module(b, "src/util.zig", "util");
     const platform_mod = add_private_module(b, "src/platform.zig", "platform");
     const vulkan_info = try use_vulkan(b);
     const vulkan_mod = vulkan_info.module;
+
+    setup_shader_steps(b, exe);
+    const shaders = try add_shader_dirs(b, &shader_dirs);
+    const shaders_mod = try emit_shaders_module(b, shaders);
 
     exe.root_module.addImport("alloc", alloc_mod);
     exe.root_module.addImport("platform", platform_mod);
@@ -71,6 +72,7 @@ pub fn build(b: *std.Build) !void {
     vulkan_mod.addImport("util", util_mod);
     vulkan_mod.addImport("platform", platform_mod);
     vulkan_mod.addImport("options", options_mod);
+    vulkan_mod.addImport("shaders", shaders_mod);
 
     platform_mod.addIncludePath(vulkan_info.include_path);
     platform_mod.addImport("util", util_mod);
@@ -151,15 +153,10 @@ fn use_vulkan(b: *std.Build) !Vulkan_Info {
 
 fn setup_shader_steps(b: *std.Build, cstep: *std.Build.Step.Compile) void {
     shaders_compile_step = b.step("shaders", "compile shaders");
+    shaders_module_step = b.step("shadermodule", "create a zig module with embedded shaders");
 
-    shaders_wf = b.addWriteFiles();
-    shaders_wf.step.name = "WriteFile shaders";
-
-    const shaders_install = b.addInstallDirectory(.{ .source_dir = shaders_wf.getDirectory(), .install_dir = .bin, .install_subdir = "shaders" });
-    shaders_install.step.name = "install shaders";
-
-    cstep.step.dependOn(shaders_compile_step);
-    b.getInstallStep().dependOn(&shaders_install.step);
+    shaders_module_step.dependOn(shaders_compile_step);
+    cstep.step.dependOn(shaders_module_step);
 }
 
 const Shader_Dir = struct {
@@ -173,8 +170,15 @@ const Shader_Dir = struct {
     }
 };
 
-fn add_shader_dirs(b: *std.Build, sdirs: []const Shader_Dir) !void {
+const Shader_Import_Info = struct {
+    name: []const u8,
+    root_source_file: std.Build.LazyPath,
+};
+
+fn add_shader_dirs(b: *std.Build, sdirs: []const Shader_Dir) ![]Shader_Import_Info {
     const cwd = std.fs.cwd();
+
+    var result = std.ArrayList(Shader_Import_Info).init(b.allocator);
 
     for (sdirs) |sdir| {
         var root_dir = cwd.openDir(sdir.path, .{ .iterate = true }) catch |err| switch (err) {
@@ -205,17 +209,19 @@ fn add_shader_dirs(b: *std.Build, sdirs: []const Shader_Dir) !void {
 
             while (try walker.next()) |entry|
                 if (entry.kind == .file and filter_extension(entry.path, shader_extensions)) {
-                    add_shader(b, .{ .path = entry.path, .path_prefix = sdir.path });
+                    try result.append(add_shader(b, .{ .path = entry.path, .path_prefix = sdir.path }));
                 };
         } else {
             var it = root_dir.iterate();
 
             while (try it.next()) |entry|
                 if (entry.kind == .file and filter_extension(entry.name, shader_extensions)) {
-                    add_shader(b, .{ .path = entry.name, .path_prefix = sdir.path });
+                    try result.append(add_shader(b, .{ .path = entry.name, .path_prefix = sdir.path }));
                 };
         }
     }
+
+    return result.toOwnedSlice();
 }
 
 const Add_Shader_Options = struct {
@@ -223,7 +229,7 @@ const Add_Shader_Options = struct {
     path_prefix: ?[]const u8 = null,
 };
 
-fn add_shader(b: *std.Build, options: Add_Shader_Options) void {
+fn add_shader(b: *std.Build, options: Add_Shader_Options) Shader_Import_Info {
     const prefixed_path = if (options.path_prefix) |p| b.pathJoin(&.{ p, options.path }) else options.path;
 
     const compile_step = b.addSystemCommand(&.{"glslc"});
@@ -239,17 +245,44 @@ fn add_shader(b: *std.Build, options: Add_Shader_Options) void {
         out_prefix = p[i + 1 ..];
     };
 
-    if (options.path_prefix) |pp| std.log.debug("options.path_prefix: {s}", .{pp});
-    const out_file_path = b.pathJoin(&.{ out_prefix, b.fmt("{s}.spv", .{options.path}) });
+    const out_file_path = b.pathJoin(&.{ out_prefix, b.fmt("shaders/{s}.spv", .{options.path}) });
 
     compile_step.addFileArg(in_file_lpath);
     compile_step.addArg("-o");
-    const spv = compile_step.addOutputFileArg(std.fs.path.basename(out_file_path));
+    const spv = compile_step.addOutputFileArg(out_file_path);
 
-    _ = shaders_wf.addCopyFile(spv, out_file_path);
+    return .{
+        .name = out_file_path,
+        .root_source_file = spv,
+    };
 }
 
-pub const Check_Path_Error = error{ File_Not_Found, Unhandled_File_Error };
+fn emit_shaders_module(b: *std.Build, shaders: []const Shader_Import_Info) !*std.Build.Module {
+    var file_content = std.ArrayList(u8).init(b.allocator);
+    defer file_content.deinit();
+
+    const out_file_name = "shaders.zig";
+    const wf = b.addWriteFiles();
+    var result = b.createModule(.{ .root_source_file = wf.getDirectory().path(b, out_file_name) });
+
+    for (shaders) |s| {
+        try file_content.appendSlice("pub const @\"");
+        try file_content.appendSlice(s.name);
+        try file_content.appendSlice("\" = @embedFile(\"");
+        try file_content.appendSlice(s.name);
+        try file_content.appendSlice("\");\n");
+
+        result.addAnonymousImport(s.name, .{ .root_source_file = s.root_source_file });
+    }
+
+    _ = wf.add(out_file_name, file_content.items);
+
+    shaders_module_step.dependOn(&wf.step);
+
+    return result;
+}
+
+const Check_Path_Error = error{ File_Not_Found, Unhandled_File_Error };
 
 fn check_path(p: []const u8) Check_Path_Error!void {
     var myerr: ?Check_Path_Error = null;
