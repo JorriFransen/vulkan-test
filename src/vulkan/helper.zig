@@ -16,6 +16,7 @@ const elog = vlog.err;
 const ilog = vlog.info;
 
 const options = @import("options");
+const shaders = @import("shaders");
 
 const debug = builtin.mode == .Debug;
 const debug_verbose = debug and options.vulkan_verbose;
@@ -576,8 +577,11 @@ pub fn create_swapchain(window: *const Window, info: *const PDev_Info) !Swapchai
 }
 
 pub fn create_graphics_pipeline() void {
-    const tvc = @import("shaders").@"shaders/triangle.vert.spv";
-    dlog("tvc: '{any}'", .{tvc});
+    const tvc = shaders.@"triangle.vert";
+    dlog("tvc: '{any}'\n", .{tvc});
+
+    const tfc = shaders.@"triangle.frag";
+    dlog("tfc: '{any}'\n", .{tfc});
 }
 
 pub fn deinit_system() void {

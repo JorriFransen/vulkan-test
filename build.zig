@@ -7,13 +7,8 @@ const builtin = @import("builtin");
 var target: std.Build.ResolvedTarget = undefined;
 var optimize: std.builtin.OptimizeMode = undefined;
 
-var shaders_compile_step: *std.Build.Step = undefined;
-var shaders_module_step: *std.Build.Step = undefined;
-
-const shader_extensions: []const []const u8 = &.{ ".vert", ".frag" };
-
 const sep = std.fs.path.sep_str;
-const shader_dirs = [_]Shader_Dir{
+const shader_dirs = [_]Shaders.Dir{
     .{ .path = "comptime_res", .recurse = false, .optional = false },
     .{ .path = "comptime_res" ++ sep ++ "shaders", .recurse = true, .optional = true },
 };
@@ -58,9 +53,8 @@ pub fn build(b: *std.Build) !void {
     const vulkan_info = try use_vulkan(b);
     const vulkan_mod = vulkan_info.module;
 
-    setup_shader_steps(b, exe);
-    const shaders = try add_shader_dirs(b, &shader_dirs);
-    const shaders_mod = try emit_shaders_module(b, shaders);
+    const shaders = try Shaders.init(b, &exe.step, &shader_dirs);
+    const shaders_mod = try shaders.emit_shaders_module();
 
     exe.root_module.addImport("alloc", alloc_mod);
     exe.root_module.addImport("platform", platform_mod);
@@ -151,136 +145,162 @@ fn use_vulkan(b: *std.Build) !Vulkan_Info {
     };
 }
 
-fn setup_shader_steps(b: *std.Build, cstep: *std.Build.Step.Compile) void {
-    shaders_compile_step = b.step("shaders", "compile shaders");
-    shaders_module_step = b.step("shadermodule", "create a zig module with embedded shaders");
+const Shaders = struct {
+    const source_exts: []const []const u8 = &.{ ".vert", ".frag" };
+    const ext = ".spv";
 
-    shaders_module_step.dependOn(shaders_compile_step);
-    cstep.step.dependOn(shaders_module_step);
-}
+    owner: *std.Build,
+    compile: *std.Build.Step,
+    module_step: *std.Build.Step,
+    // wf: *std.Build.Step.WriteFile,
 
-const Shader_Dir = struct {
-    path: []const u8,
-    recurse: bool,
-    optional: bool,
-    pub fn format(sdir: @This(), comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
-        try writer.writeAll("Shader_Dir{");
-        try writer.print(".path = \"{s}\", .recurse = {}, .optional = {}", .{ sdir.path, sdir.recurse, sdir.optional });
-        try writer.writeAll("}");
-    }
-};
+    shaders: std.ArrayList(Shader),
 
-const Shader_Import_Info = struct {
-    name: []const u8,
-    root_source_file: std.Build.LazyPath,
-};
+    const Dir = struct {
+        path: []const u8,
+        recurse: bool,
+        optional: bool,
+        pub fn format(sdir: @This(), comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
+            try writer.writeAll("Shader_Dir{");
+            try writer.print(".path = \"{s}\", .recurse = {}, .optional = {}", .{ sdir.path, sdir.recurse, sdir.optional });
+            try writer.writeAll("}");
+        }
+    };
 
-fn add_shader_dirs(b: *std.Build, sdirs: []const Shader_Dir) ![]Shader_Import_Info {
-    const cwd = std.fs.cwd();
+    const Shader = struct {
+        name: []const u8,
+        path: []const u8,
+        root_source_file: std.Build.LazyPath,
+    };
 
-    var result = std.ArrayList(Shader_Import_Info).init(b.allocator);
+    pub fn init(b: *std.Build, dependency_of: *std.Build.Step, dirs: ?[]const Dir) !Shaders {
+        const cstep = b.step("shaders", "compile shaders");
+        const mstep = b.step("shadermodule", "create a zig module with embedded shaders");
 
-    for (sdirs) |sdir| {
-        var root_dir = cwd.openDir(sdir.path, .{ .iterate = true }) catch |err| switch (err) {
-            error.FileNotFound => {
-                if (sdir.optional) {
-                    continue;
-                } else {
-                    elog("Unable to open directory '{s}': FileNotFound", .{sdir.path});
-                    return error.File_Not_Found;
-                }
-            },
-            else => return error.Unhandled_File_Error,
+        mstep.dependOn(cstep);
+        dependency_of.dependOn(mstep);
+
+        var result = Shaders{
+            .owner = b,
+            .compile = cstep,
+            .module_step = mstep,
+            // .wf = b.addWriteFiles(),
+            .shaders = std.ArrayList(Shader).init(b.allocator),
         };
-        defer root_dir.close();
+
+        if (dirs) |d| {
+            try result.add_shader_dirs(d);
+        }
+
+        return result;
+    }
+
+    fn add_shader_dirs(this: *@This(), sdirs: []const Shaders.Dir) !void {
+        const b = this.owner;
+
+        const cwd = std.fs.cwd();
 
         const filter_extension = struct {
             pub inline fn f(path: []const u8, extensions: []const []const u8) bool {
-                for (extensions) |ext| if (std.mem.endsWith(u8, std.fs.path.extension(path), ext)) {
+                for (extensions) |sext| if (std.mem.endsWith(u8, std.fs.path.extension(path), sext)) {
                     return true;
                 };
                 return false;
             }
         }.f;
 
-        if (sdir.recurse) {
-            var walker = try root_dir.walk(b.allocator);
-            defer walker.deinit();
+        for (sdirs) |sdir| {
+            var root_dir = cwd.openDir(sdir.path, .{ .iterate = true }) catch |err| switch (err) {
+                error.FileNotFound => {
+                    if (sdir.optional) {
+                        continue;
+                    } else {
+                        elog("Unable to open directory '{s}': FileNotFound", .{sdir.path});
+                        return error.File_Not_Found;
+                    }
+                },
+                else => return error.Unhandled_File_Error,
+            };
+            defer root_dir.close();
 
-            while (try walker.next()) |entry|
-                if (entry.kind == .file and filter_extension(entry.path, shader_extensions)) {
-                    try result.append(add_shader(b, .{ .path = entry.path, .path_prefix = sdir.path }));
-                };
-        } else {
-            var it = root_dir.iterate();
+            if (sdir.recurse) {
+                var walker = try root_dir.walk(b.allocator);
+                defer walker.deinit();
 
-            while (try it.next()) |entry|
-                if (entry.kind == .file and filter_extension(entry.name, shader_extensions)) {
-                    try result.append(add_shader(b, .{ .path = entry.name, .path_prefix = sdir.path }));
-                };
+                while (try walker.next()) |entry|
+                    if (entry.kind == .file and filter_extension(entry.path, source_exts)) {
+                        _ = try this.add(sdir.path, entry.path);
+                    };
+            } else {
+                var it = root_dir.iterate();
+
+                while (try it.next()) |entry|
+                    if (entry.kind == .file and filter_extension(entry.name, source_exts)) {
+                        _ = try this.add(sdir.path, entry.name);
+                    };
+            }
         }
     }
 
-    return result.toOwnedSlice();
-}
+    fn add(this: *@This(), sdir_path: []const u8, s_path: []const u8) !Shader {
+        const b = this.owner;
+        //
+        // Remove the first directory from the prefix
+        var out_prefix: []const u8 = "";
+        if (std.mem.indexOfScalar(u8, sdir_path, std.fs.path.sep)) |i| if (i > 0) {
+            assert(sdir_path.len > i);
+            out_prefix = sdir_path[i + 1 ..];
+        };
 
-const Add_Shader_Options = struct {
-    path: []const u8,
-    path_prefix: ?[]const u8 = null,
-};
+        const name = b.pathJoin(&.{ out_prefix, b.fmt("{s}", .{s_path}) });
+        const output_path = b.fmt("{s}{s}", .{ name, ext });
+        const input_path = this.owner.pathJoin(&.{ sdir_path, s_path });
 
-fn add_shader(b: *std.Build, options: Add_Shader_Options) Shader_Import_Info {
-    const prefixed_path = if (options.path_prefix) |p| b.pathJoin(&.{ p, options.path }) else options.path;
+        const compile_step = b.addSystemCommand(&.{"glslc"});
+        compile_step.setName(b.fmt("compile ({s})", .{input_path}));
+        compile_step.rename_step_with_output_arg = false;
+        this.compile.dependOn(&compile_step.step);
 
-    const compile_step = b.addSystemCommand(&.{"glslc"});
-    compile_step.setName(b.fmt("compile ({s})", .{prefixed_path}));
-    compile_step.rename_step_with_output_arg = false;
-    shaders_compile_step.dependOn(&compile_step.step);
+        compile_step.addFileArg(b.path(input_path));
+        compile_step.addArg("-o");
+        const spv = compile_step.addOutputFileArg(output_path);
 
-    // Remove the first directory from the prefix
-    const in_file_lpath = b.path(prefixed_path);
-    var out_prefix: []const u8 = "";
-    if (options.path_prefix) |p| if (std.mem.indexOfScalar(u8, p, std.fs.path.sep)) |i| if (i > 0) {
-        assert(p.len > i);
-        out_prefix = p[i + 1 ..];
-    };
+        try this.shaders.append(.{
+            .name = name,
+            .path = output_path,
+            .root_source_file = spv,
+        });
 
-    const out_file_path = b.pathJoin(&.{ out_prefix, b.fmt("shaders/{s}.spv", .{options.path}) });
-
-    compile_step.addFileArg(in_file_lpath);
-    compile_step.addArg("-o");
-    const spv = compile_step.addOutputFileArg(out_file_path);
-
-    return .{
-        .name = out_file_path,
-        .root_source_file = spv,
-    };
-}
-
-fn emit_shaders_module(b: *std.Build, shaders: []const Shader_Import_Info) !*std.Build.Module {
-    var file_content = std.ArrayList(u8).init(b.allocator);
-    defer file_content.deinit();
-
-    const out_file_name = "shaders.zig";
-    const wf = b.addWriteFiles();
-    var result = b.createModule(.{ .root_source_file = wf.getDirectory().path(b, out_file_name) });
-
-    for (shaders) |s| {
-        try file_content.appendSlice("pub const @\"");
-        try file_content.appendSlice(s.name);
-        try file_content.appendSlice("\" = @embedFile(\"");
-        try file_content.appendSlice(s.name);
-        try file_content.appendSlice("\");\n");
-
-        result.addAnonymousImport(s.name, .{ .root_source_file = s.root_source_file });
+        return this.shaders.getLast();
     }
 
-    _ = wf.add(out_file_name, file_content.items);
+    pub fn emit_shaders_module(this: *const @This()) !*std.Build.Module {
+        const b = this.owner;
 
-    shaders_module_step.dependOn(&wf.step);
+        var file_content = std.ArrayList(u8).init(b.allocator);
+        defer file_content.deinit();
 
-    return result;
-}
+        const out_file_name = "shaders.zig";
+        const wf = b.addWriteFiles();
+        var result = b.createModule(.{ .root_source_file = wf.getDirectory().path(b, out_file_name) });
+
+        for (this.shaders.items) |s| {
+            try file_content.appendSlice("pub const @\"");
+            try file_content.appendSlice(s.name);
+            try file_content.appendSlice("\" = @embedFile(\"");
+            try file_content.appendSlice(s.path);
+            try file_content.appendSlice("\");\n");
+
+            result.addAnonymousImport(s.path, .{ .root_source_file = s.root_source_file });
+        }
+
+        _ = wf.add(out_file_name, file_content.items);
+
+        this.module_step.dependOn(&wf.step);
+
+        return result;
+    }
+};
 
 const Check_Path_Error = error{ File_Not_Found, Unhandled_File_Error };
 
