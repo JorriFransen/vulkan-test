@@ -39,7 +39,9 @@ pub const std_options = std.Options{
     .log_level = log_level,
     .log_scope_levels = &.{
         .{ .scope = .default, .level = log_level },
+        .{ .scope = .window, .level = if (options.window_verbose) log_level else .info },
         .{ .scope = .vulkan, .level = if (options.vulkan_verbose) log_level else .info },
+        .{ .scope = .VK_EXT_Debug_utils, .level = if (options.vulkan_verbose) log_level else .info },
     },
 };
 

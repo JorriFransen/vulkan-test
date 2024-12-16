@@ -6,18 +6,26 @@ const builtin = @import("builtin");
 var target: std.Build.ResolvedTarget = undefined;
 var optimize: std.builtin.OptimizeMode = undefined;
 
-const shader_files = [_][]const u8{
-    "res/triangle.vert",
-    "res/triangle.frag",
+var shaders_compile_step: *std.Build.Step = undefined;
+var shaders_wf: *std.Build.Step.WriteFile = undefined;
+
+const shader_extensions: []const []const u8 = &.{ ".vert", ".frag" };
+
+const sep = std.fs.path.sep_str;
+const shader_dirs = [_]Shader_Dir{
+    .{ .path = "comptime_res", .recurse = false, .optional = false },
+    .{ .path = "comptime_res" ++ sep ++ "shaders", .recurse = true, .optional = true },
 };
 
 pub fn build(b: *std.Build) !void {
     target = b.standardTargetOptions(.{});
     optimize = b.standardOptimizeOption(.{});
 
-    const vulkan_verbose = b.option(bool, "vulkan_verbose", "Enable verbose vulkan messages") orelse false;
+    const window_verbose = b.option(bool, "window_verbose", "Enable verbose window logging") orelse false;
+    const vulkan_verbose = b.option(bool, "vulkan_verbose", "Enable verbose vulkan logging") orelse false;
 
     const options = b.addOptions();
+    options.addOption(bool, "window_verbose", window_verbose);
     options.addOption(bool, "vulkan_verbose", vulkan_verbose);
     const options_mod = options.createModule();
 
@@ -43,6 +51,9 @@ pub fn build(b: *std.Build) !void {
         exe.linkSystemLibrary("X11-xcb");
     }
 
+    setup_shader_steps(b, exe);
+    try add_shader_dirs(b, &shader_dirs);
+
     const alloc_mod = add_private_module(b, "src/alloc.zig", "alloc");
     const util_mod = add_private_module(b, "src/util.zig", "util");
     const platform_mod = add_private_module(b, "src/platform.zig", "platform");
@@ -63,29 +74,6 @@ pub fn build(b: *std.Build) !void {
     platform_mod.addIncludePath(vulkan_info.include_path);
     platform_mod.addImport("util", util_mod);
     platform_mod.addImport("vulkan", vulkan_mod);
-
-    const shaders_compile = b.step("shaders", "compile shaders");
-    const shaders_wf = b.addWriteFiles();
-    const shaders_cache_path = shaders_wf.getDirectory();
-    for (shader_files) |f| {
-        const compile_step = b.addSystemCommand(&.{"glslc"});
-        compile_step.setName(b.fmt("compile ({s})", .{f}));
-        compile_step.rename_step_with_output_arg = false;
-        shaders_compile.dependOn(&compile_step.step);
-
-        const in_file_lpath = b.path(f);
-        const out_file_path = b.fmt("{s}.spv", .{f});
-
-        compile_step.addFileArg(in_file_lpath);
-        compile_step.addArg("-o");
-        const spv = compile_step.addOutputFileArg(std.fs.path.basename(out_file_path));
-
-        _ = shaders_wf.addCopyFile(spv, out_file_path);
-    }
-    exe.step.dependOn(shaders_compile);
-
-    const shaders_install = b.addInstallDirectory(.{ .source_dir = shaders_cache_path, .install_dir = .bin, .install_subdir = "shaders" });
-    b.getInstallStep().dependOn(&shaders_install.step);
 
     const run_cmd = b.addRunArtifact(exe);
     run_cmd.step.dependOn(b.getInstallStep());
@@ -158,6 +146,98 @@ fn use_vulkan(b: *std.Build) !Vulkan_Info {
         .include_path = lazy_include_path,
         .lib_path = lazy_lib_path,
     };
+}
+
+fn setup_shader_steps(b: *std.Build, cstep: *std.Build.Step.Compile) void {
+    shaders_compile_step = b.step("shaders", "compile shaders");
+
+    shaders_wf = b.addWriteFiles();
+    shaders_wf.step.name = "WriteFile shaders";
+
+    const shaders_install = b.addInstallDirectory(.{ .source_dir = shaders_wf.getDirectory(), .install_dir = .bin, .install_subdir = "shaders" });
+    shaders_install.step.name = "install shaders";
+
+    cstep.step.dependOn(shaders_compile_step);
+    b.getInstallStep().dependOn(&shaders_install.step);
+}
+
+const Shader_Dir = struct {
+    path: []const u8,
+    recurse: bool,
+    optional: bool,
+    pub fn format(sdir: @This(), comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
+        try writer.writeAll("Shader_Dir{");
+        try writer.print(".path = \"{s}\", .recurse = {}, .optional = {}", .{ sdir.path, sdir.recurse, sdir.optional });
+        try writer.writeAll("}");
+    }
+};
+
+fn add_shader_dirs(b: *std.Build, sdirs: []const Shader_Dir) !void {
+    const cwd = std.fs.cwd();
+
+    for (sdirs) |sdir| {
+        var root_dir = cwd.openDir(sdir.path, .{ .iterate = true }) catch |err| switch (err) {
+            error.FileNotFound => {
+                if (sdir.optional) {
+                    continue;
+                } else {
+                    elog("Unable to open directory '{s}': FileNotFound", .{sdir.path});
+                    return error.File_Not_Found;
+                }
+            },
+            else => return error.Unhandled_File_Error,
+        };
+        defer root_dir.close();
+
+        const filter_extension = struct {
+            pub inline fn f(path: []const u8, extensions: []const []const u8) bool {
+                for (extensions) |ext| if (std.mem.endsWith(u8, std.fs.path.extension(path), ext)) {
+                    return true;
+                };
+                return false;
+            }
+        }.f;
+
+        if (sdir.recurse) {
+            var walker = try root_dir.walk(b.allocator);
+            defer walker.deinit();
+
+            while (try walker.next()) |entry|
+                if (entry.kind == .file and filter_extension(entry.path, shader_extensions)) {
+                    add_shader(b, .{ .path = entry.path, .path_prefix = sdir.path });
+                };
+        } else {
+            var it = root_dir.iterate();
+
+            while (try it.next()) |entry|
+                if (entry.kind == .file and filter_extension(entry.name, shader_extensions)) {
+                    add_shader(b, .{ .path = entry.name, .path_prefix = sdir.path });
+                };
+        }
+    }
+}
+
+const Add_Shader_Options = struct {
+    path: []const u8,
+    path_prefix: ?[]const u8 = null,
+};
+
+fn add_shader(b: *std.Build, options: Add_Shader_Options) void {
+    const path = if (options.path_prefix) |p| b.pathJoin(&.{ p, options.path }) else options.path;
+
+    const compile_step = b.addSystemCommand(&.{"glslc"});
+    compile_step.setName(b.fmt("compile ({s})", .{path}));
+    compile_step.rename_step_with_output_arg = false;
+    shaders_compile_step.dependOn(&compile_step.step);
+
+    const in_file_lpath = b.path(path);
+    const out_file_path = b.fmt("{s}.spv", .{path});
+
+    compile_step.addFileArg(in_file_lpath);
+    compile_step.addArg("-o");
+    const spv = compile_step.addOutputFileArg(std.fs.path.basename(out_file_path));
+
+    _ = shaders_wf.addCopyFile(spv, out_file_path);
 }
 
 pub const Check_Path_Error = error{ File_Not_Found, Unhandled_File_Error };
