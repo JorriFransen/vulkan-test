@@ -1,4 +1,5 @@
 const std = @import("std");
+const assert = std.debug.assert;
 const elog = std.log.err;
 
 const builtin = @import("builtin");
@@ -223,15 +224,23 @@ const Add_Shader_Options = struct {
 };
 
 fn add_shader(b: *std.Build, options: Add_Shader_Options) void {
-    const path = if (options.path_prefix) |p| b.pathJoin(&.{ p, options.path }) else options.path;
+    const prefixed_path = if (options.path_prefix) |p| b.pathJoin(&.{ p, options.path }) else options.path;
 
     const compile_step = b.addSystemCommand(&.{"glslc"});
-    compile_step.setName(b.fmt("compile ({s})", .{path}));
+    compile_step.setName(b.fmt("compile ({s})", .{prefixed_path}));
     compile_step.rename_step_with_output_arg = false;
     shaders_compile_step.dependOn(&compile_step.step);
 
-    const in_file_lpath = b.path(path);
-    const out_file_path = b.fmt("{s}.spv", .{path});
+    // Remove the first directory from the prefix
+    const in_file_lpath = b.path(prefixed_path);
+    var out_prefix: []const u8 = "";
+    if (options.path_prefix) |p| if (std.mem.indexOfScalar(u8, p, std.fs.path.sep)) |i| if (i > 0) {
+        assert(p.len > i);
+        out_prefix = p[i + 1 ..];
+    };
+
+    if (options.path_prefix) |pp| std.log.debug("options.path_prefix: {s}", .{pp});
+    const out_file_path = b.pathJoin(&.{ out_prefix, b.fmt("{s}.spv", .{options.path}) });
 
     compile_step.addFileArg(in_file_lpath);
     compile_step.addArg("-o");
