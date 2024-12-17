@@ -96,6 +96,14 @@ pub fn init_system(window: *const Window) !void {
     create_graphics_pipeline();
 }
 
+pub fn deinit_system() void {
+    swapchain.deinit(alloc.gpa);
+    vk.destroyDevice(device, null);
+    vk.destroySurfaceKHR(instance, surface, null);
+    if (debug) vke.destroyDebugUtilsMessenger(instance, debug_messenger, null);
+    vk.destroyInstance(instance, null);
+}
+
 fn create_instance(window: *const Window) !void {
     var extension_count: u32 = undefined;
     _ = vk.enumerateInstanceExtensionProperties(null, &extension_count, null);
@@ -576,21 +584,7 @@ pub fn create_swapchain(window: *const Window, info: *const PDev_Info) !Swapchai
     };
 }
 
-pub fn create_graphics_pipeline() void {
-    const tvc = shaders.@"triangle.vert";
-    dlog("tvc: '{any}'\n", .{tvc});
-
-    const tfc = shaders.@"triangle.frag";
-    dlog("tfc: '{any}'\n", .{tfc});
-}
-
-pub fn deinit_system() void {
-    swapchain.deinit(alloc.gpa);
-    vk.destroyDevice(device, null);
-    vk.destroySurfaceKHR(instance, surface, null);
-    if (debug) vke.destroyDebugUtilsMessenger(instance, debug_messenger, null);
-    vk.destroyInstance(instance, null);
-}
+fn create_graphics_pipeline() void {}
 
 fn vk_debug_callback(message_severity: vke.DebugUtilsMessageSeverityFlagBits, message_type: vke.DebugUtilsMessageTypeFlags, _callback_data: [*c]const vke.DebugUtilsMessengerCallbackData, user_data: ?*anyopaque) callconv(.C) vk.Bool32 {
     _ = message_type;
