@@ -15,9 +15,9 @@ const vkh = @import("vulkan").helper;
 
 const options = @import("options");
 const flags = @import("flags");
-pub var cmd_line_options: Cmd_Line_Options = undefined;
+pub var cmd_line_options: CmdLineOptions = undefined;
 
-const Cmd_Line_Options = struct {
+const CmdLineOptions = struct {
     pub const description = "Testing vulkan api";
 
     glfw_window_api: enum {
@@ -45,32 +45,32 @@ pub const std_options = std.Options{
     },
 };
 
-pub fn vmain() !u8 {
+pub fn vMain() !u8 {
     var args = try std.process.argsWithAllocator(alloc.gpa);
     defer args.deinit();
 
-    cmd_line_options = flags.parseOrExit(&args, "vulkan-test", Cmd_Line_Options, .{});
+    cmd_line_options = flags.parseOrExit(&args, "vulkan-test", CmdLineOptions, .{});
 
-    try Window.init_system();
-    defer Window.deinit_system();
+    try Window.initSystem();
+    defer Window.deinitSystem();
 
     var window: Window = undefined;
     try window.create("Vulkan Test");
     defer window.close();
 
-    try vkh.init_system(&window);
-    defer vkh.deinit_system();
+    try vkh.initSystem(&window);
+    defer vkh.deinitSystem();
 
     var width: i32 = undefined;
     var height: i32 = undefined;
-    window.frame_buffer_size(&width, &height);
+    window.frameBufferSize(&width, &height);
     dlog("frame_buffer_size: {}, {}", .{ width, height });
 
-    while (!window.should_close()) {
+    while (!window.shouldClose()) {
         window.update();
 
         if (window.input.escape_pressed) {
-            window.request_close();
+            window.requestClose();
         }
     }
 
@@ -78,7 +78,7 @@ pub fn vmain() !u8 {
 }
 
 pub fn main() !u8 {
-    const result = try vmain();
+    const result = try vMain();
     alloc.deinit();
     return result;
 }

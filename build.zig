@@ -47,14 +47,14 @@ pub fn build(b: *std.Build) !void {
         exe.linkSystemLibrary("X11-xcb");
     }
 
-    const alloc_mod = add_private_module(b, "src/alloc.zig", "alloc");
-    const util_mod = add_private_module(b, "src/util.zig", "util");
-    const platform_mod = add_private_module(b, "src/platform.zig", "platform");
-    const vulkan_info = try use_vulkan(b);
+    const alloc_mod = addPrivateModule(b, "src/alloc.zig", "alloc");
+    const extern_fn_mod = addPrivateModule(b, "src/externFn.zig", "externFn");
+    const platform_mod = addPrivateModule(b, "src/platform.zig", "platform");
+    const vulkan_info = try useVulkan(b);
     const vulkan_mod = vulkan_info.module;
 
     const shaders = try Shaders.init(b, &exe.step, &shader_dirs);
-    const shaders_mod = try shaders.emit_shaders_module();
+    const shaders_mod = try shaders.emitShadersModule();
 
     exe.root_module.addImport("alloc", alloc_mod);
     exe.root_module.addImport("platform", platform_mod);
@@ -63,14 +63,14 @@ pub fn build(b: *std.Build) !void {
     exe.root_module.addImport("options", options_mod);
 
     vulkan_mod.addImport("alloc", alloc_mod);
-    vulkan_mod.addImport("util", util_mod);
+    vulkan_mod.addImport("externFn", extern_fn_mod);
     vulkan_mod.addImport("platform", platform_mod);
     vulkan_mod.addImport("options", options_mod);
     vulkan_mod.addImport("shaders", shaders_mod);
 
     platform_mod.addIncludePath(vulkan_info.include_path);
-    platform_mod.addImport("util", util_mod);
     platform_mod.addImport("vulkan", vulkan_mod);
+    platform_mod.addImport("externFn", extern_fn_mod);
 
     const run_cmd = b.addRunArtifact(exe);
     run_cmd.step.dependOn(b.getInstallStep());
@@ -85,7 +85,7 @@ pub fn build(b: *std.Build) !void {
         clean_step.dependOn(&b.addRemoveDirTree(std.Build.LazyPath{ .cwd_relative = b.cache_root.path.? }).step);
 }
 
-fn add_private_module(b: *std.Build, path: []const u8, name: []const u8) *std.Build.Module {
+fn addPrivateModule(b: *std.Build, path: []const u8, name: []const u8) *std.Build.Module {
     const mod = b.createModule(.{
         .root_source_file = b.path(path),
         .target = target,
@@ -96,13 +96,13 @@ fn add_private_module(b: *std.Build, path: []const u8, name: []const u8) *std.Bu
     return mod;
 }
 
-const Vulkan_Info = struct {
+const VulkanInfo = struct {
     module: *std.Build.Module,
     include_path: std.Build.LazyPath,
     lib_path: std.Build.LazyPath,
 };
 
-fn use_vulkan(b: *std.Build) !Vulkan_Info {
+fn useVulkan(b: *std.Build) !VulkanInfo {
     const vk_lib_name = if (target.result.os.tag == .windows) "vulkan-1" else "vulkan";
     var lib_path: []const u8 = undefined;
     var include_path: []const u8 = undefined;
@@ -127,13 +127,13 @@ fn use_vulkan(b: *std.Build) !Vulkan_Info {
         }
     }
 
-    try check_path(lib_path);
-    try check_path(include_path);
+    try checkPath(lib_path);
+    try checkPath(include_path);
 
     const lazy_lib_path = std.Build.LazyPath{ .cwd_relative = lib_path };
     const lazy_include_path = std.Build.LazyPath{ .cwd_relative = include_path };
 
-    const vk_mod = add_private_module(b, "src/vulkan.zig", "vulkan");
+    const vk_mod = addPrivateModule(b, "src/vulkan.zig", "vulkan");
     vk_mod.addLibraryPath(lazy_lib_path);
     vk_mod.addIncludePath(lazy_include_path);
     vk_mod.linkSystemLibrary(vk_lib_name, .{});
@@ -192,18 +192,18 @@ const Shaders = struct {
         };
 
         if (dirs) |d| {
-            try result.add_shader_dirs(d);
+            try result.addShaderDirs(d);
         }
 
         return result;
     }
 
-    fn add_shader_dirs(this: *@This(), sdirs: []const Shaders.Dir) !void {
+    fn addShaderDirs(this: *@This(), sdirs: []const Shaders.Dir) !void {
         const b = this.owner;
 
         const cwd = std.fs.cwd();
 
-        const filter_extension = struct {
+        const filterExtension = struct {
             pub inline fn f(path: []const u8, extensions: []const []const u8) bool {
                 for (extensions) |sext| if (std.mem.endsWith(u8, std.fs.path.extension(path), sext)) {
                     return true;
@@ -231,14 +231,14 @@ const Shaders = struct {
                 defer walker.deinit();
 
                 while (try walker.next()) |entry|
-                    if (entry.kind == .file and filter_extension(entry.path, source_exts)) {
+                    if (entry.kind == .file and filterExtension(entry.path, source_exts)) {
                         _ = try this.add(sdir.path, entry.path);
                     };
             } else {
                 var it = root_dir.iterate();
 
                 while (try it.next()) |entry|
-                    if (entry.kind == .file and filter_extension(entry.name, source_exts)) {
+                    if (entry.kind == .file and filterExtension(entry.name, source_exts)) {
                         _ = try this.add(sdir.path, entry.name);
                     };
             }
@@ -278,7 +278,7 @@ const Shaders = struct {
         return this.shaders.getLast();
     }
 
-    pub fn emit_shaders_module(this: *const @This()) !*std.Build.Module {
+    pub fn emitShadersModule(this: *const @This()) !*std.Build.Module {
         const b = this.owner;
 
         var file_content = std.ArrayList(u8).init(b.allocator);
@@ -301,10 +301,10 @@ const Shaders = struct {
     }
 };
 
-const Check_Path_Error = error{ File_Not_Found, Unhandled_File_Error };
+const CheckPathError = error{ File_Not_Found, Unhandled_File_Error };
 
-fn check_path(p: []const u8) Check_Path_Error!void {
-    var myerr: ?Check_Path_Error = null;
+fn checkPath(p: []const u8) CheckPathError!void {
+    var myerr: ?CheckPathError = null;
 
     std.fs.accessAbsolute(p, .{}) catch |err| switch (err) {
         error.FileNotFound => {

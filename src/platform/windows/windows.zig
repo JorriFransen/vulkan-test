@@ -8,11 +8,6 @@ const builtin = @import("builtin");
 pub usingnamespace @import("messages.zig");
 pub usingnamespace @import("keys.zig");
 
-pub const ZOverlay_Error = error{
-    Win32_Error,
-    GL_Error,
-};
-
 pub const WORD = u16;
 pub const DWORD = u32;
 pub const CHAR = u8;
@@ -369,7 +364,7 @@ pub extern "gdi32" fn CreateRectRgn(x1: c_int, y1: c_int, x2: c_int, y2: c_int) 
 pub extern "gdi32" fn DeleteObject(ho: HGDIOBJ) callconv(.C) BOOL;
 pub extern "shell32" fn Shell_NotifyIconW(dwMessage: DWORD, lpData: *const NOTIFYICONDATAW) callconv(.C) BOOL;
 
-pub fn report_error() ZOverlay_Error!void {
+pub fn report_error() !void {
     const err_code = GetLastError();
     const err: std.os.windows.Win32Error = @enumFromInt(err_code);
     switch (err) {

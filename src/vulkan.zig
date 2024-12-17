@@ -2,7 +2,7 @@ const std = @import("std");
 const dlog = std.log.debug;
 const assert = std.debug.assert;
 
-const f = @import("util").extern_f;
+const f = @import("externFn").externFn;
 
 const c = @import("platform").c;
 pub const helper = @import("vulkan/helper.zig");

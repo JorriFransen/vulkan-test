@@ -12,7 +12,7 @@ const vk = @import("vulkan");
 const platform = @import("platform");
 const win32 = platform.windows;
 
-pub fn init_system() !void {
+pub fn initSystem() !void {
     // if (win32.AttachConsole(win32.ATTACH_PARENT_PROCESS) == 0) {
     //     if (win32.CreateFileW(W("nul"), win32.GENERIC_READ | win32.GENERIC_WRITE, 0, null, win32.OPEN_EXISTING, win32.FILE_ATTRIBUTE_NORMAL, null)) |nul_handle| {
     //         _ = win32.SetStdHandle(win32.STD_INPUT_HANDLE, nul_handle);
@@ -25,7 +25,7 @@ pub fn init_system() !void {
     // }
 }
 
-pub fn deinit_system() void {}
+pub fn deinitSystem() void {}
 
 const MAX_TITLE = 1024;
 
@@ -33,8 +33,8 @@ handle: win32.HWND,
 close_requested: bool = false,
 title: [MAX_TITLE]u16 = std.mem.zeroes([MAX_TITLE]u16),
 
-input: platform.Input_State = .{},
-last_input: platform.Input_State = .{},
+input: platform.InputState = .{},
+last_input: platform.InputState = .{},
 
 pub fn create(this: *@This(), title: [:0]const u8) !void {
     var instance: win32.HINSTANCE = undefined;
@@ -46,7 +46,7 @@ pub fn create(this: *@This(), title: [:0]const u8) !void {
 
     const window_class = win32.WNDCLASSEXW{
         .style = .{},
-        .lpfnWndProc = window_proc,
+        .lpfnWndProc = windowProc,
         .hInstance = instance,
         .hbrBackground = @ptrFromInt(0),
         .lpszClassName = W("VKTZ"),
@@ -86,11 +86,11 @@ pub fn create(this: *@This(), title: [:0]const u8) !void {
     _ = win32.ShowWindow(this.handle, .{ .SHOWNORMAL = 1 });
 }
 
-pub fn should_close(this: *const @This()) bool {
+pub fn shouldClose(this: *const @This()) bool {
     return this.close_requested;
 }
 
-pub fn request_close(this: *@This()) void {
+pub fn requestClose(this: *@This()) void {
     this.close_requested = true;
     win32.PostQuitMessage(0);
 }
@@ -116,7 +116,7 @@ pub fn close(this: *@This()) void {
     _ = win32.DestroyWindow(this.handle);
 }
 
-pub fn frame_buffer_size(this: *const @This(), width: *i32, height: *i32) void {
+pub fn frameSufferSize(this: *const @This(), width: *i32, height: *i32) void {
     var rect: win32.RECT = undefined;
     const res = win32.GetClientRect(this.handle, &rect);
     assert(res == win32.TRUE);
@@ -128,14 +128,14 @@ pub fn frame_buffer_size(this: *const @This(), width: *i32, height: *i32) void {
     height.* = rect.bottom;
 }
 
-pub fn required_vulkan_instance_extensions(_: *const @This()) ![]const [*:0]const u8 {
+pub fn requiredVulkanInstanceExtensions(_: *const @This()) ![]const [*:0]const u8 {
     return &.{
         "VK_KHR_surface",
         "VK_KHR_win32_surface",
     };
 }
 
-pub fn create_vulkan_surface(this: *const @This(), instance: vk.Instance) !vk.SurfaceKHR {
+pub fn createVulkanSurface(this: *const @This(), instance: vk.Instance) !vk.SurfaceKHR {
     var surface: vk.SurfaceKHR = undefined;
 
     const create_info = vk.Win32SurfaceCreateInfoKHR{
@@ -178,7 +178,7 @@ pub fn create_vulkan_surface(this: *const @This(), instance: vk.Instance) !vk.Su
 //     return 0;
 // }
 
-const Key_LParam = packed struct {
+const KeyLParam = packed struct {
     repeat_count: u16,
     scan_code: u8,
     extended: u1,
@@ -188,7 +188,7 @@ const Key_LParam = packed struct {
     transition_state: u1,
 };
 
-fn window_proc(_hwnd: ?win32.HWND, uMsg: u32, wParam: win32.WPARAM, lParam: win32.LPARAM) callconv(.C) isize {
+fn windowProc(_hwnd: ?win32.HWND, uMsg: u32, wParam: win32.WPARAM, lParam: win32.LPARAM) callconv(.C) isize {
     const hwnd = _hwnd.?;
 
     const data_int = win32.GetWindowLongPtrW(hwnd, 0);
@@ -211,7 +211,7 @@ fn window_proc(_hwnd: ?win32.HWND, uMsg: u32, wParam: win32.WPARAM, lParam: win3
         },
 
         win32.WM_KEYDOWN => {
-            const flags: Key_LParam = @bitCast(@as(u32, @intCast(lParam)));
+            const flags: KeyLParam = @bitCast(@as(u32, @intCast(lParam)));
             this.input.escape_pressed = wParam == win32.VK_ESCAPE and flags.previous_state == 0;
             return 0;
         },

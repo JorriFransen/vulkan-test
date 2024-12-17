@@ -28,29 +28,29 @@ var physical_device: vk.PhysicalDevice = null;
 var device: vk.Device = null;
 var graphics_que: vk.Queue = null;
 var present_que: vk.Queue = null;
-var swapchain: Swapchain_Data = undefined;
+var swapchain: SwapchainData = undefined;
 var debug_messenger: vke.DebugUtilsMessenger = undefined;
 
-const PDev_Info = struct {
+const PDevInfo = struct {
     score: u32,
     name: [256]u8 = std.mem.zeroes([256]u8),
-    queue_info: Queue_Family_Info,
-    swapchain_info: Swapchain_Info,
+    queue_info: QueueFamilyInfo,
+    swapchain_info: SwapchainInfo,
 };
 
-const Queue_Family_Info = struct {
+const QueueFamilyInfo = struct {
     graphics_index: u32 = undefined,
     present_index: u32 = undefined,
 };
 
-const Swapchain_Info = struct {
+const SwapchainInfo = struct {
     min_image_count: u32,
     surface_capabilities: vk.SurfaceCapabilitiesKHR,
     surface_format: vk.SurfaceFormatKHR,
     present_mode: vk.PresentModeKHR,
 };
 
-const Swapchain_Data = struct {
+const SwapchainData = struct {
     handle: vk.SwapchainKHR = null,
     image_format: vk.Format,
     extent: vk.Extent2D,
@@ -84,19 +84,19 @@ const required_device_extensions: []const [*:0]const u8 = &.{
     vk.KHR_SWAPCHAIN_EXTENSION_NAME,
 };
 
-pub fn init_system(window: *const Window) !void {
-    try create_instance(window);
-    surface = try window.create_vulkan_surface(instance);
+pub fn initSystem(window: *const Window) !void {
+    try createInstance(window);
+    surface = try window.createVulkanSurface(instance);
 
-    const device_info = try choose_physical_device();
-    try create_logical_device(&device_info);
+    const device_info = try choosePhysicalDevice();
+    try createLogicalDevice(&device_info);
 
-    swapchain = try create_swapchain(window, &device_info);
+    swapchain = try createSwapchain(window, &device_info);
 
-    create_graphics_pipeline();
+    createGraphicsPipeline();
 }
 
-pub fn deinit_system() void {
+pub fn deinitSystem() void {
     swapchain.deinit(alloc.gpa);
     vk.destroyDevice(device, null);
     vk.destroySurfaceKHR(instance, surface, null);
@@ -104,7 +104,7 @@ pub fn deinit_system() void {
     vk.destroyInstance(instance, null);
 }
 
-fn create_instance(window: *const Window) !void {
+fn createInstance(window: *const Window) !void {
     var extension_count: u32 = undefined;
     _ = vk.enumerateInstanceExtensionProperties(null, &extension_count, null);
     dlog("{} Vulkan extensions supported", .{extension_count});
@@ -124,7 +124,7 @@ fn create_instance(window: *const Window) !void {
         .apiVersion = vk.API_VERSION_1_0,
     };
 
-    const window_required_extensions = try window.required_vulkan_instance_extensions();
+    const window_required_extensions = try window.requiredVulkanInstanceExtensions();
 
     const instance_ext_count = window_required_extensions.len + instance_extensions.len;
 
@@ -189,7 +189,7 @@ fn create_instance(window: *const Window) !void {
     }
 
     const debug_messenger_create_info = vke.DebugUtilsMessengerCreateInfo{
-        .sType = vke.Structure_Type.DEBUG_UTILS_MESSENGER_CREATE_INFO,
+        .sType = vke.structure_type.DEBUG_UTILS_MESSENGER_CREATE_INFO,
         .messageSeverity = vke.DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT | vke.DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT | vke.DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT,
         .messageType = vke.DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT | vke.DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT | vke.DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT,
         .pfnUserCallback = vk_debug_callback,
@@ -226,7 +226,7 @@ fn create_instance(window: *const Window) !void {
     }
 }
 
-fn choose_physical_device() !PDev_Info {
+fn choosePhysicalDevice() !PDevInfo {
     var device_count: u32 = 0;
     _ = vk.enumeratePhysicalDevices(instance, &device_count, null);
     if (device_count == 0) {
@@ -241,7 +241,7 @@ fn choose_physical_device() !PDev_Info {
 
     var suitable_device_found = false;
     var best_device_index: usize = undefined;
-    var best_device_info: PDev_Info = undefined;
+    var best_device_info: PDevInfo = undefined;
 
     for (devices, 0..) |pdev, i| {
         var props: vk.PhysicalDeviceProperties = undefined;
@@ -267,18 +267,18 @@ fn choose_physical_device() !PDev_Info {
 
         const image_dim_score = props.limits.maxImageDimension2D / 4096;
 
-        const queue_info_opt = try query_queue_families_info(pdev);
+        const queue_info_opt = try queryQueueFamiliesInfo(pdev);
         const queue_info = queue_info_opt orelse {
             dlog("pd[{}] does not have required queue families, skipping...", .{i});
             continue;
         };
 
-        if (!try query_device_extensions_suitable(pdev)) {
+        if (!try queryDeviceExtensionsSuitable(pdev)) {
             dlog("pd[{}] does not have required extensions, skipping...", .{i});
             continue;
         }
 
-        const swapchain_info_opt = try query_swapchain_info(pdev);
+        const swapchain_info_opt = try querySwapchainInfo(pdev);
         const swapchain_info = swapchain_info_opt orelse {
             dlog("pd[{}] does not meet swapchain requirements, skipping...", .{i});
             continue;
@@ -289,7 +289,7 @@ fn choose_physical_device() !PDev_Info {
 
         dlog("===========================", .{});
 
-        const info = PDev_Info{
+        const info = PDevInfo{
             .score = score,
             .name = props.deviceName,
             .queue_info = queue_info,
@@ -315,7 +315,7 @@ fn choose_physical_device() !PDev_Info {
     return best_device_info;
 }
 
-fn query_queue_families_info(pdev: vk.PhysicalDevice) !?Queue_Family_Info {
+fn queryQueueFamiliesInfo(pdev: vk.PhysicalDevice) !?QueueFamilyInfo {
     var que_family_count: u32 = undefined;
     vk.getPhysicalDeviceQueueFamilyProperties(pdev, &que_family_count, null);
 
@@ -323,7 +323,7 @@ fn query_queue_families_info(pdev: vk.PhysicalDevice) !?Queue_Family_Info {
     defer alloc.gpa.free(queue_families);
     vk.getPhysicalDeviceQueueFamilyProperties(pdev, &que_family_count, queue_families.ptr);
 
-    var result: Queue_Family_Info = undefined;
+    var result: QueueFamilyInfo = undefined;
 
     var graphics_que_found = false;
     var present_que_found = false;
@@ -347,7 +347,7 @@ fn query_queue_families_info(pdev: vk.PhysicalDevice) !?Queue_Family_Info {
     return if (graphics_que_found and present_que_found) result else null;
 }
 
-fn query_device_extensions_suitable(pdev: vk.PhysicalDevice) !bool {
+fn queryDeviceExtensionsSuitable(pdev: vk.PhysicalDevice) !bool {
     var prop_count: u32 = undefined;
     _ = vk.enumerateDeviceExtensionProperties(pdev, null, &prop_count, null);
 
@@ -373,7 +373,7 @@ fn query_device_extensions_suitable(pdev: vk.PhysicalDevice) !bool {
     return true;
 }
 
-fn query_swapchain_info(pdev: vk.PhysicalDevice) !?Swapchain_Info {
+fn querySwapchainInfo(pdev: vk.PhysicalDevice) !?SwapchainInfo {
     var surface_capabilities: vk.SurfaceCapabilitiesKHR = undefined;
     if (vk.getPhysicalDeviceSurfaceCapabilitiesKHR(pdev, surface, &surface_capabilities) != vk.SUCCESS) {
         return error.Get_Physical_Device_Surface_Capabilities_Failed;
@@ -434,7 +434,7 @@ fn query_swapchain_info(pdev: vk.PhysicalDevice) !?Swapchain_Info {
     };
 }
 
-fn create_logical_device(pdev_info: *const PDev_Info) !void {
+fn createLogicalDevice(pdev_info: *const PDevInfo) !void {
     var fin_array = [_]u32{ pdev_info.queue_info.graphics_index, pdev_info.queue_info.present_index };
     var fin: []u32 = &fin_array;
     std.mem.sort(u32, fin, .{}, struct {
@@ -491,14 +491,14 @@ fn create_logical_device(pdev_info: *const PDev_Info) !void {
     vk.getDeviceQueue(device, pdev_info.queue_info.present_index, 0, &present_que);
 }
 
-pub fn create_swapchain(window: *const Window, info: *const PDev_Info) !Swapchain_Data {
+pub fn createSwapchain(window: *const Window, info: *const PDevInfo) !SwapchainData {
     const cap = &info.swapchain_info.surface_capabilities;
     dlog("cap.currentExtent: {}", .{cap.currentExtent});
     const extent = switch (cap.currentExtent.width) {
         std.math.maxInt(u32) => blk: {
             var width: c_int = undefined;
             var height: c_int = undefined;
-            window.frame_buffer_size(&width, &height);
+            window.frameBufferSize(&width, &height);
 
             var actual_extent = vk.Extent2D{ .width = @intCast(width), .height = @intCast(height) };
             actual_extent.width = std.math.clamp(actual_extent.width, cap.minImageExtent.width, cap.maxImageExtent.width);
@@ -584,7 +584,7 @@ pub fn create_swapchain(window: *const Window, info: *const PDev_Info) !Swapchai
     };
 }
 
-fn create_graphics_pipeline() void {}
+fn createGraphicsPipeline() void {}
 
 fn vk_debug_callback(message_severity: vke.DebugUtilsMessageSeverityFlagBits, message_type: vke.DebugUtilsMessageTypeFlags, _callback_data: [*c]const vke.DebugUtilsMessengerCallbackData, user_data: ?*anyopaque) callconv(.C) vk.Bool32 {
     _ = message_type;

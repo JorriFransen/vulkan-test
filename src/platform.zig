@@ -11,6 +11,6 @@ else if (builtin.os.tag == .linux)
 else
     @compileError("Unsupported platform");
 
-pub const Input_State = struct {
+pub const InputState = struct {
     escape_pressed: bool = false,
 };
