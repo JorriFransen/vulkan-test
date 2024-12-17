@@ -109,8 +109,8 @@ fn use_vulkan(b: *std.Build) !Vulkan_Info {
 
     const env_var_map = try std.process.getEnvMap(b.allocator);
     if (env_var_map.get("VK_SDK_PATH")) |path| {
-        lib_path = try std.fmt.allocPrint(b.allocator, "{s}/lib", .{path});
-        include_path = try std.fmt.allocPrint(b.allocator, "{s}/include", .{path});
+        lib_path = try std.fmt.allocPrint(b.allocator, "{s}" ++ sep ++ "lib", .{path});
+        include_path = try std.fmt.allocPrint(b.allocator, "{s}" ++ sep ++ "include", .{path});
     } else {
 
         // Nix
@@ -152,7 +152,7 @@ const Shaders = struct {
     owner: *std.Build,
     compile: *std.Build.Step,
     module_step: *std.Build.Step,
-    // wf: *std.Build.Step.WriteFile,
+    wf: *std.Build.Step.WriteFile,
 
     shaders: std.ArrayList(Shader),
 
@@ -170,21 +170,24 @@ const Shaders = struct {
     const Shader = struct {
         name: []const u8,
         path: []const u8,
-        root_source_file: std.Build.LazyPath,
     };
 
     pub fn init(b: *std.Build, dependency_of: *std.Build.Step, dirs: ?[]const Dir) !Shaders {
         const cstep = b.step("shaders", "compile shaders");
         const mstep = b.step("shadermodule", "create a zig module with embedded shaders");
 
-        mstep.dependOn(cstep);
+        const wf = b.addWriteFiles();
+        wf.step.name = "WriteFile shaders";
+
+        wf.step.dependOn(cstep);
+        mstep.dependOn(&wf.step);
         dependency_of.dependOn(mstep);
 
         var result = Shaders{
             .owner = b,
             .compile = cstep,
             .module_step = mstep,
-            // .wf = b.addWriteFiles(),
+            .wf = wf,
             .shaders = std.ArrayList(Shader).init(b.allocator),
         };
 
@@ -244,7 +247,7 @@ const Shaders = struct {
 
     fn add(this: *@This(), sdir_path: []const u8, s_path: []const u8) !Shader {
         const b = this.owner;
-        //
+
         // Remove the first directory from the prefix
         var out_prefix: []const u8 = "";
         if (std.mem.indexOfScalar(u8, sdir_path, std.fs.path.sep)) |i| if (i > 0) {
@@ -262,13 +265,14 @@ const Shaders = struct {
         this.compile.dependOn(&compile_step.step);
 
         compile_step.addFileArg(b.path(input_path));
-        compile_step.addArg("-o");
-        const spv = compile_step.addOutputFileArg(output_path);
+        const spv = compile_step.addPrefixedOutputFileArg("-o", output_path);
+
+        const lazy_path = this.wf.addCopyFile(spv, output_path);
+        try this.module_step.addWatchInput(lazy_path);
 
         try this.shaders.append(.{
             .name = name,
             .path = output_path,
-            .root_source_file = spv,
         });
 
         return this.shaders.getLast();
@@ -281,8 +285,7 @@ const Shaders = struct {
         defer file_content.deinit();
 
         const out_file_name = "shaders.zig";
-        const wf = b.addWriteFiles();
-        var result = b.createModule(.{ .root_source_file = wf.getDirectory().path(b, out_file_name) });
+        const result = b.createModule(.{ .root_source_file = this.wf.getDirectory().path(b, out_file_name) });
 
         for (this.shaders.items) |s| {
             try file_content.appendSlice("pub const @\"");
@@ -290,13 +293,9 @@ const Shaders = struct {
             try file_content.appendSlice("\" = @embedFile(\"");
             try file_content.appendSlice(s.path);
             try file_content.appendSlice("\");\n");
-
-            result.addAnonymousImport(s.path, .{ .root_source_file = s.root_source_file });
         }
 
-        _ = wf.add(out_file_name, file_content.items);
-
-        this.module_step.dependOn(&wf.step);
+        _ = this.wf.add(out_file_name, file_content.items);
 
         return result;
     }
