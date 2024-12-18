@@ -29,6 +29,7 @@ var present_que: vk.Queue = null;
 var swapchain: SwapchainData = undefined;
 var render_pass: vk.RenderPass = undefined;
 var pipeline_layout: vk.PipelineLayout = undefined;
+var graphics_pipeline: vk.Pipeline = undefined;
 var debug_messenger: vke.DebugUtilsMessenger = undefined;
 
 const PDevInfo = struct {
@@ -98,6 +99,7 @@ pub fn initSystem(window: *const Window) !void {
 }
 
 pub fn deinitSystem() void {
+    vk.destroyPipeline(device, graphics_pipeline, null);
     vk.destroyPipelineLayout(device, pipeline_layout, null);
     vk.destroyRenderPass(device, render_pass, null);
     swapchain.deinit(alloc.gpa);
@@ -587,7 +589,7 @@ pub fn createSwapchain(window: *const Window, info: *const PDevInfo) !SwapchainD
 }
 
 fn createRenderPass() !void {
-    const color_attachment = vk.AttachmentDescription{
+    const color_attachments = [_]vk.AttachmentDescription{.{
         .format = swapchain.image_format,
         .samples = vk.sample_count_flag_bits.@"1_BIT",
         .loadOp = .CLEAR,
@@ -596,25 +598,25 @@ fn createRenderPass() !void {
         .stencilStoreOp = .DONT_CARE,
         .initialLayout = .UNDEFINED,
         .finalLayout = .PRESENT_SRC_KHR,
-    };
+    }};
 
-    const color_attachment_ref = vk.AttachmentReference{
+    const color_attachment_refs = [_]vk.AttachmentReference{.{
         .attachment = 0,
         .layout = .COLOR_ATTACHMENT_OPTIMAL,
-    };
+    }};
 
-    const subpass = vk.SubpassDescription{
+    const subpasses = [_]vk.SubpassDescription{.{
         .pipelineBindPoint = .GRAPHICS,
-        .colorAttachmentCount = 1,
-        .pColorAttachments = &color_attachment_ref,
-    };
+        .colorAttachmentCount = color_attachment_refs.len,
+        .pColorAttachments = &color_attachment_refs,
+    }};
 
     const render_pass_create_info = vk.RenderPassCreateInfo{
         .sType = vk.structure_type.RENDER_PASS_CREATE_INFO,
-        .attachmentCount = 1,
-        .pAttachments = &color_attachment,
-        .subpassCount = 1,
-        .pSubpasses = &subpass,
+        .attachmentCount = color_attachments.len,
+        .pAttachments = &color_attachments,
+        .subpassCount = subpasses.len,
+        .pSubpasses = &subpasses,
     };
 
     if (vk.createRenderPass(device, &render_pass_create_info, null, &render_pass) != vk.SUCCESS) {
@@ -629,21 +631,20 @@ fn createGraphicsPipeline() !void {
     const frag_shader_module = try createShaderModule(&builtin_shaders.@"triangle.frag");
     defer vk.destroyShaderModule(device, frag_shader_module, null);
 
-    const vert_stage_create_info = vk.PipelineShaderStageCreateInfo{
-        .sType = vk.structure_type.PIPELINE_SHADER_STAGE_CREATE_INFO,
-        .stage = vk.shader_stage_bit.VERTEX,
-        .module = vert_shader_module,
-        .pName = "main",
+    const shader_stages = [_]vk.PipelineShaderStageCreateInfo{
+        .{
+            .sType = vk.structure_type.PIPELINE_SHADER_STAGE_CREATE_INFO,
+            .stage = vk.shader_stage_bit.VERTEX,
+            .module = vert_shader_module,
+            .pName = "main",
+        },
+        .{
+            .sType = vk.structure_type.PIPELINE_SHADER_STAGE_CREATE_INFO,
+            .stage = vk.shader_stage_bit.FRAGMENT,
+            .module = frag_shader_module,
+            .pName = "main",
+        },
     };
-
-    const frag_stage_create_info = vk.PipelineShaderStageCreateInfo{
-        .sType = vk.structure_type.PIPELINE_SHADER_STAGE_CREATE_INFO,
-        .stage = vk.shader_stage_bit.FRAGMENT,
-        .module = frag_shader_module,
-        .pName = "main",
-    };
-
-    const shader_stages = &.{ vert_stage_create_info, frag_stage_create_info };
 
     const dynamic_states = [_]vk.DynamicState{
         vk.DynamicState.VIEWPORT,
@@ -714,7 +715,7 @@ fn createGraphicsPipeline() !void {
         .alphaToOneEnable = vk.FALSE,
     };
 
-    const color_blend_attachment = vk.PipelineColorBlendAttachmentState{
+    const color_blend_attachments = [_]vk.PipelineColorBlendAttachmentState{.{
         .colorWriteMask = vk.ColorComponentFlags{ .R = 1, .G = 1, .B = 1, .A = 1 },
         .blendEnable = vk.TRUE,
         .srcColorBlendFactor = .SRC_ALPHA,
@@ -723,14 +724,14 @@ fn createGraphicsPipeline() !void {
         .srcAlphaBlendFactor = .ONE,
         .dstAlphaBlendFactor = .ZERO,
         .alphaBlendOp = .ADD,
-    };
+    }};
 
     const blend_create_info = vk.PipelineColorBlendStateCreateInfo{
         .sType = vk.structure_type.PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
         .logicOpEnable = vk.FALSE,
         .logicOp = .COPY,
-        .attachmentCount = 1,
-        .pAttachments = &color_blend_attachment,
+        .attachmentCount = color_blend_attachments.len,
+        .pAttachments = &color_blend_attachments,
         .blendConstants = .{ 0, 0, 0, 0 },
     };
 
@@ -746,16 +747,31 @@ fn createGraphicsPipeline() !void {
         return error.CreatePipelineLayoutFailed;
     }
 
-    _ = blend_create_info;
-    _ = multisampling_create_info;
-    _ = rasterizer_create_info;
-    _ = viewport_create_info;
+    const pipeline_create_infos = [_]vk.GraphicsPiplineCreateInfo{.{
+        .sType = vk.structure_type.GRAPHICS_PIPELINE_CREATE_INFO,
+        .stageCount = shader_stages.len,
+        .pStages = &shader_stages,
+        .pVertexInputState = &vertex_input_state_create_info,
+        .pInputAssemblyState = &input_assembly_create_info,
+        .pViewportState = &viewport_create_info,
+        .pRasterizationState = &rasterizer_create_info,
+        .pMultisampleState = &multisampling_create_info,
+        .pDepthStencilState = null,
+        .pColorBlendState = &blend_create_info,
+        .pDynamicState = &dynamic_state_create_info,
+        .layout = pipeline_layout,
+        .renderPass = render_pass,
+        .subpass = 0,
+        .basePipelineHandle = null,
+        .basePipelineIndex = -1,
+    }};
+
+    if (vk.createGraphicsPipelines(device, null, pipeline_create_infos.len, @ptrCast(&pipeline_create_infos), null, &graphics_pipeline) != vk.SUCCESS) {
+        return error.CreateGraphicsPipelinesFailed;
+    }
+
     _ = scissor;
     _ = viewport;
-    _ = input_assembly_create_info;
-    _ = vertex_input_state_create_info;
-    _ = dynamic_state_create_info;
-    _ = shader_stages;
 }
 
 fn createShaderModule(code: []const u8) !vk.ShaderModule {

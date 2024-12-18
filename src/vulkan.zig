@@ -61,6 +61,7 @@ pub const ImageView_T = opaque {};
 pub const ShaderModule_T = opaque {};
 pub const PipelineLayout_T = opaque {};
 pub const RenderPass_T = opaque {};
+pub const Pipeline_T = opaque {};
 pub const Instance = ?*Instance_T;
 pub const SurfaceKHR = ?*SurfaceKHR_T;
 pub const PhysicalDevice = ?*PhysicalDevice_T;
@@ -72,6 +73,7 @@ pub const ImageView = ?*ImageView_T;
 pub const ShaderModule = ?*ShaderModule_T;
 pub const PipelineLayout = ?*PipelineLayout_T;
 pub const RenderPass = ?*RenderPass_T;
+pub const Pipeline = ?*Pipeline_T;
 
 // Structs
 pub const ApplicationInfo = c.VkApplicationInfo;
@@ -236,6 +238,27 @@ pub const RenderPassCreateInfo = extern struct {
     dependencyCount: u32 = std.mem.zeroes(u32),
     pDependencies: [*c]const c.VkSubpassDependency = std.mem.zeroes([*c]const c.VkSubpassDependency),
 };
+pub const GraphicsPiplineCreateInfo = extern struct {
+    sType: c.VkStructureType = std.mem.zeroes(c.VkStructureType),
+    pNext: ?*const anyopaque = std.mem.zeroes(?*const anyopaque),
+    flags: c.VkPipelineCreateFlags = std.mem.zeroes(c.VkPipelineCreateFlags),
+    stageCount: u32 = std.mem.zeroes(u32),
+    pStages: [*c]const PipelineShaderStageCreateInfo = std.mem.zeroes([*c]const PipelineShaderStageCreateInfo),
+    pVertexInputState: [*c]const c.VkPipelineVertexInputStateCreateInfo = std.mem.zeroes([*c]const c.VkPipelineVertexInputStateCreateInfo),
+    pInputAssemblyState: [*c]const PipelineInputAssemblyStateCreateInfo = std.mem.zeroes([*c]const PipelineInputAssemblyStateCreateInfo),
+    pTessellationState: [*c]const c.VkPipelineTessellationStateCreateInfo = std.mem.zeroes([*c]const c.VkPipelineTessellationStateCreateInfo),
+    pViewportState: [*c]const c.VkPipelineViewportStateCreateInfo = std.mem.zeroes([*c]const c.VkPipelineViewportStateCreateInfo),
+    pRasterizationState: [*c]const PipelineRasterizationStateCreateInfo = std.mem.zeroes([*c]const PipelineRasterizationStateCreateInfo),
+    pMultisampleState: [*c]const c.VkPipelineMultisampleStateCreateInfo = std.mem.zeroes([*c]const c.VkPipelineMultisampleStateCreateInfo),
+    pDepthStencilState: [*c]const c.VkPipelineDepthStencilStateCreateInfo = std.mem.zeroes([*c]const c.VkPipelineDepthStencilStateCreateInfo),
+    pColorBlendState: [*c]const PipelineColorBlendStateCreateInfo = std.mem.zeroes([*c]const PipelineColorBlendStateCreateInfo),
+    pDynamicState: [*c]const PipelineDynamicStateCreateInfo = std.mem.zeroes([*c]const PipelineDynamicStateCreateInfo),
+    layout: PipelineLayout = std.mem.zeroes(PipelineLayout),
+    renderPass: RenderPass = std.mem.zeroes(RenderPass),
+    subpass: u32 = std.mem.zeroes(u32),
+    basePipelineHandle: c.VkPipeline = std.mem.zeroes(c.VkPipeline),
+    basePipelineIndex: i32 = std.mem.zeroes(i32),
+};
 
 // Functions
 pub const createInstance = f("vkCreateInstance", fn (create_info: *const InstanceCreateInfo, allocator: ?*const AllocationCallbacks, instance: *Instance) callconv(.C) Result);
@@ -270,6 +293,8 @@ pub const createPipelineLayout = f("vkCreatePipelineLayout", fn (device: Device,
 pub const destroyPipelineLayout = f("vkDestroyPipelineLayout", fn (device: Device, pipeline_layout: PipelineLayout, allocator: ?*AllocationCallbacks) callconv(.C) void);
 pub const createRenderPass = f("vkCreateRenderPass", fn (device: Device, create_info: *const RenderPassCreateInfo, allocator: ?*AllocationCallbacks, render_pass: *RenderPass) callconv(.C) Result);
 pub const destroyRenderPass = f("vkDestroyRenderPass", fn (device: Device, render_pass: RenderPass, allocator: ?*AllocationCallbacks) callconv(.C) void);
+pub const createGraphicsPipelines = f("vkCreateGraphicsPipelines", fn (device: Device, cache: c.VkPipelineCache, create_info_count: u32, create_infos: [*]const GraphicsPiplineCreateInfo, allocator: ?*AllocationCallbacks, pipelines: *Pipeline) callconv(.C) Result);
+pub const destroyPipeline = f("vkDestroyPipeline", fn (device: Device, pipeline: Pipeline, allocator: ?*AllocationCallbacks) callconv(.C) void);
 
 // Macros
 pub const MAKE_VERSION = c.VK_MAKE_VERSION;
