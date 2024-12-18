@@ -58,6 +58,8 @@ pub const Queue_T = opaque {};
 pub const SwapchainKHR_T = opaque {};
 pub const Image_T = opaque {};
 pub const ImageView_T = opaque {};
+pub const ShaderModule_T = opaque {};
+pub const PipelineLayout_T = opaque {};
 pub const Instance = ?*Instance_T;
 pub const SurfaceKHR = ?*SurfaceKHR_T;
 pub const PhysicalDevice = ?*PhysicalDevice_T;
@@ -66,6 +68,8 @@ pub const Queue = ?*Queue_T;
 pub const SwapchainKHR = ?*SwapchainKHR_T;
 pub const Image = ?*Image_T;
 pub const ImageView = ?*ImageView_T;
+pub const ShaderModule = ?*ShaderModule_T;
+pub const PipelineLayout = ?*PipelineLayout_T;
 
 // Structs
 pub const ApplicationInfo = c.VkApplicationInfo;
@@ -132,6 +136,66 @@ pub const ImageViewCreateInfo = extern struct {
     components: c.VkComponentMapping = std.mem.zeroes(c.VkComponentMapping),
     subresourceRange: c.VkImageSubresourceRange = std.mem.zeroes(c.VkImageSubresourceRange),
 };
+pub const ShaderModuleCreateInfo = c.VkShaderModuleCreateInfo;
+pub const PipelineShaderStageCreateInfo = extern struct {
+    sType: c.VkStructureType = std.mem.zeroes(c.VkStructureType),
+    pNext: ?*const anyopaque = std.mem.zeroes(?*const anyopaque),
+    flags: c.VkPipelineShaderStageCreateFlags = std.mem.zeroes(c.VkPipelineShaderStageCreateFlags),
+    stage: c.VkShaderStageFlagBits = std.mem.zeroes(c.VkShaderStageFlagBits),
+    module: ShaderModule = std.mem.zeroes(ShaderModule),
+    pName: [*c]const u8 = std.mem.zeroes([*c]const u8),
+    pSpecializationInfo: [*c]const c.VkSpecializationInfo = std.mem.zeroes([*c]const c.VkSpecializationInfo),
+};
+pub const PipelineDynamicStateCreateInfo = c.VkPipelineDynamicStateCreateInfo;
+pub const PipelineVertexInputStateCreateInfo = c.VkPipelineVertexInputStateCreateInfo;
+pub const PipelineInputAssemblyStateCreateInfo = extern struct {
+    sType: c.VkStructureType = std.mem.zeroes(c.VkStructureType),
+    pNext: ?*const anyopaque = std.mem.zeroes(?*const anyopaque),
+    flags: c.VkPipelineInputAssemblyStateCreateFlags = std.mem.zeroes(c.VkPipelineInputAssemblyStateCreateFlags),
+    topology: PrimitiveTopology = std.mem.zeroes(PrimitiveTopology),
+    primitiveRestartEnable: c.VkBool32 = std.mem.zeroes(c.VkBool32),
+};
+pub const Viewport = c.VkViewport;
+pub const Rect2D = c.VkRect2D;
+pub const PipelineViewportStateCreateInfo = c.VkPipelineViewportStateCreateInfo;
+pub const PipelineRasterizationStateCreateInfo = extern struct {
+    sType: c.VkStructureType = std.mem.zeroes(c.VkStructureType),
+    pNext: ?*const anyopaque = std.mem.zeroes(?*const anyopaque),
+    flags: c.VkPipelineRasterizationStateCreateFlags = std.mem.zeroes(c.VkPipelineRasterizationStateCreateFlags),
+    depthClampEnable: Bool32 = std.mem.zeroes(Bool32),
+    rasterizerDiscardEnable: Bool32 = std.mem.zeroes(Bool32),
+    polygonMode: PolygonMode = std.mem.zeroes(PolygonMode),
+    cullMode: CullModeFlags = std.mem.zeroes(CullModeFlags),
+    frontFace: FrontFace = std.mem.zeroes(FrontFace),
+    depthBiasEnable: Bool32 = std.mem.zeroes(Bool32),
+    depthBiasConstantFactor: f32 = std.mem.zeroes(f32),
+    depthBiasClamp: f32 = std.mem.zeroes(f32),
+    depthBiasSlopeFactor: f32 = std.mem.zeroes(f32),
+    lineWidth: f32 = std.mem.zeroes(f32),
+};
+pub const PipelineMultisampleStateCreateInfo = c.VkPipelineMultisampleStateCreateInfo;
+pub const PipelineDepthStencilStateCreateInfo = c.VkPipelineDepthStencilStateCreateInfo;
+pub const PipelineColorBlendAttachmentState = extern struct {
+    blendEnable: Bool32 = std.mem.zeroes(Bool32),
+    srcColorBlendFactor: BlendFactor = std.mem.zeroes(BlendFactor),
+    dstColorBlendFactor: BlendFactor = std.mem.zeroes(BlendFactor),
+    colorBlendOp: BlendOp = std.mem.zeroes(BlendOp),
+    srcAlphaBlendFactor: BlendFactor = std.mem.zeroes(BlendFactor),
+    dstAlphaBlendFactor: BlendFactor = std.mem.zeroes(BlendFactor),
+    alphaBlendOp: BlendOp = std.mem.zeroes(BlendOp),
+    colorWriteMask: ColorComponentFlags = std.mem.zeroes(ColorComponentFlags),
+};
+pub const PipelineColorBlendStateCreateInfo = extern struct {
+    sType: c.VkStructureType = std.mem.zeroes(c.VkStructureType),
+    pNext: ?*const anyopaque = std.mem.zeroes(?*const anyopaque),
+    flags: c.VkPipelineColorBlendStateCreateFlags = std.mem.zeroes(c.VkPipelineColorBlendStateCreateFlags),
+    logicOpEnable: Bool32 = std.mem.zeroes(Bool32),
+    logicOp: LogicOp = std.mem.zeroes(LogicOp),
+    attachmentCount: u32 = std.mem.zeroes(u32),
+    pAttachments: [*c]const PipelineColorBlendAttachmentState = std.mem.zeroes([*c]const PipelineColorBlendAttachmentState),
+    blendConstants: [4]f32 = std.mem.zeroes([4]f32),
+};
+pub const PipelineLayoutCreateInfo = c.VkPipelineLayoutCreateInfo;
 
 // Functions
 pub const createInstance = f("vkCreateInstance", fn (create_info: *const InstanceCreateInfo, allocator: ?*const AllocationCallbacks, instance: *Instance) callconv(.C) Result);
@@ -160,6 +224,10 @@ pub const destroySwapchainKHR = f("vkDestroySwapchainKHR", fn (device: Device, s
 pub const getSwapchainImagesKHR = f("vkGetSwapchainImagesKHR", fn (device: Device, swapchain: SwapchainKHR, count: *u32, images: ?[*]Image) callconv(.C) Result);
 pub const createImageView = f("vkCreateImageView", fn (device: Device, create_info: *const ImageViewCreateInfo, allocator: ?*AllocationCallbacks, view: *ImageView) callconv(.C) Result);
 pub const destroyImageView = f("vkDestroyImageView", fn (device: Device, view: ImageView, allocator: ?*AllocationCallbacks) callconv(.C) void);
+pub const createShaderModule = f("vkCreateShaderModule", fn (device: Device, create_info: *const ShaderModuleCreateInfo, allocator: ?*AllocationCallbacks, shader_module: *ShaderModule) callconv(.C) Result);
+pub const destroyShaderModule = f("vkDestroyShaderModule", fn (device: Device, shader_module: ShaderModule, allocator: ?*AllocationCallbacks) callconv(.C) void);
+pub const createPipelineLayout = f("vkCreatePipelineLayout", fn (device: Device, create_info: *const PipelineLayoutCreateInfo, allocator: ?*AllocationCallbacks, pipeline_layout: *PipelineLayout) callconv(.C) Result);
+pub const destroyPipelineLayout = f("vkDestroyPipelineLayout", fn (device: Device, pipeline_layout: PipelineLayout, allocator: ?*AllocationCallbacks) callconv(.C) void);
 
 // Macros
 pub const MAKE_VERSION = c.VK_MAKE_VERSION;
@@ -172,3 +240,11 @@ const QueueFlags = self.QueueFlags;
 const PresentModeKHR = self.PresentModeKHR;
 const Format = self.Format;
 const ColorSpaceKHR = self.ColorSpaceKHR;
+const PrimitiveTopology = self.PrimitiveTopology;
+const PolygonMode = self.PolygonMode;
+const CullModeFlags = self.CullModeFlags;
+const FrontFace = self.FrontFace;
+const ColorComponentFlags = self.ColorComponentFlags;
+const BlendFactor = self.BlendFactor;
+const BlendOp = self.BlendOp;
+const LogicOp = self.LogicOp;

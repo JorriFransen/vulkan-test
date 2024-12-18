@@ -290,9 +290,9 @@ const Shaders = struct {
         for (this.shaders.items) |s| {
             try file_content.appendSlice("pub const @\"");
             try file_content.appendSlice(s.name);
-            try file_content.appendSlice("\" = @embedFile(\"");
+            try file_content.appendSlice("\" align(4) = @embedFile(\"");
             try file_content.appendSlice(s.path);
-            try file_content.appendSlice("\");\n");
+            try file_content.appendSlice("\").*;\n");
         }
 
         _ = this.wf.add(out_file_name, file_content.items);

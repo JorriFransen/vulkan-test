@@ -139,7 +139,7 @@ pub fn createVulkanSurface(this: *const @This(), instance: vk.Instance) !vk.Surf
     var surface: vk.SurfaceKHR = undefined;
 
     const create_info = vk.Win32SurfaceCreateInfoKHR{
-        .sType = vk.Structure_Type.WIN32_SURFACE_CREATE_INFO_KHR,
+        .sType = vk.structure_type.WIN32_SURFACE_CREATE_INFO_KHR,
         .hwnd = @ptrCast(this.handle),
         .hinstance = @ptrCast(win32.GetModuleHandleW(null)),
     };

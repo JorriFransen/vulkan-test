@@ -3,9 +3,10 @@ const assert = std.debug.assert;
 const builtin = @import("builtin");
 
 const alloc = @import("alloc");
+const builtin_shaders = @import("shaders");
+const options = @import("options");
 const platform = @import("platform");
 const Window = platform.Window;
-
 const vk = @import("vulkan");
 const vke = vk.extensions;
 const vkd = vk.loader.debug_utils;
@@ -14,9 +15,6 @@ const vlog = std.log.scoped(.vulkan);
 const dlog = vlog.debug;
 const elog = vlog.err;
 const ilog = vlog.info;
-
-const options = @import("options");
-const shaders = @import("shaders");
 
 const debug = builtin.mode == .Debug;
 const debug_verbose = debug and options.vulkan_verbose;
@@ -29,6 +27,7 @@ var device: vk.Device = null;
 var graphics_que: vk.Queue = null;
 var present_que: vk.Queue = null;
 var swapchain: SwapchainData = undefined;
+var pipeline_layout: vk.PipelineLayout = undefined;
 var debug_messenger: vke.DebugUtilsMessenger = undefined;
 
 const PDevInfo = struct {
@@ -93,10 +92,11 @@ pub fn initSystem(window: *const Window) !void {
 
     swapchain = try createSwapchain(window, &device_info);
 
-    createGraphicsPipeline();
+    try createGraphicsPipeline();
 }
 
 pub fn deinitSystem() void {
+    vk.destroyPipelineLayout(device, pipeline_layout, null);
     swapchain.deinit(alloc.gpa);
     vk.destroyDevice(device, null);
     vk.destroySurfaceKHR(instance, surface, null);
@@ -115,8 +115,7 @@ fn createInstance(window: *const Window) !void {
     // for (extension_props) |p| dlog("supported extension: '{s}'", .{@as([*:0]const u8, @ptrCast(&p.extensionName))});
 
     const app_info = vk.ApplicationInfo{
-        .sType = vk.Structure_Type.APPLICATION_INFO,
-
+        .sType = vk.structure_type.APPLICATION_INFO,
         .pApplicationName = "Vulkan app",
         .applicationVersion = vk.MAKE_VERSION(1, 0, 0),
         .pEngineName = "Vulkan engine",
@@ -198,7 +197,7 @@ fn createInstance(window: *const Window) !void {
     const instance_debug_messenger_create_info = debug_messenger_create_info;
 
     const instance_create_info = vk.InstanceCreateInfo{
-        .sType = vk.Structure_Type.INSTANCE_CREATE_INFO,
+        .sType = vk.structure_type.INSTANCE_CREATE_INFO,
         .pApplicationInfo = &app_info,
         .flags = if (is_mac) vk.INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR else 0,
         .enabledExtensionCount = @intCast(required_instance_extensions.items.len),
@@ -463,7 +462,7 @@ fn createLogicalDevice(pdev_info: *const PDevInfo) !void {
     const que_prio: f32 = 1.0;
 
     for (qcis, fin) |*qci, fi| qci.* = .{
-        .sType = vk.Structure_Type.DEVICE_QUEUE_CREATE_INFO,
+        .sType = vk.structure_type.DEVICE_QUEUE_CREATE_INFO,
         .queueFamilyIndex = fi,
         .queueCount = 1,
         .pQueuePriorities = &que_prio,
@@ -472,7 +471,7 @@ fn createLogicalDevice(pdev_info: *const PDevInfo) !void {
     const device_features = vk.PhysicalDeviceFeatures{};
 
     const device_create_info = vk.DeviceCreateInfo{
-        .sType = vk.Structure_Type.DEVICE_CREATE_INFO,
+        .sType = vk.structure_type.DEVICE_CREATE_INFO,
         .pQueueCreateInfos = qcis.ptr,
         .queueCreateInfoCount = @intCast(qcis.len),
         .pEnabledFeatures = &device_features,
@@ -514,7 +513,7 @@ pub fn createSwapchain(window: *const Window, info: *const PDevInfo) !SwapchainD
     const same_family = info.queue_info.graphics_index == info.queue_info.present_index;
 
     const create_info = vk.SwapchainCreateInfoKHR{
-        .sType = vk.Structure_Type.SWAPCHAIN_CREATE_INFO_KHR,
+        .sType = vk.structure_type.SWAPCHAIN_CREATE_INFO_KHR,
         .surface = surface,
         .minImageCount = info.swapchain_info.min_image_count,
         .imageFormat = info.swapchain_info.surface_format.format,
@@ -551,7 +550,7 @@ pub fn createSwapchain(window: *const Window, info: *const PDevInfo) !SwapchainD
     const image_views = try alloc.gpa.alloc(vk.ImageView, image_count);
     for (images, image_views) |image, *view| {
         const view_create_info = vk.ImageViewCreateInfo{
-            .sType = vk.Structure_Type.IMAGE_VIEW_CREATE_INFO,
+            .sType = vk.structure_type.IMAGE_VIEW_CREATE_INFO,
             .image = image,
             .viewType = vk.IMAGE_VIEW_TYPE_2D,
             .format = info.swapchain_info.surface_format.format,
@@ -584,7 +583,156 @@ pub fn createSwapchain(window: *const Window, info: *const PDevInfo) !SwapchainD
     };
 }
 
-fn createGraphicsPipeline() void {}
+fn createGraphicsPipeline() !void {
+    const vert_shader_module = try createShaderModule(&builtin_shaders.@"triangle.vert");
+    defer vk.destroyShaderModule(device, vert_shader_module, null);
+
+    const frag_shader_module = try createShaderModule(&builtin_shaders.@"triangle.frag");
+    defer vk.destroyShaderModule(device, frag_shader_module, null);
+
+    const vert_stage_create_info = vk.PipelineShaderStageCreateInfo{
+        .sType = vk.structure_type.PIPELINE_SHADER_STAGE_CREATE_INFO,
+        .stage = vk.shader_stage_bit.VERTEX,
+        .module = vert_shader_module,
+        .pName = "main",
+    };
+
+    const frag_stage_create_info = vk.PipelineShaderStageCreateInfo{
+        .sType = vk.structure_type.PIPELINE_SHADER_STAGE_CREATE_INFO,
+        .stage = vk.shader_stage_bit.FRAGMENT,
+        .module = frag_shader_module,
+        .pName = "main",
+    };
+
+    const shader_stages = &.{ vert_stage_create_info, frag_stage_create_info };
+
+    const dynamic_states = [_]vk.DynamicState{
+        vk.DynamicState.VIEWPORT,
+        vk.DynamicState.SCISSOR,
+    };
+
+    const dynamic_state_create_info = vk.PipelineDynamicStateCreateInfo{
+        .sType = vk.structure_type.PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+        .dynamicStateCount = dynamic_states.len,
+        .pDynamicStates = @ptrCast(&dynamic_states),
+    };
+
+    const vertex_input_state_create_info = vk.PipelineVertexInputStateCreateInfo{
+        .sType = vk.structure_type.PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+        .vertexBindingDescriptionCount = 0,
+        .pVertexBindingDescriptions = null,
+        .vertexAttributeDescriptionCount = 0,
+        .pVertexAttributeDescriptions = null,
+    };
+
+    const input_assembly_create_info = vk.PipelineInputAssemblyStateCreateInfo{
+        .sType = vk.structure_type.PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+        .topology = .TRIANGLE_LIST,
+        .primitiveRestartEnable = vk.FALSE,
+    };
+
+    const viewport = vk.Viewport{
+        .x = 0,
+        .y = 0,
+        .width = @floatFromInt(swapchain.extent.width),
+        .height = @floatFromInt(swapchain.extent.height),
+        .minDepth = 0,
+        .maxDepth = 1,
+    };
+
+    const scissor = vk.Rect2D{
+        .offset = .{ .x = 0, .y = 0 },
+        .extent = swapchain.extent,
+    };
+
+    const viewport_create_info = vk.PipelineViewportStateCreateInfo{
+        .sType = vk.structure_type.PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+        .viewportCount = 1,
+        .scissorCount = 1,
+    };
+
+    const rasterizer_create_info = vk.PipelineRasterizationStateCreateInfo{
+        .sType = vk.structure_type.PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+        .depthClampEnable = vk.FALSE,
+        .rasterizerDiscardEnable = vk.FALSE,
+        .polygonMode = .FILL,
+        .lineWidth = 1,
+        .cullMode = .BACK_BIT,
+        .frontFace = .CLOCKWISE,
+        .depthBiasEnable = vk.FALSE,
+        .depthBiasConstantFactor = 0,
+        .depthBiasClamp = 0,
+        .depthBiasSlopeFactor = 0,
+    };
+
+    const multisampling_create_info = vk.PipelineMultisampleStateCreateInfo{
+        .sType = vk.structure_type.PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+        .sampleShadingEnable = vk.FALSE,
+        .rasterizationSamples = vk.sample_count_flag_bits.@"1_BIT",
+        .minSampleShading = 1,
+        .pSampleMask = null,
+        .alphaToCoverageEnable = vk.FALSE,
+        .alphaToOneEnable = vk.FALSE,
+    };
+
+    const color_blend_attachment = vk.PipelineColorBlendAttachmentState{
+        .colorWriteMask = vk.ColorComponentFlags{ .R = 1, .G = 1, .B = 1, .A = 1 },
+        .blendEnable = vk.TRUE,
+        .srcColorBlendFactor = .SRC_ALPHA,
+        .dstColorBlendFactor = .ONE_MINUS_SRC_ALPHA,
+        .colorBlendOp = .ADD,
+        .srcAlphaBlendFactor = .ONE,
+        .dstAlphaBlendFactor = .ZERO,
+        .alphaBlendOp = .ADD,
+    };
+
+    const blend_create_info = vk.PipelineColorBlendStateCreateInfo{
+        .sType = vk.structure_type.PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+        .logicOpEnable = vk.FALSE,
+        .logicOp = .COPY,
+        .attachmentCount = 1,
+        .pAttachments = &color_blend_attachment,
+        .blendConstants = .{ 0, 0, 0, 0 },
+    };
+
+    const pipeline_layout_create_info = vk.PipelineLayoutCreateInfo{
+        .sType = vk.structure_type.PIPELINE_LAYOUT_CREATE_INFO,
+        .setLayoutCount = 0,
+        .pSetLayouts = null,
+        .pushConstantRangeCount = 0,
+        .pPushConstantRanges = null,
+    };
+
+    if (vk.createPipelineLayout(device, &pipeline_layout_create_info, null, &pipeline_layout) != vk.SUCCESS) {
+        return error.CreatePipelineLayoutFailed;
+    }
+
+    _ = blend_create_info;
+    _ = multisampling_create_info;
+    _ = rasterizer_create_info;
+    _ = viewport_create_info;
+    _ = scissor;
+    _ = viewport;
+    _ = input_assembly_create_info;
+    _ = vertex_input_state_create_info;
+    _ = dynamic_state_create_info;
+    _ = shader_stages;
+}
+
+fn createShaderModule(code: []const u8) !vk.ShaderModule {
+    const create_info = vk.ShaderModuleCreateInfo{
+        .sType = vk.structure_type.SHADER_MODULE_CREATE_INFO,
+        .codeSize = code.len,
+        .pCode = @alignCast(@ptrCast(code.ptr)),
+    };
+
+    var shader_module: vk.ShaderModule = undefined;
+    if (vk.createShaderModule(device, &create_info, null, &shader_module) != vk.SUCCESS) {
+        return error.createShaderModuleFailed;
+    }
+
+    return shader_module;
+}
 
 fn vk_debug_callback(message_severity: vke.DebugUtilsMessageSeverityFlagBits, message_type: vke.DebugUtilsMessageTypeFlags, _callback_data: [*c]const vke.DebugUtilsMessengerCallbackData, user_data: ?*anyopaque) callconv(.C) vk.Bool32 {
     _ = message_type;
