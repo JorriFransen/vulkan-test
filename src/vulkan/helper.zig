@@ -30,6 +30,7 @@ var swapchain: SwapchainData = undefined;
 var render_pass: vk.RenderPass = undefined;
 var pipeline_layout: vk.PipelineLayout = undefined;
 var graphics_pipeline: vk.Pipeline = undefined;
+var swapchain_framebuffers: []vk.Framebuffer = undefined; // TODO: Move this to SwapchainData
 var debug_messenger: vke.DebugUtilsMessenger = undefined;
 
 const PDevInfo = struct {
@@ -96,9 +97,13 @@ pub fn initSystem(window: *const Window) !void {
 
     try createRenderPass();
     try createGraphicsPipeline();
+    try createFrameBuffers();
 }
 
 pub fn deinitSystem() void {
+    for (swapchain_framebuffers) |fb| vk.destroyFramebuffer(device, fb, null);
+
+    alloc.gpa.free(swapchain_framebuffers);
     vk.destroyPipeline(device, graphics_pipeline, null);
     vk.destroyPipelineLayout(device, pipeline_layout, null);
     vk.destroyRenderPass(device, render_pass, null);
@@ -249,10 +254,10 @@ fn choosePhysicalDevice() !PDevInfo {
 
     for (devices, 0..) |pdev, i| {
         var props: vk.PhysicalDeviceProperties = undefined;
-        vk.getPhysicalDeviceProperties(@ptrCast(pdev), &props);
+        vk.getPhysicalDeviceProperties(pdev, &props);
 
         var features: vk.PhysicalDeviceFeatures = undefined;
-        vk.getPhysicalDeviceFeatures(@ptrCast(pdev), &features);
+        vk.getPhysicalDeviceFeatures(pdev, &features);
 
         dlog("pd_props[{}]: name: {s}", .{ i, props.deviceName });
         dlog("pd_props[{}]: type: {s}", .{ i, @tagName(props.deviceType) });
@@ -654,7 +659,7 @@ fn createGraphicsPipeline() !void {
     const dynamic_state_create_info = vk.PipelineDynamicStateCreateInfo{
         .sType = vk.structure_type.PIPELINE_DYNAMIC_STATE_CREATE_INFO,
         .dynamicStateCount = dynamic_states.len,
-        .pDynamicStates = @ptrCast(&dynamic_states),
+        .pDynamicStates = &dynamic_states,
     };
 
     const vertex_input_state_create_info = vk.PipelineVertexInputStateCreateInfo{
@@ -766,12 +771,34 @@ fn createGraphicsPipeline() !void {
         .basePipelineIndex = -1,
     }};
 
-    if (vk.createGraphicsPipelines(device, null, pipeline_create_infos.len, @ptrCast(&pipeline_create_infos), null, &graphics_pipeline) != vk.SUCCESS) {
+    if (vk.createGraphicsPipelines(device, null, pipeline_create_infos.len, &pipeline_create_infos, null, &graphics_pipeline) != vk.SUCCESS) {
         return error.CreateGraphicsPipelinesFailed;
     }
 
     _ = scissor;
     _ = viewport;
+}
+
+fn createFrameBuffers() !void {
+    swapchain_framebuffers = try alloc.gpa.alloc(vk.Framebuffer, swapchain.image_views.len);
+
+    for (swapchain.image_views, 0..) |iv, i| {
+        const attachments = [_]vk.ImageView{iv};
+
+        const framebuffer_create_info = vk.FramebufferCreateInfo{
+            .sType = vk.structure_type.FRAMEBUFFER_CREATE_INFO,
+            .renderPass = render_pass,
+            .attachmentCount = attachments.len,
+            .pAttachments = &attachments,
+            .width = swapchain.extent.width,
+            .height = swapchain.extent.height,
+            .layers = 1,
+        };
+
+        if (vk.createFramebuffer(device, &framebuffer_create_info, null, &swapchain_framebuffers[i]) != vk.SUCCESS) {
+            return error.CreateFramebufferFailed;
+        }
+    }
 }
 
 fn createShaderModule(code: []const u8) !vk.ShaderModule {

@@ -62,6 +62,7 @@ pub const ShaderModule_T = opaque {};
 pub const PipelineLayout_T = opaque {};
 pub const RenderPass_T = opaque {};
 pub const Pipeline_T = opaque {};
+pub const Framebuffer_T = opaque {};
 pub const Instance = ?*Instance_T;
 pub const SurfaceKHR = ?*SurfaceKHR_T;
 pub const PhysicalDevice = ?*PhysicalDevice_T;
@@ -74,6 +75,7 @@ pub const ShaderModule = ?*ShaderModule_T;
 pub const PipelineLayout = ?*PipelineLayout_T;
 pub const RenderPass = ?*RenderPass_T;
 pub const Pipeline = ?*Pipeline_T;
+pub const Framebuffer = ?*Framebuffer_T;
 
 // Structs
 pub const ApplicationInfo = c.VkApplicationInfo;
@@ -150,7 +152,13 @@ pub const PipelineShaderStageCreateInfo = extern struct {
     pName: [*c]const u8 = std.mem.zeroes([*c]const u8),
     pSpecializationInfo: [*c]const c.VkSpecializationInfo = std.mem.zeroes([*c]const c.VkSpecializationInfo),
 };
-pub const PipelineDynamicStateCreateInfo = c.VkPipelineDynamicStateCreateInfo;
+pub const PipelineDynamicStateCreateInfo = extern struct {
+    sType: c.VkStructureType = std.mem.zeroes(c.VkStructureType),
+    pNext: ?*const anyopaque = std.mem.zeroes(?*const anyopaque),
+    flags: c.VkPipelineDynamicStateCreateFlags = std.mem.zeroes(c.VkPipelineDynamicStateCreateFlags),
+    dynamicStateCount: u32 = std.mem.zeroes(u32),
+    pDynamicStates: [*c]const DynamicState = std.mem.zeroes([*c]const DynamicState),
+};
 pub const PipelineVertexInputStateCreateInfo = c.VkPipelineVertexInputStateCreateInfo;
 pub const PipelineInputAssemblyStateCreateInfo = extern struct {
     sType: c.VkStructureType = std.mem.zeroes(c.VkStructureType),
@@ -259,6 +267,17 @@ pub const GraphicsPiplineCreateInfo = extern struct {
     basePipelineHandle: c.VkPipeline = std.mem.zeroes(c.VkPipeline),
     basePipelineIndex: i32 = std.mem.zeroes(i32),
 };
+pub const FramebufferCreateInfo = extern struct {
+    sType: c.VkStructureType = std.mem.zeroes(c.VkStructureType),
+    pNext: ?*const anyopaque = std.mem.zeroes(?*const anyopaque),
+    flags: c.VkFramebufferCreateFlags = std.mem.zeroes(c.VkFramebufferCreateFlags),
+    renderPass: RenderPass = std.mem.zeroes(RenderPass),
+    attachmentCount: u32 = std.mem.zeroes(u32),
+    pAttachments: [*c]const ImageView = std.mem.zeroes([*c]const ImageView),
+    width: u32 = std.mem.zeroes(u32),
+    height: u32 = std.mem.zeroes(u32),
+    layers: u32 = std.mem.zeroes(u32),
+};
 
 // Functions
 pub const createInstance = f("vkCreateInstance", fn (create_info: *const InstanceCreateInfo, allocator: ?*const AllocationCallbacks, instance: *Instance) callconv(.C) Result);
@@ -295,6 +314,8 @@ pub const createRenderPass = f("vkCreateRenderPass", fn (device: Device, create_
 pub const destroyRenderPass = f("vkDestroyRenderPass", fn (device: Device, render_pass: RenderPass, allocator: ?*AllocationCallbacks) callconv(.C) void);
 pub const createGraphicsPipelines = f("vkCreateGraphicsPipelines", fn (device: Device, cache: c.VkPipelineCache, create_info_count: u32, create_infos: [*]const GraphicsPiplineCreateInfo, allocator: ?*AllocationCallbacks, pipelines: *Pipeline) callconv(.C) Result);
 pub const destroyPipeline = f("vkDestroyPipeline", fn (device: Device, pipeline: Pipeline, allocator: ?*AllocationCallbacks) callconv(.C) void);
+pub const createFramebuffer = f("vkCreateFramebuffer", fn (device: Device, create_info: *const FramebufferCreateInfo, allocator: ?*AllocationCallbacks, framebuffer: *Framebuffer) callconv(.C) Result);
+pub const destroyFramebuffer = f("vkDestroyFramebuffer", fn (device: Device, framebuffer: Framebuffer, allocator: ?*AllocationCallbacks) callconv(.C) void);
 
 // Macros
 pub const MAKE_VERSION = c.VK_MAKE_VERSION;
@@ -319,3 +340,4 @@ const AttachmentLoadOp = self.AttachmentLoadOp;
 const AttachmentStoreOp = self.AttachmentStoreOp;
 const ImageLayout = self.ImageLayout;
 const PipelineBindPoint = self.PipelineBindPoint;
+const DynamicState = self.DynamicState;
