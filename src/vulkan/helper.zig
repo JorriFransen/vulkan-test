@@ -27,6 +27,7 @@ var device: vk.Device = null;
 var graphics_que: vk.Queue = null;
 var present_que: vk.Queue = null;
 var swapchain: SwapchainData = undefined;
+var render_pass: vk.RenderPass = undefined;
 var pipeline_layout: vk.PipelineLayout = undefined;
 var debug_messenger: vke.DebugUtilsMessenger = undefined;
 
@@ -92,11 +93,13 @@ pub fn initSystem(window: *const Window) !void {
 
     swapchain = try createSwapchain(window, &device_info);
 
+    try createRenderPass();
     try createGraphicsPipeline();
 }
 
 pub fn deinitSystem() void {
     vk.destroyPipelineLayout(device, pipeline_layout, null);
+    vk.destroyRenderPass(device, render_pass, null);
     swapchain.deinit(alloc.gpa);
     vk.destroyDevice(device, null);
     vk.destroySurfaceKHR(instance, surface, null);
@@ -581,6 +584,42 @@ pub fn createSwapchain(window: *const Window, info: *const PDevInfo) !SwapchainD
         .image_format = info.swapchain_info.surface_format.format,
         .extent = extent,
     };
+}
+
+fn createRenderPass() !void {
+    const color_attachment = vk.AttachmentDescription{
+        .format = swapchain.image_format,
+        .samples = vk.sample_count_flag_bits.@"1_BIT",
+        .loadOp = .CLEAR,
+        .storeOp = .STORE,
+        .stencilLoadOp = .DONT_CARE,
+        .stencilStoreOp = .DONT_CARE,
+        .initialLayout = .UNDEFINED,
+        .finalLayout = .PRESENT_SRC_KHR,
+    };
+
+    const color_attachment_ref = vk.AttachmentReference{
+        .attachment = 0,
+        .layout = .COLOR_ATTACHMENT_OPTIMAL,
+    };
+
+    const subpass = vk.SubpassDescription{
+        .pipelineBindPoint = .GRAPHICS,
+        .colorAttachmentCount = 1,
+        .pColorAttachments = &color_attachment_ref,
+    };
+
+    const render_pass_create_info = vk.RenderPassCreateInfo{
+        .sType = vk.structure_type.RENDER_PASS_CREATE_INFO,
+        .attachmentCount = 1,
+        .pAttachments = &color_attachment,
+        .subpassCount = 1,
+        .pSubpasses = &subpass,
+    };
+
+    if (vk.createRenderPass(device, &render_pass_create_info, null, &render_pass) != vk.SUCCESS) {
+        return error.CreateRenderPassFailed;
+    }
 }
 
 fn createGraphicsPipeline() !void {

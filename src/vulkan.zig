@@ -60,6 +60,7 @@ pub const Image_T = opaque {};
 pub const ImageView_T = opaque {};
 pub const ShaderModule_T = opaque {};
 pub const PipelineLayout_T = opaque {};
+pub const RenderPass_T = opaque {};
 pub const Instance = ?*Instance_T;
 pub const SurfaceKHR = ?*SurfaceKHR_T;
 pub const PhysicalDevice = ?*PhysicalDevice_T;
@@ -70,6 +71,7 @@ pub const Image = ?*Image_T;
 pub const ImageView = ?*ImageView_T;
 pub const ShaderModule = ?*ShaderModule_T;
 pub const PipelineLayout = ?*PipelineLayout_T;
+pub const RenderPass = ?*RenderPass_T;
 
 // Structs
 pub const ApplicationInfo = c.VkApplicationInfo;
@@ -196,6 +198,44 @@ pub const PipelineColorBlendStateCreateInfo = extern struct {
     blendConstants: [4]f32 = std.mem.zeroes([4]f32),
 };
 pub const PipelineLayoutCreateInfo = c.VkPipelineLayoutCreateInfo;
+pub const AttachmentDescription = extern struct {
+    flags: c.VkAttachmentDescriptionFlags = std.mem.zeroes(c.VkAttachmentDescriptionFlags),
+    format: Format = std.mem.zeroes(Format),
+    samples: c.VkSampleCountFlagBits = std.mem.zeroes(c.VkSampleCountFlagBits),
+    loadOp: AttachmentLoadOp = std.mem.zeroes(AttachmentLoadOp),
+    storeOp: AttachmentStoreOp = std.mem.zeroes(AttachmentStoreOp),
+    stencilLoadOp: AttachmentLoadOp = std.mem.zeroes(AttachmentLoadOp),
+    stencilStoreOp: AttachmentStoreOp = std.mem.zeroes(AttachmentStoreOp),
+    initialLayout: ImageLayout = std.mem.zeroes(ImageLayout),
+    finalLayout: ImageLayout = std.mem.zeroes(ImageLayout),
+};
+pub const AttachmentReference = extern struct {
+    attachment: u32 = std.mem.zeroes(u32),
+    layout: ImageLayout = std.mem.zeroes(ImageLayout),
+};
+pub const SubpassDescription = extern struct {
+    flags: c.VkSubpassDescriptionFlags = std.mem.zeroes(c.VkSubpassDescriptionFlags),
+    pipelineBindPoint: PipelineBindPoint = std.mem.zeroes(PipelineBindPoint),
+    inputAttachmentCount: u32 = std.mem.zeroes(u32),
+    pInputAttachments: [*c]const c.VkAttachmentReference = std.mem.zeroes([*c]const c.VkAttachmentReference),
+    colorAttachmentCount: u32 = std.mem.zeroes(u32),
+    pColorAttachments: [*c]const AttachmentReference = std.mem.zeroes([*c]const AttachmentReference),
+    pResolveAttachments: [*c]const c.VkAttachmentReference = std.mem.zeroes([*c]const c.VkAttachmentReference),
+    pDepthStencilAttachment: [*c]const c.VkAttachmentReference = std.mem.zeroes([*c]const c.VkAttachmentReference),
+    preserveAttachmentCount: u32 = std.mem.zeroes(u32),
+    pPreserveAttachments: [*c]const u32 = std.mem.zeroes([*c]const u32),
+};
+pub const RenderPassCreateInfo = extern struct {
+    sType: c.VkStructureType = std.mem.zeroes(c.VkStructureType),
+    pNext: ?*const anyopaque = std.mem.zeroes(?*const anyopaque),
+    flags: c.VkRenderPassCreateFlags = std.mem.zeroes(c.VkRenderPassCreateFlags),
+    attachmentCount: u32 = std.mem.zeroes(u32),
+    pAttachments: [*c]const AttachmentDescription = std.mem.zeroes([*c]const AttachmentDescription),
+    subpassCount: u32 = std.mem.zeroes(u32),
+    pSubpasses: [*c]const SubpassDescription = std.mem.zeroes([*c]const SubpassDescription),
+    dependencyCount: u32 = std.mem.zeroes(u32),
+    pDependencies: [*c]const c.VkSubpassDependency = std.mem.zeroes([*c]const c.VkSubpassDependency),
+};
 
 // Functions
 pub const createInstance = f("vkCreateInstance", fn (create_info: *const InstanceCreateInfo, allocator: ?*const AllocationCallbacks, instance: *Instance) callconv(.C) Result);
@@ -228,6 +268,8 @@ pub const createShaderModule = f("vkCreateShaderModule", fn (device: Device, cre
 pub const destroyShaderModule = f("vkDestroyShaderModule", fn (device: Device, shader_module: ShaderModule, allocator: ?*AllocationCallbacks) callconv(.C) void);
 pub const createPipelineLayout = f("vkCreatePipelineLayout", fn (device: Device, create_info: *const PipelineLayoutCreateInfo, allocator: ?*AllocationCallbacks, pipeline_layout: *PipelineLayout) callconv(.C) Result);
 pub const destroyPipelineLayout = f("vkDestroyPipelineLayout", fn (device: Device, pipeline_layout: PipelineLayout, allocator: ?*AllocationCallbacks) callconv(.C) void);
+pub const createRenderPass = f("vkCreateRenderPass", fn (device: Device, create_info: *const RenderPassCreateInfo, allocator: ?*AllocationCallbacks, render_pass: *RenderPass) callconv(.C) Result);
+pub const destroyRenderPass = f("vkDestroyRenderPass", fn (device: Device, render_pass: RenderPass, allocator: ?*AllocationCallbacks) callconv(.C) void);
 
 // Macros
 pub const MAKE_VERSION = c.VK_MAKE_VERSION;
@@ -248,3 +290,7 @@ const ColorComponentFlags = self.ColorComponentFlags;
 const BlendFactor = self.BlendFactor;
 const BlendOp = self.BlendOp;
 const LogicOp = self.LogicOp;
+const AttachmentLoadOp = self.AttachmentLoadOp;
+const AttachmentStoreOp = self.AttachmentStoreOp;
+const ImageLayout = self.ImageLayout;
+const PipelineBindPoint = self.PipelineBindPoint;
