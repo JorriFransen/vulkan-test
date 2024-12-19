@@ -5,7 +5,7 @@ const assert = std.debug.assert;
 const f = @import("externFn").externFn;
 
 const c = @import("platform").c;
-pub const renderer = @import("renderer.zig");
+pub const Renderer = @import("renderer.zig");
 
 pub const loader = struct {
     pub const debug_utils = @import("ext_debug_utils.zig");

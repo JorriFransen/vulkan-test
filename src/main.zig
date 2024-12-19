@@ -11,7 +11,7 @@ const alloc = @import("alloc");
 const platform = @import("platform");
 const Window = platform.Window;
 
-const renderer = @import("vulkan").renderer;
+const Renderer = @import("vulkan").Renderer;
 
 const options = @import("options");
 const flags = @import("flags");
@@ -51,8 +51,8 @@ pub fn vMain() !u8 {
     try window.create("Vulkan Test");
     defer window.close();
 
-    try renderer.initSystem(&window);
-    defer renderer.deinitSystem();
+    const renderer = try Renderer.init(&window);
+    defer renderer.deinit();
 
     var width: i32 = undefined;
     var height: i32 = undefined;
@@ -66,7 +66,7 @@ pub fn vMain() !u8 {
             window.requestClose();
         }
 
-        try renderer.drawFrame();
+        renderer.drawFrame();
     }
 
     return 0;

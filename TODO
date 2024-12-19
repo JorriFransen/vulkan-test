@@ -1,0 +1,2 @@
+- Specify window dimensions
+  - Handle dpi (wayland/win32)
