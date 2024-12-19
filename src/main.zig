@@ -70,6 +70,8 @@ pub fn vMain() !u8 {
     }
 
     return 0;
+    // try fixenum(@import("vulkan").StructureType);
+    // return 0;
 }
 
 pub fn main() !u8 {
@@ -77,3 +79,19 @@ pub fn main() !u8 {
     alloc.deinit();
     return result;
 }
+
+// const fixme =
+// ;
+// fn fixenum(comptime ETYPE: type) !void {
+//     var it = std.mem.splitScalar(u8, fixme, '\n');
+//
+//     while (it.next()) |line| {
+//         var line_it = std.mem.splitScalar(u8, line, '=');
+//         const name = line_it.next().?;
+//         const val_str = line_it.next().?;
+//         const n = try std.fmt.parseInt(c_int, val_str, 10);
+//         const tag: ETYPE = @enumFromInt(n);
+//
+//         std.debug.print("pub const {s} = @This().{s};\n", .{ name, @tagName(tag) });
+//     }
+// }
