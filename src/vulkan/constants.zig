@@ -774,12 +774,8 @@ pub const PipelineStageFlags = packed struct(c_int) {
     FRAGMENT_DENSITY_PROCESS_EXT: u1 = 0,
     TRANSFORM_FEEDBACK_EXT: u1 = 0,
     ACCELERATION_STRUCTURE_BUILD_KHR: u1 = 0,
-    __reserved_27__: u1 = 0,
-    __reserved_28__: u1 = 0,
-    __reserved_29__: u1 = 0,
-    __reserved_30__: u1 = 0,
-    __reserved_31__: u1 = 0,
-    __reserved_32__: u1 = 0,
+
+    __reserved__: u6 = 0,
 
     pub const NONE: @This() = @intCast(0);
     pub const SHADING_RATE_IMAGE_BIT_NV: @This() = @intCast(4194304);
@@ -827,6 +823,25 @@ pub const access_flags = struct {
     pub const NONE_KHR: c_int = 0;
     pub const COMMAND_PREPROCESS_READ_BIT_EXT: c_int = 131072;
     pub const COMMAND_PREPROCESS_WRITE_BIT_EXT: c_int = 262144;
+};
+
+pub const DebugUtilsMessageSeverityFlagsEXT = packed struct(c_int) {
+    VERBOSE: u1 = 0,
+    __reserved_1_3_: u3 = 0,
+    INFO: u1 = 0,
+    __reserved_5_7_: u3 = 0,
+    WARNING: u1 = 0,
+    __reserved_9_11_: u3 = 0,
+    ERROR: u1 = 0,
+    reserved_13_31_: u19 = 0,
+};
+
+pub const DebugUtilsMessageTypeFlagsEXT = packed struct(c_int) {
+    GENERAL: u1 = 0,
+    VALIDATION: u1 = 0,
+    PERFORMANCE: u1 = 0,
+    DEVICE_ADDRESS_BINDING: u1 = 0,
+    __reserved__: u28 = 0,
 };
 
 pub const structure_type = struct {

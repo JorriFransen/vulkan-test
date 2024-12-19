@@ -9,7 +9,7 @@ const platform = @import("platform");
 const Window = platform.Window;
 const vk = @import("vulkan");
 const vke = vk.extensions;
-const vkd = vk.loader.debug_utils;
+const vkl = vk.loader;
 
 const vlog = std.log.scoped(.vulkan);
 const dlog = vlog.debug;
@@ -18,7 +18,8 @@ const ilog = vlog.info;
 
 const debug = builtin.mode == .Debug;
 const debug_verbose = debug and options.vulkan_verbose;
-const is_mac = builtin.target.os.tag == .macos;
+const is_mac = true;
+// const is_mac = builtin.target.os.tag == .macos;
 
 const Renderer = @This();
 
@@ -37,7 +38,7 @@ command_buffer: vk.CommandBuffer = null,
 image_available_semaphore: vk.Semaphore = null,
 render_finished_semaphore: vk.Semaphore = null,
 in_flight_fence: vk.Fence = null,
-debug_messenger: vke.DebugUtilsMessenger = null,
+debug_messenger: vk.DebugUtilsMessengerEXT = null,
 
 const PDevInfo = struct {
     score: u32,
@@ -87,11 +88,11 @@ const validation_layers: []const [*:0]const u8 = if (debug) &.{
 } else &.{};
 
 const mac_instance_extensions: []const [*:0]const u8 = if (is_mac) &.{
-    vk.KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME,
+    vkl.portability_enumeration.name,
 } else &.{};
 
 const debug_instance_extensions: []const [*:0]const u8 = if (debug) &.{
-    vke.EXT_DEBUG_UTILS_EXTENSION_NAME,
+    vkl.debug_utils.name,
 } else &.{};
 
 const instance_extensions = mac_instance_extensions ++ debug_instance_extensions;
@@ -102,6 +103,7 @@ const required_device_extensions: []const [*:0]const u8 = &.{
 
 pub fn init(window: *const Window) !Renderer {
     const instance = try createInstance(window);
+    const debug_messenger = createDebugMessenger(instance);
     const surface = try window.createVulkanSurface(instance);
     const device_info = try choosePhysicalDevice(instance, surface);
 
@@ -109,6 +111,7 @@ pub fn init(window: *const Window) !Renderer {
         .instance = instance,
         .surface = surface,
         .device_info = device_info,
+        .debug_messenger = debug_messenger,
     };
 
     try result.createLogicalDevice();
@@ -229,10 +232,10 @@ fn createInstance(window: *const Window) !vk.Instance {
         }
     }
 
-    const debug_messenger_create_info = vke.DebugUtilsMessengerCreateInfo{
-        .sType = vke.structure_type.DEBUG_UTILS_MESSENGER_CREATE_INFO,
-        .messageSeverity = vke.DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT | vke.DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT | vke.DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT,
-        .messageType = vke.DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT | vke.DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT | vke.DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT,
+    const debug_messenger_create_info = vk.DebugUtilsMessengerCreateInfoEXT{
+        .sType = vk.structure_type.DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+        .messageSeverity = .{ .VERBOSE = 1, .WARNING = 1, .ERROR = 1 },
+        .messageType = .{ .GENERAL = 1, .VALIDATION = 1, .PERFORMANCE = 1 },
         .pfnUserCallback = vk_debug_callback,
         .pUserData = null,
     };
@@ -264,17 +267,22 @@ fn createInstance(window: *const Window) !vk.Instance {
     return instance;
 }
 
-fn createDebugMessenger(this: *const @This()) void {
+fn createDebugMessenger(instance: vk.Instance) vk.DebugUtilsMessengerEXT {
     if (debug) {
-        const debug_messenger_create_info = vke.DebugUtilsMessengerCreateInfo{
-            .sType = vke.structure_type.DEBUG_UTILS_MESSENGER_CREATE_INFO,
-            .messageSeverity = vke.DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT | vke.DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT | vke.DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT,
-            .messageType = vke.DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT | vke.DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT | vke.DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT,
+        const debug_messenger_create_info = vk.DebugUtilsMessengerCreateInfoEXT{
+            .sType = vk.structure_type.DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+            .messageSeverity = .{ .VERBOSE = 1, .WARNING = 1, .ERROR = 1 },
+            .messageType = .{ .GENERAL = 1, .VALIDATION = 1, .PERFORMANCE = 1 },
             .pfnUserCallback = vk_debug_callback,
             .pUserData = null,
         };
-        _ = vke.createDebugUtilsMessenger(this.instance, &debug_messenger_create_info, null, &this.debug_messenger);
+
+        var result: vk.DebugUtilsMessengerEXT = null;
+        _ = vke.createDebugUtilsMessenger(instance, &debug_messenger_create_info, null, &result);
+        return result;
     }
+
+    return null;
 }
 
 fn choosePhysicalDevice(instance: vk.Instance, surface: vk.SurfaceKHR) !PDevInfo {
@@ -999,24 +1007,25 @@ fn createShaderModule(this: *const @This(), code: []const u8) !vk.ShaderModule {
     return shader_module;
 }
 
-fn vk_debug_callback(message_severity: vke.DebugUtilsMessageSeverityFlagBits, message_type: vke.DebugUtilsMessageTypeFlags, _callback_data: [*c]const vke.DebugUtilsMessengerCallbackData, user_data: ?*anyopaque) callconv(.C) vk.Bool32 {
+fn vk_debug_callback(message_severity: vk.DebugUtilsMessageSeverityFlagsEXT, message_type: vk.DebugUtilsMessageTypeFlagsEXT, _callback_data: [*c]const vk.DebugUtilsMessengerCallbackData, user_data: ?*anyopaque) callconv(.C) vk.Bool32 {
     _ = message_type;
     _ = user_data;
 
     const log = std.log.scoped(.@"vulkan message");
-    const callback_data: *const vke.DebugUtilsMessengerCallbackData = _callback_data;
+    const callback_data: *const vk.DebugUtilsMessengerCallbackData = _callback_data;
 
     const fmt = "{s}";
     const args = .{callback_data.pMessage};
 
-    switch (message_severity) {
-        vke.DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT => if (debug_verbose) log.debug(fmt, args),
-        vke.DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT => log.warn(fmt, args),
-        vke.DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT => log.err(fmt, args),
-        else => {
-            elog("Invalid message severity '{}'", .{message_severity});
-            log.err(fmt, args);
-        },
+    if (message_severity.VERBOSE == 1) {
+        if (debug_verbose) log.debug(fmt, args);
+    } else if (message_severity.WARNING == 1) {
+        log.warn(fmt, args);
+    } else if (message_severity.ERROR == 1) {
+        log.err(fmt, args);
+    } else {
+        elog("Invalid message severity '{}'", .{message_severity});
+        log.err(fmt, args);
     }
 
     return vk.FALSE;
