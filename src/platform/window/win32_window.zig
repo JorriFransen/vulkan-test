@@ -9,10 +9,12 @@ const ilog = log.info;
 
 const vk = @import("vulkan");
 
+const root = @import("root");
 const platform = @import("platform");
 const win32 = platform.windows;
 
 pub fn initSystem() !void {
+    assert(root.cmd_line_options.glfw_window_api == .win32);
     // if (win32.AttachConsole(win32.ATTACH_PARENT_PROCESS) == 0) {
     //     if (win32.CreateFileW(W("nul"), win32.GENERIC_READ | win32.GENERIC_WRITE, 0, null, win32.OPEN_EXISTING, win32.FILE_ATTRIBUTE_NORMAL, null)) |nul_handle| {
     //         _ = win32.SetStdHandle(win32.STD_INPUT_HANDLE, nul_handle);

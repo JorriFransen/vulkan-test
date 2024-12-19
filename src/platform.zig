@@ -14,3 +14,10 @@ else
 pub const InputState = struct {
     escape_pressed: bool = false,
 };
+
+pub const WindowApi = enum {
+    default,
+    win32,
+    wayland,
+    x11,
+};

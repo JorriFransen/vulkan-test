@@ -20,8 +20,8 @@ pub const x = if (builtin.os.tag == .linux) struct {
 };
 
 pub fn initSystem() !void {
-    const wayland_support = glfw.glfwPlatformSupported(.WAYLAND) == 1;
-    const x11_support = glfw.glfwPlatformSupported(.X11) == 1;
+    const wayland_support = glfw.glfwPlatformSupported(.WAYLAND) == glfw.TRUE;
+    const x11_support = glfw.glfwPlatformSupported(.X11) == glfw.TRUE;
 
     dlog("glfw wayland support: {}", .{wayland_support});
     dlog("glfw x11 support: {}", .{x11_support});
@@ -33,6 +33,10 @@ pub fn initSystem() !void {
                 api = .wayland;
             } else api = .x11;
         },
+        .win32 => {
+            elog("Invalid glfw window api: {s}", .{@tagName(api)});
+            return error.InvalidGLFWWindowApi;
+        },
         .wayland => assert(wayland_support),
         .x11 => assert(x11_support),
     }
@@ -41,7 +45,9 @@ pub fn initSystem() !void {
         else => {
             @panic("Expected .wayland or .x11 at this point!");
         },
+        .win32 => glfw.Platform.WIN32,
         .wayland => glfw.Platform.WAYLAND,
+        // .wayland => glfw.Platform.X11,
         .x11 => glfw.Platform.X11,
     };
 
@@ -73,7 +79,7 @@ pub fn create(this: *@This(), title: [:0]const u8) !void {
 
     var handle: *glfw.GLFWwindow = undefined;
 
-    if (glfw.glfwCreateWindow(500, 500, title, null, null)) |h| {
+    if (glfw.glfwCreateWindow(800, 600, title, null, null)) |h| {
         handle = h;
     } else {
         var cstr: [*:0]const u8 = undefined;

@@ -4,6 +4,9 @@ pub const PLATFORM = 0x00050003;
 
 pub const NO_API: c_int = 0;
 
+pub const TRUE = 1;
+pub const FALSE = 0;
+
 const c = @import("platform").c;
 const vk = @import("vulkan");
 

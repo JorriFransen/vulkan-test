@@ -288,11 +288,10 @@ pub const RenderPassBeginInfo = extern struct {
     pNext: ?*const anyopaque = null,
     renderPass: RenderPass = null,
     framebuffer: Framebuffer = null,
-    renderArea: c.VkRect2D = std.mem.zeroes(c.VkRect2D),
+    renderArea: Rect2D = std.mem.zeroes(Rect2D),
     clearValueCount: u32 = 0,
-    pClearValues: [*c]const c.VkClearValue = null,
+    pClearValues: ?[*]const ClearValue = null,
 };
-pub const ClearValue = c.VkClearValue;
 pub const SemaphoreCreateInfo = c.VkSemaphoreCreateInfo;
 pub const FenceCreateInfo = extern struct {
     sType: c.VkStructureType = std.mem.zeroes(c.VkStructureType),
@@ -328,6 +327,10 @@ pub const PresentInfoKHR = extern struct {
     pSwapchains: [*]const SwapchainKHR,
     pImageIndices: [*]const u32,
     pResults: ?[*]Result,
+};
+pub const ClearValue = extern union {
+    color: c.VkClearColorValue,
+    depthStencil: c.VkClearDepthStencilValue,
 };
 
 // Functions

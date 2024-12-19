@@ -20,14 +20,7 @@ pub var cmd_line_options: CmdLineOptions = undefined;
 const CmdLineOptions = struct {
     pub const description = "Testing vulkan api";
 
-    glfw_window_api: enum {
-        default,
-        wayland,
-        x11,
-        pub const descriptions = .{
-            .default = "Use wayland if available, fallback to x11",
-        };
-    } = .default,
+    glfw_window_api: platform.WindowApi = .default,
 
     pub const descriptions = .{ .glfw_window_api = "Specify the underlying api glfw should use" };
 };

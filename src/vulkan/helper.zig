@@ -101,12 +101,9 @@ const required_device_extensions: []const [*:0]const u8 = &.{
 pub fn initSystem(window: *const Window) !void {
     try createInstance(window);
     surface = try window.createVulkanSurface(instance);
-
     device_info = try choosePhysicalDevice();
     try createLogicalDevice(&device_info);
-
     swapchain = try createSwapchain(window, &device_info);
-
     try createRenderPass();
     try createGraphicsPipeline();
     try createFrameBuffers();
@@ -657,10 +654,10 @@ fn createRenderPass() !void {
 }
 
 fn createGraphicsPipeline() !void {
-    const vert_shader_module = try createShaderModule(&builtin_shaders.@"triangle.vert");
+    const vert_shader_module = try createShaderModule(&builtin_shaders.@"color_triangle.vert");
     defer vk.destroyShaderModule(device, vert_shader_module, null);
 
-    const frag_shader_module = try createShaderModule(&builtin_shaders.@"triangle.frag");
+    const frag_shader_module = try createShaderModule(&builtin_shaders.@"color_triangle.frag");
     defer vk.destroyShaderModule(device, frag_shader_module, null);
 
     const shader_stages = [_]vk.PipelineShaderStageCreateInfo{
@@ -866,6 +863,8 @@ fn recordCommandBuffer(cmd_buf: vk.CommandBuffer, image_index: u32) !void {
         return error.BeginCommandBufferFailed;
     }
 
+    const clear_values = [_]vk.ClearValue{.{ .color = .{ .float32 = .{ 0, 0, 0, 1 } } }};
+
     const render_pass_info = vk.RenderPassBeginInfo{
         .sType = vk.structure_type.RENDER_PASS_BEGIN_INFO,
         .renderPass = render_pass,
@@ -875,7 +874,7 @@ fn recordCommandBuffer(cmd_buf: vk.CommandBuffer, image_index: u32) !void {
             .extent = swapchain.extent,
         },
         .clearValueCount = 1,
-        .pClearValues = &.{ .color = .{ .float32 = .{ 0, 1, 0, 1 } } },
+        .pClearValues = &clear_values,
     };
 
     vk.cmdBeginRenderPass(cmd_buf, &render_pass_info, .INLINE);
