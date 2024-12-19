@@ -72,6 +72,8 @@ pub fn vMain() !u8 {
         if (window.input.escape_pressed) {
             window.requestClose();
         }
+
+        try vkh.drawFrame();
     }
 
     return 0;

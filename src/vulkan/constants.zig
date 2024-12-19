@@ -22,6 +22,8 @@ pub const IMAGE_VIEW_TYPE_2D = c.VK_IMAGE_VIEW_TYPE_2D;
 
 pub const COMPONENT_SWIZZLE_IDENTITY = c.VK_COMPONENT_SWIZZLE_IDENTITY;
 
+pub const SUBPASS_EXTERNAL = ~@as(c_uint, 0);
+
 // Enums/Flags
 pub const PhysicalDeviceType = enum(c_int) {
     OTHER = 0,
@@ -709,6 +711,122 @@ pub const PipelineBindPoint = enum(c_int) {
     SUBPASS_SHADING_HUAWEI = 1000369003,
     // RAY_TRACING_NV = 1000165000,
     MAX_ENUM = 2147483647,
+};
+
+pub const CommandPoolCreateFlags = packed struct(c_int) {
+    TRANSIENT: u1 = 0,
+    RESET_COMMAND_BUFFER: u1 = 0,
+    PROTECTED: u1 = 0,
+    __reserved__: u29 = 0,
+};
+
+pub const CommandBufferLevel = enum(c_int) {
+    PRIMARY = 0,
+    SECONDARY = 1,
+};
+
+pub const SubpassContents = enum(c_int) {
+    INLINE = 0,
+    SECONDARY_COMMAND_BUFFERS = 1,
+    INLINE_AND_SECONDARY_COMMAND_BUFFERS_KHR = 1000451000,
+    // INLINE_AND_SECONDARY_COMMAND_BUFFERS_EXT= 1000451000,
+    MAX_ENUM = 2147483647,
+};
+
+pub const FenceCreateFlags = packed struct(c_int) {
+    SIGNALED: u1 = 0,
+    __reserved__: u31 = 0,
+};
+
+pub const CommandBufferResetFlags = packed struct(c_int) {
+    STENCIL_FACE_FRONT: u1 = 0,
+    STENCIL_FACE_BACK: u1 = 0,
+    __reserved__: u30 = 0,
+
+    pub const STENCIL_FACE_FRONT_AND_BACK = @This(){ .STENCIL_FACE_FRONT = 1, .STENCIL_FACE_BACK = 1 };
+    pub const STENCIL_FRONT_AND_BACK = @This(){ .STENCIL_FACE_FRONT = 1, .STENCIL_FACE_BACK = 1 };
+};
+
+pub const PipelineStageFlags = packed struct(c_int) {
+    TOP_OF_PIPE: u1 = 0,
+    DRAW_INDIRECT: u1 = 0,
+    VERTEX_INPUT: u1 = 0,
+    VERTEX_SHADER: u1 = 0,
+    TESSELLATION_CONTROL_SHADER: u1 = 0,
+    TESSELLATION_EVALUATION_SHADER: u1 = 0,
+    GEOMETRY_SHADER: u1 = 0,
+    FRAGMENT_SHADER: u1 = 0,
+    EARLY_FRAGMENT_TESTS: u1 = 0,
+    LATE_FRAGMENT_TESTS: u1 = 0,
+    COLOR_ATTACHMENT_OUTPUT: u1 = 0,
+    COMPUTE_SHADER: u1 = 0,
+    TRANSFER: u1 = 0,
+    BOTTOM_OF_PIPE: u1 = 0,
+    HOST: u1 = 0,
+    ALL_GRAPHICS: u1 = 0,
+    ALL_COMMANDS: u1 = 0,
+    COMMAND_PREPROCESS_NV: u1 = 0,
+    CONDITIONAL_RENDERING_EXT: u1 = 0,
+    TASK_SHADER_EXT: u1 = 0,
+    MESH_SHADER_EXT: u1 = 0,
+    RAY_TRACING_SHADER_KHR: u1 = 0,
+    FRAGMENT_SHADING_RATE_ATTACHMENT_KHR: u1 = 0,
+    FRAGMENT_DENSITY_PROCESS_EXT: u1 = 0,
+    TRANSFORM_FEEDBACK_EXT: u1 = 0,
+    ACCELERATION_STRUCTURE_BUILD_KHR: u1 = 0,
+    __reserved_27__: u1 = 0,
+    __reserved_28__: u1 = 0,
+    __reserved_29__: u1 = 0,
+    __reserved_30__: u1 = 0,
+    __reserved_31__: u1 = 0,
+    __reserved_32__: u1 = 0,
+
+    pub const NONE: @This() = @intCast(0);
+    pub const SHADING_RATE_IMAGE_BIT_NV: @This() = @intCast(4194304);
+    pub const RAY_TRACING_SHADER_BIT_NV: @This() = @intCast(2097152);
+    pub const ACCELERATION_STRUCTURE_BUILD_BIT_NV: @This() = @intCast(33554432);
+    pub const TASK_SHADER_BIT_NV: @This() = @intCast(524288);
+    pub const MESH_SHADER_BIT_NV: @This() = @intCast(1048576);
+    pub const NONE_KHR: @This() = @intCast(0);
+    pub const COMMAND_PREPROCESS_BIT_EXT: @This() = @intCast(131072);
+};
+
+pub const access_flags = struct {
+    pub const INDIRECT_COMMAND_READ_BIT: c_int = 1;
+    pub const INDEX_READ_BIT: c_int = 2;
+    pub const VERTEX_ATTRIBUTE_READ_BIT: c_int = 4;
+    pub const UNIFORM_READ_BIT: c_int = 8;
+    pub const INPUT_ATTACHMENT_READ_BIT: c_int = 16;
+    pub const SHADER_READ_BIT: c_int = 32;
+    pub const SHADER_WRITE_BIT: c_int = 64;
+    pub const COLOR_ATTACHMENT_READ_BIT: c_int = 128;
+    pub const COLOR_ATTACHMENT_WRITE_BIT: c_int = 256;
+    pub const DEPTH_STENCIL_ATTACHMENT_READ_BIT: c_int = 512;
+    pub const DEPTH_STENCIL_ATTACHMENT_WRITE_BIT: c_int = 1024;
+    pub const TRANSFER_READ_BIT: c_int = 2048;
+    pub const TRANSFER_WRITE_BIT: c_int = 4096;
+    pub const HOST_READ_BIT: c_int = 8192;
+    pub const HOST_WRITE_BIT: c_int = 16384;
+    pub const MEMORY_READ_BIT: c_int = 32768;
+    pub const MEMORY_WRITE_BIT: c_int = 65536;
+    pub const NONE: c_int = 0;
+    pub const TRANSFORM_FEEDBACK_WRITE_BIT_EXT: c_int = 33554432;
+    pub const TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT: c_int = 67108864;
+    pub const TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT: c_int = 134217728;
+    pub const CONDITIONAL_RENDERING_READ_BIT_EXT: c_int = 1048576;
+    pub const COLOR_ATTACHMENT_READ_NONCOHERENT_BIT_EXT: c_int = 524288;
+    pub const ACCELERATION_STRUCTURE_READ_BIT_KHR: c_int = 2097152;
+    pub const ACCELERATION_STRUCTURE_WRITE_BIT_KHR: c_int = 4194304;
+    pub const FRAGMENT_DENSITY_MAP_READ_BIT_EXT: c_int = 16777216;
+    pub const FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR: c_int = 8388608;
+    pub const COMMAND_PREPROCESS_READ_BIT_NV: c_int = 131072;
+    pub const COMMAND_PREPROCESS_WRITE_BIT_NV: c_int = 262144;
+    pub const SHADING_RATE_IMAGE_READ_BIT_NV: c_int = 8388608;
+    pub const ACCELERATION_STRUCTURE_READ_BIT_NV: c_int = 2097152;
+    pub const ACCELERATION_STRUCTURE_WRITE_BIT_NV: c_int = 4194304;
+    pub const NONE_KHR: c_int = 0;
+    pub const COMMAND_PREPROCESS_READ_BIT_EXT: c_int = 131072;
+    pub const COMMAND_PREPROCESS_WRITE_BIT_EXT: c_int = 262144;
 };
 
 pub const structure_type = struct {

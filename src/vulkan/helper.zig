@@ -20,18 +20,23 @@ const debug = builtin.mode == .Debug;
 const debug_verbose = debug and options.vulkan_verbose;
 const is_mac = builtin.target.os.tag == .macos;
 
-var instance: vk.Instance = undefined;
-var surface: vk.SurfaceKHR = undefined;
+var instance: vk.Instance = null;
+var surface: vk.SurfaceKHR = null;
 var physical_device: vk.PhysicalDevice = null;
 var device: vk.Device = null;
+var device_info: PDevInfo = undefined;
 var graphics_que: vk.Queue = null;
 var present_que: vk.Queue = null;
 var swapchain: SwapchainData = undefined;
-var render_pass: vk.RenderPass = undefined;
-var pipeline_layout: vk.PipelineLayout = undefined;
-var graphics_pipeline: vk.Pipeline = undefined;
-var swapchain_framebuffers: []vk.Framebuffer = undefined; // TODO: Move this to SwapchainData
-var debug_messenger: vke.DebugUtilsMessenger = undefined;
+var render_pass: vk.RenderPass = null;
+var pipeline_layout: vk.PipelineLayout = null;
+var graphics_pipeline: vk.Pipeline = null;
+var command_pool: vk.CommandPool = null;
+var command_buffer: vk.CommandBuffer = null;
+var image_available_semaphore: vk.Semaphore = null;
+var render_finished_semaphore: vk.Semaphore = null;
+var in_flight_fence: vk.Fence = null;
+var debug_messenger: vke.DebugUtilsMessenger = null;
 
 const PDevInfo = struct {
     score: u32,
@@ -60,7 +65,14 @@ const SwapchainData = struct {
     images: []vk.Image = std.mem.zeroes([]vk.Image),
     image_views: []vk.ImageView = std.mem.zeroes([]vk.ImageView),
 
+    framebuffers: []vk.Framebuffer = std.mem.zeroes([]vk.Framebuffer),
+
     pub fn deinit(this: *@This(), allocator: std.mem.Allocator) void {
+        for (this.framebuffers) |fb| {
+            vk.destroyFramebuffer(device, fb, null);
+        }
+        alloc.gpa.free(this.framebuffers);
+
         for (this.image_views) |v| vk.destroyImageView(device, v, null);
         allocator.free(this.image_views);
         allocator.free(this.images);
@@ -90,7 +102,7 @@ pub fn initSystem(window: *const Window) !void {
     try createInstance(window);
     surface = try window.createVulkanSurface(instance);
 
-    const device_info = try choosePhysicalDevice();
+    device_info = try choosePhysicalDevice();
     try createLogicalDevice(&device_info);
 
     swapchain = try createSwapchain(window, &device_info);
@@ -98,12 +110,17 @@ pub fn initSystem(window: *const Window) !void {
     try createRenderPass();
     try createGraphicsPipeline();
     try createFrameBuffers();
+    try createCommandPool();
+    try createCommandBuffer();
+    try createSyncObjects();
 }
 
 pub fn deinitSystem() void {
-    for (swapchain_framebuffers) |fb| vk.destroyFramebuffer(device, fb, null);
-
-    alloc.gpa.free(swapchain_framebuffers);
+    _ = vk.deviceWaitIdle(device);
+    vk.destroyFence(device, in_flight_fence, null);
+    vk.destroySemaphore(device, render_finished_semaphore, null);
+    vk.destroySemaphore(device, image_available_semaphore, null);
+    vk.destroyCommandPool(device, command_pool, null);
     vk.destroyPipeline(device, graphics_pipeline, null);
     vk.destroyPipelineLayout(device, pipeline_layout, null);
     vk.destroyRenderPass(device, render_pass, null);
@@ -616,12 +633,22 @@ fn createRenderPass() !void {
         .pColorAttachments = &color_attachment_refs,
     }};
 
+    const dependencies = [_]vk.SubpassDependency{.{
+        .srcSubpass = vk.SUBPASS_EXTERNAL,
+        .dstSubpass = 0,
+        .srcStageMask = .{ .COLOR_ATTACHMENT_OUTPUT = 1 },
+        .srcAccessMask = 0,
+        .dstStageMask = .{ .COLOR_ATTACHMENT_OUTPUT = 1 },
+        .dstAccessMask = vk.access_flags.COLOR_ATTACHMENT_WRITE_BIT,
+    }};
     const render_pass_create_info = vk.RenderPassCreateInfo{
         .sType = vk.structure_type.RENDER_PASS_CREATE_INFO,
         .attachmentCount = color_attachments.len,
         .pAttachments = &color_attachments,
         .subpassCount = subpasses.len,
         .pSubpasses = &subpasses,
+        .dependencyCount = 1,
+        .pDependencies = &dependencies,
     };
 
     if (vk.createRenderPass(device, &render_pass_create_info, null, &render_pass) != vk.SUCCESS) {
@@ -674,20 +701,6 @@ fn createGraphicsPipeline() !void {
         .sType = vk.structure_type.PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
         .topology = .TRIANGLE_LIST,
         .primitiveRestartEnable = vk.FALSE,
-    };
-
-    const viewport = vk.Viewport{
-        .x = 0,
-        .y = 0,
-        .width = @floatFromInt(swapchain.extent.width),
-        .height = @floatFromInt(swapchain.extent.height),
-        .minDepth = 0,
-        .maxDepth = 1,
-    };
-
-    const scissor = vk.Rect2D{
-        .offset = .{ .x = 0, .y = 0 },
-        .extent = swapchain.extent,
     };
 
     const viewport_create_info = vk.PipelineViewportStateCreateInfo{
@@ -752,7 +765,7 @@ fn createGraphicsPipeline() !void {
         return error.CreatePipelineLayoutFailed;
     }
 
-    const pipeline_create_infos = [_]vk.GraphicsPiplineCreateInfo{.{
+    const pipeline_create_infos = [_]vk.GraphicsPipelineCreateInfo{.{
         .sType = vk.structure_type.GRAPHICS_PIPELINE_CREATE_INFO,
         .stageCount = shader_stages.len,
         .pStages = &shader_stages,
@@ -774,31 +787,172 @@ fn createGraphicsPipeline() !void {
     if (vk.createGraphicsPipelines(device, null, pipeline_create_infos.len, &pipeline_create_infos, null, &graphics_pipeline) != vk.SUCCESS) {
         return error.CreateGraphicsPipelinesFailed;
     }
-
-    _ = scissor;
-    _ = viewport;
 }
 
 fn createFrameBuffers() !void {
-    swapchain_framebuffers = try alloc.gpa.alloc(vk.Framebuffer, swapchain.image_views.len);
+    swapchain.framebuffers = try alloc.gpa.alloc(vk.Framebuffer, swapchain.image_views.len);
 
-    for (swapchain.image_views, 0..) |iv, i| {
-        const attachments = [_]vk.ImageView{iv};
-
+    for (swapchain.image_views, swapchain.framebuffers) |*iv, *fb| {
         const framebuffer_create_info = vk.FramebufferCreateInfo{
             .sType = vk.structure_type.FRAMEBUFFER_CREATE_INFO,
             .renderPass = render_pass,
-            .attachmentCount = attachments.len,
-            .pAttachments = &attachments,
+            .attachmentCount = 1,
+            .pAttachments = iv,
             .width = swapchain.extent.width,
             .height = swapchain.extent.height,
             .layers = 1,
         };
 
-        if (vk.createFramebuffer(device, &framebuffer_create_info, null, &swapchain_framebuffers[i]) != vk.SUCCESS) {
+        if (vk.createFramebuffer(device, &framebuffer_create_info, null, fb) != vk.SUCCESS) {
             return error.CreateFramebufferFailed;
         }
     }
+}
+
+fn createCommandPool() !void {
+    const create_info = vk.CommandPoolCreateInfo{
+        .sType = vk.structure_type.COMMAND_POOL_CREATE_INFO,
+        .flags = .{ .RESET_COMMAND_BUFFER = 1 },
+        .queueFamilyIndex = device_info.queue_info.graphics_index,
+    };
+
+    if (vk.createCommandPool(device, &create_info, null, &command_pool) != vk.SUCCESS) {
+        return error.CreateCommandPoolFailed;
+    }
+}
+
+fn createCommandBuffer() !void {
+    const alloc_info = vk.CommandBufferAllocateInfo{
+        .sType = vk.structure_type.COMMAND_BUFFER_ALLOCATE_INFO,
+        .commandPool = command_pool,
+        .level = .PRIMARY,
+        .commandBufferCount = 1,
+    };
+
+    if (vk.allocateCommandBuffers(device, &alloc_info, &command_buffer) != vk.SUCCESS) {
+        return error.AllocateCommandBuffersFailed;
+    }
+}
+
+fn createSyncObjects() !void {
+    const sem_create_info = vk.SemaphoreCreateInfo{
+        .sType = vk.structure_type.SEMAPHORE_CREATE_INFO,
+    };
+
+    const fence_create_info = vk.FenceCreateInfo{
+        .sType = vk.structure_type.FENCE_CREATE_INFO,
+        .flags = .{ .SIGNALED = 1 },
+    };
+
+    if (vk.createSemaphore(device, &sem_create_info, null, &image_available_semaphore) != vk.SUCCESS or
+        vk.createSemaphore(device, &sem_create_info, null, &render_finished_semaphore) != vk.SUCCESS)
+    {
+        return error.CreateSemaphoreFailed;
+    }
+
+    if (vk.createFence(device, &fence_create_info, null, &in_flight_fence) != vk.SUCCESS) {
+        return error.CreateFenceFailed;
+    }
+}
+
+fn recordCommandBuffer(cmd_buf: vk.CommandBuffer, image_index: u32) !void {
+    const begin_info = vk.CommandBufferBeginInfo{
+        .sType = vk.structure_type.COMMAND_BUFFER_BEGIN_INFO,
+        .flags = 0,
+        .pInheritanceInfo = null,
+    };
+
+    if (vk.beginCommandBuffer(cmd_buf, &begin_info) != vk.SUCCESS) {
+        return error.BeginCommandBufferFailed;
+    }
+
+    const render_pass_info = vk.RenderPassBeginInfo{
+        .sType = vk.structure_type.RENDER_PASS_BEGIN_INFO,
+        .renderPass = render_pass,
+        .framebuffer = swapchain.framebuffers[image_index],
+        .renderArea = .{
+            .offset = .{ .x = 0, .y = 0 },
+            .extent = swapchain.extent,
+        },
+        .clearValueCount = 1,
+        .pClearValues = &.{ .color = .{ .float32 = .{ 0, 1, 0, 1 } } },
+    };
+
+    vk.cmdBeginRenderPass(cmd_buf, &render_pass_info, .INLINE);
+    vk.cmdBindPipeline(cmd_buf, .GRAPHICS, graphics_pipeline);
+
+    const viewport = vk.Viewport{
+        .x = 0,
+        .y = 0,
+        .width = @floatFromInt(swapchain.extent.width),
+        .height = @floatFromInt(swapchain.extent.height),
+        .minDepth = 0,
+        .maxDepth = 1,
+    };
+    vk.cmdSetViewport(cmd_buf, 0, 1, &viewport);
+
+    const scissor = vk.Rect2D{
+        .offset = .{ .x = 0, .y = 0 },
+        .extent = swapchain.extent,
+    };
+    vk.cmdSetScissor(cmd_buf, 0, 1, &scissor);
+
+    vk.cmdDraw(cmd_buf, 3, 1, 0, 0);
+
+    vk.cmdEndRenderPass(cmd_buf);
+
+    if (vk.endCommandBuffer(cmd_buf) != vk.SUCCESS) {
+        return error.EndCommandBufferFailed;
+    }
+}
+
+pub fn drawFrame() !void {
+    _ = vk.waitForFences(device, 1, @ptrCast(&in_flight_fence), vk.TRUE, std.math.maxInt(u64));
+    _ = vk.resetFences(device, 1, @ptrCast(&in_flight_fence));
+
+    var image_index: u32 = undefined;
+    if (vk.acquireNextImageKHR(device, swapchain.handle, std.math.maxInt(u64), image_available_semaphore, null, &image_index) != vk.SUCCESS) {
+        return error.AcquireNextImageKHRFailed;
+    }
+
+    _ = vk.resetCommandBuffer(command_buffer, .{});
+
+    try recordCommandBuffer(command_buffer, image_index);
+
+    const wait_semaphores = [_]vk.Semaphore{image_available_semaphore};
+    const wait_stages = [wait_semaphores.len]vk.PipelineStageFlags{.{ .COLOR_ATTACHMENT_OUTPUT = 1 }};
+    const command_buffers = [_]vk.CommandBuffer{command_buffer};
+    const signal_semaphores = [_]vk.Semaphore{render_finished_semaphore};
+
+    const submit_infos = [_]vk.SubmitInfo{.{
+        .sType = vk.structure_type.SUBMIT_INFO,
+        .waitSemaphoreCount = wait_semaphores.len,
+        .pWaitSemaphores = &wait_semaphores,
+        .pWaitDstStageMask = &wait_stages,
+        .commandBufferCount = command_buffers.len,
+        .pCommandBuffers = &command_buffers,
+        .signalSemaphoreCount = signal_semaphores.len,
+        .pSignalSemaphores = &signal_semaphores,
+    }};
+
+    if (vk.queueSubmit(graphics_que, submit_infos.len, &submit_infos, in_flight_fence) != vk.SUCCESS) {
+        return error.QueueSubmitFailed;
+    }
+
+    const swapchains = [_]vk.SwapchainKHR{swapchain.handle};
+    const image_indices = [swapchains.len]u32{image_index};
+
+    const present_info = vk.PresentInfoKHR{
+        .sType = vk.structure_type.PRESENT_INFO_KHR,
+        .waitSemaphoreCount = signal_semaphores.len,
+        .pWaitSemaphores = &signal_semaphores,
+        .swapchainCount = swapchains.len,
+        .pSwapchains = &swapchains,
+        .pImageIndices = &image_indices,
+        .pResults = null,
+    };
+
+    _ = vk.queuePresentKHR(present_que, &present_info);
 }
 
 fn createShaderModule(code: []const u8) !vk.ShaderModule {
