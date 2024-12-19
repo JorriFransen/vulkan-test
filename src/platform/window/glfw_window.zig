@@ -142,12 +142,15 @@ pub fn createVulkanSurface(this: *const @This(), instance: vk.Instance) !vk.Surf
     return surface;
 
     // var surface: vk.SurfaceKHR = undefined;
+    // dlog("createVulkanSurface()", .{});
     //
     // const display = glfw.glfwGetX11Display();
+    // dlog("Got x11 display!", .{});
     // const connection = x.getXCBConnection(display);
+    // dlog("Got xcb connection!", .{});
     //
     // const create_info = vk.XcbSurfaceCreateInfoKHR{
-    //     .sType = vk.Structure_Type.XCB_SURFACE_CREATE_INFO_KHR,
+    //     .sType = .XCB_SURFACE_CREATE_INFO_KHR,
     //     .connection = connection,
     //     .window = @intCast(glfw.glfwGetX11Window(this.handle)),
     // };
@@ -156,12 +159,12 @@ pub fn createVulkanSurface(this: *const @This(), instance: vk.Instance) !vk.Surf
     //     elog("glfwCreateWindowSurface failed!", .{});
     //     return error.Vulkan_Surface_Creation_Failed;
     // }
-
+    //
     // return surface;
 
     // var surface: vk.SurfaceKHR = undefined;
     // const create_info = vk.XlibSurfaceCreateInfoKHR{
-    //     .sType = vk.Structure_Type.XLIB_SURFACE_CREATE_INFO_KHR,
+    //     .sType = .XLIB_SURFACE_CREATE_INFO_KHR,
     //     .dpy = glfw.glfwGetX11Display(),
     //     .window = glfw.glfwGetX11Window(this.handle),
     // };

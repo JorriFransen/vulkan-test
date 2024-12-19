@@ -1,13 +1,50 @@
 const std = @import("std");
+
 const c = @import("platform").c;
 
 const s = @import("vulkan.zig");
 
-pub const ApplicationInfo = c.VkApplicationInfo;
-pub const ExtensionProperties = c.VkExtensionProperties;
-pub const LayerProperties = c.VkLayerProperties;
-pub const InstanceCreateInfo = c.VkInstanceCreateInfo;
-pub const AllocationCallbacks = c.VkAllocationCallbacks;
+pub const ApplicationInfo = extern struct {
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    pNext: ?*const anyopaque = null,
+    pApplicationName: [*:0]const u8,
+    applicationVersion: u32 = 0,
+    pEngineName: [*:0]const u8,
+    engineVersion: u32 = 0,
+    apiVersion: u32 = 0,
+};
+
+pub const ExtensionProperties = extern struct {
+    extensionName: [256]u8 = std.mem.zeroes([256]u8),
+    specVersion: u32 = 0,
+};
+
+pub const LayerProperties = extern struct {
+    layerName: [256]u8 = std.mem.zeroes([256]u8),
+    specVersion: u32 = 0,
+    implementationVersion: u32 = 0,
+    description: [256]u8 = std.mem.zeroes([256]u8),
+};
+
+pub const InstanceCreateInfo = extern struct {
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    pNext: ?*const anyopaque = null,
+    flags: c.VkInstanceCreateFlags = std.mem.zeroes(c.VkInstanceCreateFlags),
+    pApplicationInfo: [*c]const ApplicationInfo = std.mem.zeroes([*c]const ApplicationInfo),
+    enabledLayerCount: u32 = 0,
+    ppEnabledLayerNames: [*c]const [*c]const u8 = std.mem.zeroes([*c]const [*c]const u8),
+    enabledExtensionCount: u32 = 0,
+    ppEnabledExtensionNames: [*c]const [*c]const u8 = std.mem.zeroes([*c]const [*c]const u8),
+};
+
+pub const AllocationCallbacks = extern struct {
+    pUserData: ?*anyopaque = null,
+    pfnAllocation: c.PFN_vkAllocationFunction = std.mem.zeroes(c.PFN_vkAllocationFunction),
+    pfnReallocation: c.PFN_vkReallocationFunction = std.mem.zeroes(c.PFN_vkReallocationFunction),
+    pfnFree: c.PFN_vkFreeFunction = std.mem.zeroes(c.PFN_vkFreeFunction),
+    pfnInternalAllocation: c.PFN_vkInternalAllocationNotification = std.mem.zeroes(c.PFN_vkInternalAllocationNotification),
+    pfnInternalFree: c.PFN_vkInternalFreeNotification = std.mem.zeroes(c.PFN_vkInternalFreeNotification),
+};
 
 pub const PhysicalDeviceProperties = extern struct {
     apiVersion: u32 = 0,
@@ -21,7 +58,63 @@ pub const PhysicalDeviceProperties = extern struct {
     sparseProperties: c.VkPhysicalDeviceSparseProperties = std.mem.zeroes(c.VkPhysicalDeviceSparseProperties),
 };
 
-pub const PhysicalDeviceFeatures = c.VkPhysicalDeviceFeatures;
+pub const PhysicalDeviceFeatures = extern struct {
+    robustBufferAccess: s.Bool32 = s.FALSE,
+    fullDrawIndexUint32: s.Bool32 = s.FALSE,
+    imageCubeArray: s.Bool32 = s.FALSE,
+    independentBlend: s.Bool32 = s.FALSE,
+    geometryShader: s.Bool32 = s.FALSE,
+    tessellationShader: s.Bool32 = s.FALSE,
+    sampleRateShading: s.Bool32 = s.FALSE,
+    dualSrcBlend: s.Bool32 = s.FALSE,
+    logicOp: s.Bool32 = s.FALSE,
+    multiDrawIndirect: s.Bool32 = s.FALSE,
+    drawIndirectFirstInstance: s.Bool32 = s.FALSE,
+    depthClamp: s.Bool32 = s.FALSE,
+    depthBiasClamp: s.Bool32 = s.FALSE,
+    fillModeNonSolid: s.Bool32 = s.FALSE,
+    depthBounds: s.Bool32 = s.FALSE,
+    wideLines: s.Bool32 = s.FALSE,
+    largePoints: s.Bool32 = s.FALSE,
+    alphaToOne: s.Bool32 = s.FALSE,
+    multiViewport: s.Bool32 = s.FALSE,
+    samplerAnisotropy: s.Bool32 = s.FALSE,
+    textureCompressionETC2: s.Bool32 = s.FALSE,
+    textureCompressionASTC_LDR: s.Bool32 = s.FALSE,
+    textureCompressionBC: s.Bool32 = s.FALSE,
+    occlusionQueryPrecise: s.Bool32 = s.FALSE,
+    pipelineStatisticsQuery: s.Bool32 = s.FALSE,
+    vertexPipelineStoresAndAtomics: s.Bool32 = s.FALSE,
+    fragmentStoresAndAtomics: s.Bool32 = s.FALSE,
+    shaderTessellationAndGeometryPointSize: s.Bool32 = s.FALSE,
+    shaderImageGatherExtended: s.Bool32 = s.FALSE,
+    shaderStorageImageExtendedFormats: s.Bool32 = s.FALSE,
+    shaderStorageImageMultisample: s.Bool32 = s.FALSE,
+    shaderStorageImageReadWithoutFormat: s.Bool32 = s.FALSE,
+    shaderStorageImageWriteWithoutFormat: s.Bool32 = s.FALSE,
+    shaderUniformBufferArrayDynamicIndexing: s.Bool32 = s.FALSE,
+    shaderSampledImageArrayDynamicIndexing: s.Bool32 = s.FALSE,
+    shaderStorageBufferArrayDynamicIndexing: s.Bool32 = s.FALSE,
+    shaderStorageImageArrayDynamicIndexing: s.Bool32 = s.FALSE,
+    shaderClipDistance: s.Bool32 = s.FALSE,
+    shaderCullDistance: s.Bool32 = s.FALSE,
+    shaderFloat64: s.Bool32 = s.FALSE,
+    shaderInt64: s.Bool32 = s.FALSE,
+    shaderInt16: s.Bool32 = s.FALSE,
+    shaderResourceResidency: s.Bool32 = s.FALSE,
+    shaderResourceMinLod: s.Bool32 = s.FALSE,
+    sparseBinding: s.Bool32 = s.FALSE,
+    sparseResidencyBuffer: s.Bool32 = s.FALSE,
+    sparseResidencyImage2D: s.Bool32 = s.FALSE,
+    sparseResidencyImage3D: s.Bool32 = s.FALSE,
+    sparseResidency2Samples: s.Bool32 = s.FALSE,
+    sparseResidency4Samples: s.Bool32 = s.FALSE,
+    sparseResidency8Samples: s.Bool32 = s.FALSE,
+    sparseResidency16Samples: s.Bool32 = s.FALSE,
+    sparseResidencyAliased: s.Bool32 = s.FALSE,
+    variableMultisampleRate: s.Bool32 = s.FALSE,
+    inheritedQueries: s.Bool32 = s.FALSE,
+};
 
 pub const QueueFamilyProperties = extern struct {
     queueFlags: s.QueueFlags = std.mem.zeroes(s.QueueFlags),
@@ -30,29 +123,84 @@ pub const QueueFamilyProperties = extern struct {
     minImageTransferGranularity: c.VkExtent3D = std.mem.zeroes(c.VkExtent3D),
 };
 
-pub const DeviceQueueCreateInfo = c.VkDeviceQueueCreateInfo;
-pub const DeviceCreateInfo = c.VkDeviceCreateInfo;
-pub const XcbSurfaceCreateInfoKHR = c.VkXcbSurfaceCreateInfoKHR;
-pub const XlibSurfaceCreateInfoKHR = c.VkXlibSurfaceCreateInfoKHR;
-pub const Win32SurfaceCreateInfoKHR = c.VkWin32SurfaceCreateInfoKHR;
-pub const SurfaceCapabilitiesKHR = c.VkSurfaceCapabilitiesKHR;
+pub const DeviceQueueCreateInfo = extern struct {
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    pNext: ?*const anyopaque = null,
+    flags: c.VkDeviceQueueCreateFlags = std.mem.zeroes(c.VkDeviceQueueCreateFlags),
+    queueFamilyIndex: u32 = 0,
+    queueCount: u32 = 0,
+    pQueuePriorities: [*c]const f32 = std.mem.zeroes([*c]const f32),
+};
+
+pub const DeviceCreateInfo = extern struct {
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    pNext: ?*const anyopaque = null,
+    flags: c.VkDeviceCreateFlags = std.mem.zeroes(c.VkDeviceCreateFlags),
+    queueCreateInfoCount: u32 = 0,
+    pQueueCreateInfos: [*]const DeviceQueueCreateInfo,
+    enabledLayerCount: u32 = 0,
+    ppEnabledLayerNames: [*c]const [*c]const u8 = std.mem.zeroes([*c]const [*c]const u8),
+    enabledExtensionCount: u32 = 0,
+    ppEnabledExtensionNames: [*c]const [*c]const u8 = std.mem.zeroes([*c]const [*c]const u8),
+    pEnabledFeatures: [*c]const PhysicalDeviceFeatures = std.mem.zeroes([*c]const PhysicalDeviceFeatures),
+};
+
+pub const XcbSurfaceCreateInfoKHR = extern struct {
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    pNext: ?*const anyopaque = null,
+    flags: c.VkXcbSurfaceCreateFlagsKHR = std.mem.zeroes(c.VkXcbSurfaceCreateFlagsKHR),
+    connection: *c.xcb_connection_t,
+    window: c.xcb_window_t = 0,
+};
+
+pub const XlibSurfaceCreateInfoKHR = extern struct {
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    pNext: ?*const anyopaque = null,
+    flags: c.VkXlibSurfaceCreateFlagsKHR = std.mem.zeroes(c.VkXlibSurfaceCreateFlagsKHR),
+    dpy: *c.Display,
+    window: c.Window,
+};
+
+pub const Win32SurfaceCreateInfoKHR = extern struct {
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    pNext: ?*const anyopaque = null,
+    flags: c.VkWin32SurfaceCreateFlagsKHR = std.mem.zeroes(c.VkWin32SurfaceCreateFlagsKHR),
+    hinstance: c.HINSTANCE,
+    hwnd: c.HWND,
+};
+
+pub const SurfaceCapabilitiesKHR = extern struct {
+    minImageCount: u32 = 0,
+    maxImageCount: u32 = 0,
+    currentExtent: Extent2D = std.mem.zeroes(Extent2D),
+    minImageExtent: Extent2D = std.mem.zeroes(Extent2D),
+    maxImageExtent: Extent2D = std.mem.zeroes(Extent2D),
+    maxImageArrayLayers: u32 = 0,
+    supportedTransforms: c.VkSurfaceTransformFlagsKHR = std.mem.zeroes(c.VkSurfaceTransformFlagsKHR),
+    currentTransform: c.VkSurfaceTransformFlagBitsKHR = std.mem.zeroes(c.VkSurfaceTransformFlagBitsKHR),
+    supportedCompositeAlpha: c.VkCompositeAlphaFlagsKHR = std.mem.zeroes(c.VkCompositeAlphaFlagsKHR),
+    supportedUsageFlags: c.VkImageUsageFlags = std.mem.zeroes(c.VkImageUsageFlags),
+};
 
 pub const SurfaceFormatKHR = extern struct {
     format: s.Format = std.mem.zeroes(s.Format),
     colorSpace: s.ColorSpaceKHR = std.mem.zeroes(s.ColorSpaceKHR),
 };
 
-pub const Extent2D = c.VkExtent2D;
+pub const Extent2D = extern struct {
+    width: u32 = 0,
+    height: u32 = 0,
+};
 
 pub const SwapchainCreateInfoKHR = extern struct {
-    sType: c.VkStructureType = std.mem.zeroes(c.VkStructureType),
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
     flags: c.VkSwapchainCreateFlagsKHR = std.mem.zeroes(c.VkSwapchainCreateFlagsKHR),
     surface: s.SurfaceKHR = null,
     minImageCount: u32 = 0,
     imageFormat: s.Format = std.mem.zeroes(s.Format),
     imageColorSpace: s.ColorSpaceKHR = std.mem.zeroes(s.ColorSpaceKHR),
-    imageExtent: c.VkExtent2D = std.mem.zeroes(c.VkExtent2D),
+    imageExtent: Extent2D = std.mem.zeroes(Extent2D),
     imageArrayLayers: u32 = 0,
     imageUsage: c.VkImageUsageFlags = std.mem.zeroes(c.VkImageUsageFlags),
     imageSharingMode: c.VkSharingMode = std.mem.zeroes(c.VkSharingMode),
@@ -61,12 +209,12 @@ pub const SwapchainCreateInfoKHR = extern struct {
     preTransform: c.VkSurfaceTransformFlagBitsKHR = std.mem.zeroes(c.VkSurfaceTransformFlagBitsKHR),
     compositeAlpha: c.VkCompositeAlphaFlagBitsKHR = std.mem.zeroes(c.VkCompositeAlphaFlagBitsKHR),
     presentMode: s.PresentModeKHR = std.mem.zeroes(s.PresentModeKHR),
-    clipped: c.VkBool32 = std.mem.zeroes(c.VkBool32),
+    clipped: s.Bool32 = s.FALSE,
     oldSwapchain: c.VkSwapchainKHR = null,
 };
 
 pub const ImageViewCreateInfo = extern struct {
-    sType: c.VkStructureType = std.mem.zeroes(c.VkStructureType),
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
     flags: c.VkImageViewCreateFlags = std.mem.zeroes(c.VkImageViewCreateFlags),
     image: s.Image = null,
@@ -76,10 +224,16 @@ pub const ImageViewCreateInfo = extern struct {
     subresourceRange: c.VkImageSubresourceRange = std.mem.zeroes(c.VkImageSubresourceRange),
 };
 
-pub const ShaderModuleCreateInfo = c.VkShaderModuleCreateInfo;
+pub const ShaderModuleCreateInfo = extern struct {
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    pNext: ?*const anyopaque = null,
+    flags: c.VkShaderModuleCreateFlags = std.mem.zeroes(c.VkShaderModuleCreateFlags),
+    codeSize: usize = std.mem.zeroes(usize),
+    pCode: [*]const u32,
+};
 
 pub const PipelineShaderStageCreateInfo = extern struct {
-    sType: c.VkStructureType = std.mem.zeroes(c.VkStructureType),
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
     flags: c.VkPipelineShaderStageCreateFlags = std.mem.zeroes(c.VkPipelineShaderStageCreateFlags),
     stage: c.VkShaderStageFlagBits = std.mem.zeroes(c.VkShaderStageFlagBits),
@@ -89,48 +243,107 @@ pub const PipelineShaderStageCreateInfo = extern struct {
 };
 
 pub const PipelineDynamicStateCreateInfo = extern struct {
-    sType: c.VkStructureType = std.mem.zeroes(c.VkStructureType),
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
     flags: c.VkPipelineDynamicStateCreateFlags = std.mem.zeroes(c.VkPipelineDynamicStateCreateFlags),
     dynamicStateCount: u32 = 0,
     pDynamicStates: [*c]const s.DynamicState = null,
 };
 
-pub const PipelineVertexInputStateCreateInfo = c.VkPipelineVertexInputStateCreateInfo;
+pub const PipelineVertexInputStateCreateInfo = extern struct {
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    pNext: ?*const anyopaque = null,
+    flags: c.VkPipelineVertexInputStateCreateFlags = std.mem.zeroes(c.VkPipelineVertexInputStateCreateFlags),
+    vertexBindingDescriptionCount: u32 = 0,
+    pVertexBindingDescriptions: [*c]const c.VkVertexInputBindingDescription = std.mem.zeroes([*c]const c.VkVertexInputBindingDescription),
+    vertexAttributeDescriptionCount: u32 = 0,
+    pVertexAttributeDescriptions: [*c]const c.VkVertexInputAttributeDescription = std.mem.zeroes([*c]const c.VkVertexInputAttributeDescription),
+};
 
 pub const PipelineInputAssemblyStateCreateInfo = extern struct {
-    sType: c.VkStructureType = std.mem.zeroes(c.VkStructureType),
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
     flags: c.VkPipelineInputAssemblyStateCreateFlags = std.mem.zeroes(c.VkPipelineInputAssemblyStateCreateFlags),
     topology: s.PrimitiveTopology = std.mem.zeroes(s.PrimitiveTopology),
-    primitiveRestartEnable: c.VkBool32 = std.mem.zeroes(c.VkBool32),
+    primitiveRestartEnable: s.Bool32 = s.FALSE,
 };
 
-pub const Viewport = c.VkViewport;
-pub const Rect2D = c.VkRect2D;
-pub const PipelineViewportStateCreateInfo = c.VkPipelineViewportStateCreateInfo;
+pub const PipelineTessellationStateCreateInfo = extern struct {
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    pNext: ?*const anyopaque = null,
+    flags: c.VkPipelineTessellationStateCreateFlags = std.mem.zeroes(c.VkPipelineTessellationStateCreateFlags),
+    patchControlPoints: u32 = 0,
+};
+
+pub const Viewport = extern struct {
+    x: f32 = 0.0,
+    y: f32 = 0.0,
+    width: f32 = 0.0,
+    height: f32 = 0.0,
+    minDepth: f32 = 0.0,
+    maxDepth: f32 = 0.0,
+};
+
+pub const Rect2D = extern struct {
+    offset: c.VkOffset2D = std.mem.zeroes(c.VkOffset2D),
+    extent: Extent2D = std.mem.zeroes(Extent2D),
+};
+
+pub const PipelineViewportStateCreateInfo = extern struct {
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    pNext: ?*const anyopaque = null,
+    flags: c.VkPipelineViewportStateCreateFlags = std.mem.zeroes(c.VkPipelineViewportStateCreateFlags),
+    viewportCount: u32 = 0,
+    pViewports: [*c]const c.VkViewport = std.mem.zeroes([*c]const c.VkViewport),
+    scissorCount: u32 = 0,
+    pScissors: [*c]const Rect2D = std.mem.zeroes([*c]const Rect2D),
+};
 
 pub const PipelineRasterizationStateCreateInfo = extern struct {
-    sType: c.VkStructureType = std.mem.zeroes(c.VkStructureType),
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
     flags: c.VkPipelineRasterizationStateCreateFlags = std.mem.zeroes(c.VkPipelineRasterizationStateCreateFlags),
-    depthClampEnable: s.Bool32 = std.mem.zeroes(s.Bool32),
-    rasterizerDiscardEnable: s.Bool32 = std.mem.zeroes(s.Bool32),
+    depthClampEnable: s.Bool32 = s.FALSE,
+    rasterizerDiscardEnable: s.Bool32 = s.FALSE,
     polygonMode: s.PolygonMode = std.mem.zeroes(s.PolygonMode),
     cullMode: s.CullModeFlags = std.mem.zeroes(s.CullModeFlags),
     frontFace: s.FrontFace = std.mem.zeroes(s.FrontFace),
-    depthBiasEnable: s.Bool32 = std.mem.zeroes(s.Bool32),
+    depthBiasEnable: s.Bool32 = s.FALSE,
     depthBiasConstantFactor: f32 = 0.0,
     depthBiasClamp: f32 = 0.0,
     depthBiasSlopeFactor: f32 = 0.0,
     lineWidth: f32 = 0.0,
 };
 
-pub const PipelineMultisampleStateCreateInfo = c.VkPipelineMultisampleStateCreateInfo;
-pub const PipelineDepthStencilStateCreateInfo = c.VkPipelineDepthStencilStateCreateInfo;
+pub const PipelineMultisampleStateCreateInfo = extern struct {
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    pNext: ?*const anyopaque = null,
+    flags: c.VkPipelineMultisampleStateCreateFlags = std.mem.zeroes(c.VkPipelineMultisampleStateCreateFlags),
+    rasterizationSamples: c.VkSampleCountFlagBits = std.mem.zeroes(c.VkSampleCountFlagBits),
+    sampleShadingEnable: s.Bool32 = s.FALSE,
+    minSampleShading: f32 = 0.0,
+    pSampleMask: [*c]const c.VkSampleMask = std.mem.zeroes([*c]const c.VkSampleMask),
+    alphaToCoverageEnable: s.Bool32 = s.FALSE,
+    alphaToOneEnable: s.Bool32 = s.FALSE,
+};
+
+pub const PipelineDepthStencilStateCreateInfo = extern struct {
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    pNext: ?*const anyopaque = null,
+    flags: c.VkPipelineDepthStencilStateCreateFlags = std.mem.zeroes(c.VkPipelineDepthStencilStateCreateFlags),
+    depthTestEnable: s.Bool32 = s.FALSE,
+    depthWriteEnable: s.Bool32 = s.FALSE,
+    depthCompareOp: c.VkCompareOp = std.mem.zeroes(c.VkCompareOp),
+    depthBoundsTestEnable: s.Bool32 = s.FALSE,
+    stencilTestEnable: s.Bool32 = s.FALSE,
+    front: c.VkStencilOpState = std.mem.zeroes(c.VkStencilOpState),
+    back: c.VkStencilOpState = std.mem.zeroes(c.VkStencilOpState),
+    minDepthBounds: f32 = 0.0,
+    maxDepthBounds: f32 = 0.0,
+};
 
 pub const PipelineColorBlendAttachmentState = extern struct {
-    blendEnable: s.Bool32 = std.mem.zeroes(s.Bool32),
+    blendEnable: s.Bool32 = s.FALSE,
     srcColorBlendFactor: s.BlendFactor = std.mem.zeroes(s.BlendFactor),
     dstColorBlendFactor: s.BlendFactor = std.mem.zeroes(s.BlendFactor),
     colorBlendOp: s.BlendOp = std.mem.zeroes(s.BlendOp),
@@ -141,17 +354,25 @@ pub const PipelineColorBlendAttachmentState = extern struct {
 };
 
 pub const PipelineColorBlendStateCreateInfo = extern struct {
-    sType: c.VkStructureType = std.mem.zeroes(c.VkStructureType),
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
     flags: c.VkPipelineColorBlendStateCreateFlags = std.mem.zeroes(c.VkPipelineColorBlendStateCreateFlags),
-    logicOpEnable: s.Bool32 = std.mem.zeroes(s.Bool32),
+    logicOpEnable: s.Bool32 = s.FALSE,
     logicOp: s.LogicOp = std.mem.zeroes(s.LogicOp),
     attachmentCount: u32 = 0,
     pAttachments: [*c]const PipelineColorBlendAttachmentState = null,
     blendConstants: [4]f32 = std.mem.zeroes([4]f32),
 };
 
-pub const PipelineLayoutCreateInfo = c.VkPipelineLayoutCreateInfo;
+pub const PipelineLayoutCreateInfo = extern struct {
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    pNext: ?*const anyopaque = null,
+    flags: c.VkPipelineLayoutCreateFlags = std.mem.zeroes(c.VkPipelineLayoutCreateFlags),
+    setLayoutCount: u32 = 0,
+    pSetLayouts: [*c]const c.VkDescriptorSetLayout = std.mem.zeroes([*c]const c.VkDescriptorSetLayout),
+    pushConstantRangeCount: u32 = 0,
+    pPushConstantRanges: [*c]const c.VkPushConstantRange = std.mem.zeroes([*c]const c.VkPushConstantRange),
+};
 
 pub const AttachmentDescription = extern struct {
     flags: c.VkAttachmentDescriptionFlags = std.mem.zeroes(c.VkAttachmentDescriptionFlags),
@@ -184,7 +405,7 @@ pub const SubpassDescription = extern struct {
 };
 
 pub const RenderPassCreateInfo = extern struct {
-    sType: c.VkStructureType = std.mem.zeroes(c.VkStructureType),
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
     flags: c.VkRenderPassCreateFlags = std.mem.zeroes(c.VkRenderPassCreateFlags),
     attachmentCount: u32 = 0,
@@ -196,20 +417,20 @@ pub const RenderPassCreateInfo = extern struct {
 };
 
 pub const GraphicsPipelineCreateInfo = extern struct {
-    sType: c.VkStructureType = std.mem.zeroes(c.VkStructureType),
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
     flags: c.VkPipelineCreateFlags = std.mem.zeroes(c.VkPipelineCreateFlags),
     stageCount: u32 = 0,
     pStages: [*c]const PipelineShaderStageCreateInfo = null,
-    pVertexInputState: [*c]const c.VkPipelineVertexInputStateCreateInfo = null,
-    pInputAssemblyState: [*c]const PipelineInputAssemblyStateCreateInfo = null,
-    pTessellationState: [*c]const c.VkPipelineTessellationStateCreateInfo = null,
-    pViewportState: [*c]const c.VkPipelineViewportStateCreateInfo = null,
-    pRasterizationState: [*c]const PipelineRasterizationStateCreateInfo = null,
-    pMultisampleState: [*c]const c.VkPipelineMultisampleStateCreateInfo = null,
-    pDepthStencilState: [*c]const c.VkPipelineDepthStencilStateCreateInfo = null,
-    pColorBlendState: [*c]const PipelineColorBlendStateCreateInfo = null,
-    pDynamicState: [*c]const PipelineDynamicStateCreateInfo = null,
+    pVertexInputState: ?*const PipelineVertexInputStateCreateInfo = null,
+    pInputAssemblyState: ?*const PipelineInputAssemblyStateCreateInfo = null,
+    pTessellationState: ?*const PipelineTessellationStateCreateInfo = null,
+    pViewportState: ?*const PipelineViewportStateCreateInfo = null,
+    pRasterizationState: ?*const PipelineRasterizationStateCreateInfo = null,
+    pMultisampleState: ?*const PipelineMultisampleStateCreateInfo = null,
+    pDepthStencilState: ?*const PipelineDepthStencilStateCreateInfo = null,
+    pColorBlendState: ?*const PipelineColorBlendStateCreateInfo = null,
+    pDynamicState: ?*const PipelineDynamicStateCreateInfo = null,
     layout: s.PipelineLayout = std.mem.zeroes(s.PipelineLayout),
     renderPass: s.RenderPass = null,
     subpass: u32 = 0,
@@ -218,7 +439,7 @@ pub const GraphicsPipelineCreateInfo = extern struct {
 };
 
 pub const FramebufferCreateInfo = extern struct {
-    sType: c.VkStructureType = std.mem.zeroes(c.VkStructureType),
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
     flags: c.VkFramebufferCreateFlags = std.mem.zeroes(c.VkFramebufferCreateFlags),
     renderPass: s.RenderPass = null,
@@ -230,24 +451,29 @@ pub const FramebufferCreateInfo = extern struct {
 };
 
 pub const CommandPoolCreateInfo = extern struct {
-    sType: c.VkStructureType = std.mem.zeroes(c.VkStructureType),
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
     flags: s.CommandPoolCreateFlags = std.mem.zeroes(s.CommandPoolCreateFlags),
     queueFamilyIndex: u32 = 0,
 };
 
 pub const CommandBufferAllocateInfo = extern struct {
-    sType: c.VkStructureType = std.mem.zeroes(c.VkStructureType),
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
     commandPool: s.CommandPool = null,
     level: s.CommandBufferLevel = std.mem.zeroes(s.CommandBufferLevel),
     commandBufferCount: u32 = 0,
 };
 
-pub const CommandBufferBeginInfo = c.VkCommandBufferBeginInfo;
+pub const CommandBufferBeginInfo = extern struct {
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    pNext: ?*const anyopaque = null,
+    flags: c.VkCommandBufferUsageFlags = std.mem.zeroes(c.VkCommandBufferUsageFlags),
+    pInheritanceInfo: [*c]const c.VkCommandBufferInheritanceInfo = std.mem.zeroes([*c]const c.VkCommandBufferInheritanceInfo),
+};
 
 pub const RenderPassBeginInfo = extern struct {
-    sType: c.VkStructureType = std.mem.zeroes(c.VkStructureType),
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
     renderPass: s.RenderPass = null,
     framebuffer: s.Framebuffer = null,
@@ -256,16 +482,20 @@ pub const RenderPassBeginInfo = extern struct {
     pClearValues: ?[*]const ClearValue = null,
 };
 
-pub const SemaphoreCreateInfo = c.VkSemaphoreCreateInfo;
+pub const SemaphoreCreateInfo = extern struct {
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    pNext: ?*const anyopaque = null,
+    flags: c.VkSemaphoreCreateFlags = std.mem.zeroes(c.VkSemaphoreCreateFlags),
+};
 
 pub const FenceCreateInfo = extern struct {
-    sType: c.VkStructureType = std.mem.zeroes(c.VkStructureType),
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
     flags: s.FenceCreateFlags = std.mem.zeroes(s.FenceCreateFlags),
 };
 
 pub const SubmitInfo = extern struct {
-    sType: c.VkStructureType = std.mem.zeroes(c.VkStructureType),
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
     waitSemaphoreCount: u32 = 0,
     pWaitSemaphores: [*]const s.Semaphore,
@@ -287,7 +517,7 @@ pub const SubpassDependency = extern struct {
 };
 
 pub const PresentInfoKHR = extern struct {
-    sType: c.VkStructureType = std.mem.zeroes(c.VkStructureType),
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
     waitSemaphoreCount: u32 = 0,
     pWaitSemaphores: [*]const s.Semaphore,
@@ -303,22 +533,22 @@ pub const ClearValue = extern union {
 };
 
 pub const DebugUtilsMessengerCallbackData = extern struct {
-    sType: c.VkStructureType = std.mem.zeroes(c.VkStructureType),
-    pNext: ?*const anyopaque = std.mem.zeroes(?*const anyopaque),
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    pNext: ?*const anyopaque = null,
     flags: c.VkDebugUtilsMessengerCallbackDataFlagsEXT = std.mem.zeroes(c.VkDebugUtilsMessengerCallbackDataFlagsEXT),
     pMessageIdName: [*c]const u8 = std.mem.zeroes([*c]const u8),
-    messageIdNumber: i32 = std.mem.zeroes(i32),
+    messageIdNumber: i32 = 0,
     pMessage: [*c]const u8 = std.mem.zeroes([*c]const u8),
-    queueLabelCount: u32 = std.mem.zeroes(u32),
+    queueLabelCount: u32 = 0,
     pQueueLabels: [*c]const c.VkDebugUtilsLabelEXT = std.mem.zeroes([*c]const c.VkDebugUtilsLabelEXT),
-    cmdBufLabelCount: u32 = std.mem.zeroes(u32),
+    cmdBufLabelCount: u32 = 0,
     pCmdBufLabels: [*c]const c.VkDebugUtilsLabelEXT = std.mem.zeroes([*c]const c.VkDebugUtilsLabelEXT),
-    objectCount: u32 = std.mem.zeroes(u32),
+    objectCount: u32 = 0,
     pObjects: [*c]const c.VkDebugUtilsObjectNameInfoEXT = std.mem.zeroes([*c]const c.VkDebugUtilsObjectNameInfoEXT),
 };
 
 pub const DebugUtilsMessengerCreateInfoEXT = extern struct {
-    sType: c.VkStructureType = std.mem.zeroes(c.VkStructureType),
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
     flags: c.VkDebugUtilsMessengerCreateFlagsEXT = std.mem.zeroes(c.VkDebugUtilsMessengerCreateFlagsEXT),
     messageSeverity: s.DebugUtilsMessageSeverityFlagsEXT = std.mem.zeroes(s.DebugUtilsMessageSeverityFlagsEXT),
