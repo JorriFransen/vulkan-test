@@ -116,7 +116,7 @@ pub fn close(this: *@This()) void {
     _ = win32.DestroyWindow(this.handle);
 }
 
-pub fn frameSufferSize(this: *const @This(), width: *i32, height: *i32) void {
+pub fn frameBufferSize(this: *const @This(), width: *i32, height: *i32) void {
     var rect: win32.RECT = undefined;
     const res = win32.GetClientRect(this.handle, &rect);
     assert(res == win32.TRUE);
