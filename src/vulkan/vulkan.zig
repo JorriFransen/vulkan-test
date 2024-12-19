@@ -5,10 +5,10 @@ const assert = std.debug.assert;
 const f = @import("externFn").externFn;
 
 const c = @import("platform").c;
-pub const helper = @import("vulkan/helper.zig");
+pub const renderer = @import("renderer.zig");
 
 pub const loader = struct {
-    pub const debug_utils = @import("vulkan/ext_debug_utils.zig");
+    pub const debug_utils = @import("ext_debug_utils.zig");
 
     pub fn load(instance: Instance, req_extensions: []const [*:0]const u8) void {
         for (req_extensions) |ext_name| {
@@ -397,7 +397,7 @@ pub const acquireNextImageKHR = f("vkAcquireNextImageKHR", fn (device: Device, s
 pub const MAKE_VERSION = c.VK_MAKE_VERSION;
 
 // Constants
-const constants = @import("vulkan/constants.zig");
+const constants = @import("constants.zig");
 pub usingnamespace constants;
 const PhysicalDeviceType = constants.PhysicalDeviceType;
 const QueueFlags = constants.QueueFlags;

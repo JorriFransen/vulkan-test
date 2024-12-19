@@ -133,7 +133,7 @@ fn useVulkan(b: *std.Build) !VulkanInfo {
     const lazy_lib_path = std.Build.LazyPath{ .cwd_relative = lib_path };
     const lazy_include_path = std.Build.LazyPath{ .cwd_relative = include_path };
 
-    const vk_mod = addPrivateModule(b, "src/vulkan.zig", "vulkan");
+    const vk_mod = addPrivateModule(b, "src/vulkan/vulkan.zig", "vulkan");
     vk_mod.addLibraryPath(lazy_lib_path);
     vk_mod.addIncludePath(lazy_include_path);
     vk_mod.linkSystemLibrary(vk_lib_name, .{});
