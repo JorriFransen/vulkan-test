@@ -234,7 +234,7 @@ fn createInstance(window: *const Window) !vk.Instance {
 
     const debug_messenger_create_info = vk.DebugUtilsMessengerCreateInfoEXT{
         .sType = .DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
-        .messageSeverity = .{ .VERBOSE = 1, .WARNING = 1, .ERROR = 1 },
+        .messageSeverity = .{ .VERBOSE_BIT_EXT = 1, .WARNING_BIT_EXT = 1, .ERROR_BIT_EXT = 1 },
         .messageType = .{ .GENERAL = 1, .VALIDATION = 1, .PERFORMANCE = 1 },
         .pfnUserCallback = vk_debug_callback,
         .pUserData = null,
@@ -271,7 +271,7 @@ fn createDebugMessenger(instance: vk.Instance) vk.DebugUtilsMessengerEXT {
     if (debug) {
         const debug_messenger_create_info = vk.DebugUtilsMessengerCreateInfoEXT{
             .sType = .DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
-            .messageSeverity = .{ .VERBOSE = 1, .WARNING = 1, .ERROR = 1 },
+            .messageSeverity = .{ .VERBOSE_BIT_EXT = 1, .WARNING_BIT_EXT = 1, .ERROR_BIT_EXT = 1 },
             .messageType = .{ .GENERAL = 1, .VALIDATION = 1, .PERFORMANCE = 1 },
             .pfnUserCallback = vk_debug_callback,
             .pUserData = null,
@@ -314,14 +314,12 @@ fn choosePhysicalDevice(instance: vk.Instance, surface: vk.SurfaceKHR) !PDevInfo
         dlog("pd_props[{}]: limits.maxImageDimension2D: {}", .{ i, props.limits.maxImageDimension2D });
         dlog("pd_feat[{}]: geometryShader: {}", .{ i, features.geometryShader });
 
-        const type_score: u32 =
-            switch (props.deviceType) {
+        const type_score: u32 = switch (props.deviceType) {
             .OTHER => 1,
             .VIRTUAL_GPU => 2,
             .CPU => 3,
             .INTEGRATED_GPU => 4,
             .DISCRETE_GPU => 5,
-            .MAX_ENUM => @panic("Invalid vulkan device type"),
         };
 
         const image_dim_score = props.limits.maxImageDimension2D / 4096;
@@ -583,7 +581,7 @@ pub fn createSwapchain(this: *@This(), fb_width: c_int, fb_height: c_int) !void 
         .imageExtent = extent,
         .imageArrayLayers = 1,
         .imageUsage = vk.IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-        .imageSharingMode = if (same_family) vk.SHARING_MODE_EXCLUSIVE else vk.SHARING_MODE_CONCURRENT,
+        .imageSharingMode = if (same_family) .EXCLUSIVE else .CONCURRENT,
         .queueFamilyIndexCount = if (same_family) 0 else 2,
         .pQueueFamilyIndices = if (same_family) null else @ptrCast(&.{ dev_info.queue_info.graphics_index, dev_info.queue_info.present_index }),
         .preTransform = cap.currentTransform,
@@ -648,7 +646,7 @@ pub fn createSwapchain(this: *@This(), fb_width: c_int, fb_height: c_int) !void 
 fn createRenderPass(this: *@This()) !void {
     const color_attachments = [_]vk.AttachmentDescription{.{
         .format = this.swapchain.image_format,
-        .samples = vk.sample_count_flag_bits.@"1_BIT",
+        .samples = .{ .@"1_BIT" = 1 },
         .loadOp = .CLEAR,
         .storeOp = .STORE,
         .stencilLoadOp = .DONT_CARE,
@@ -674,7 +672,7 @@ fn createRenderPass(this: *@This()) !void {
         .srcStageMask = .{ .COLOR_ATTACHMENT_OUTPUT = 1 },
         .srcAccessMask = 0,
         .dstStageMask = .{ .COLOR_ATTACHMENT_OUTPUT = 1 },
-        .dstAccessMask = vk.access_flags.COLOR_ATTACHMENT_WRITE_BIT,
+        .dstAccessMask = .{ .COLOR_ATTACHMENT_WRITE_BIT = 1 },
     }};
     const render_pass_create_info = vk.RenderPassCreateInfo{
         .sType = .RENDER_PASS_CREATE_INFO,
@@ -701,13 +699,13 @@ fn createGraphicsPipeline(this: *@This()) !void {
     const shader_stages = [_]vk.PipelineShaderStageCreateInfo{
         .{
             .sType = .PIPELINE_SHADER_STAGE_CREATE_INFO,
-            .stage = vk.shader_stage_bit.VERTEX,
+            .stage = .{ .VERTEX_BIT = 1 },
             .module = vert_shader_module,
             .pName = "main",
         },
         .{
             .sType = .PIPELINE_SHADER_STAGE_CREATE_INFO,
-            .stage = vk.shader_stage_bit.FRAGMENT,
+            .stage = .{ .FRAGMENT_BIT = 1 },
             .module = frag_shader_module,
             .pName = "main",
         },
@@ -750,7 +748,7 @@ fn createGraphicsPipeline(this: *@This()) !void {
         .rasterizerDiscardEnable = vk.FALSE,
         .polygonMode = .FILL,
         .lineWidth = 1,
-        .cullMode = .BACK_BIT,
+        .cullMode = .{ .BACK_BIT = 1 },
         .frontFace = .CLOCKWISE,
         .depthBiasEnable = vk.FALSE,
         .depthBiasConstantFactor = 0,
@@ -761,7 +759,7 @@ fn createGraphicsPipeline(this: *@This()) !void {
     const multisampling_create_info = vk.PipelineMultisampleStateCreateInfo{
         .sType = .PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
         .sampleShadingEnable = vk.FALSE,
-        .rasterizationSamples = vk.sample_count_flag_bits.@"1_BIT",
+        .rasterizationSamples = .{ .@"1_BIT" = 1 },
         .minSampleShading = 1,
         .pSampleMask = null,
         .alphaToCoverageEnable = vk.FALSE,
@@ -769,7 +767,7 @@ fn createGraphicsPipeline(this: *@This()) !void {
     };
 
     const color_blend_attachments = [_]vk.PipelineColorBlendAttachmentState{.{
-        .colorWriteMask = vk.ColorComponentFlags{ .R = 1, .G = 1, .B = 1, .A = 1 },
+        .colorWriteMask = vk.ColorComponentFlags{ .R_BIT = 1, .G_BIT = 1, .B_BIT = 1, .A_BIT = 1 },
         .blendEnable = vk.TRUE,
         .srcColorBlendFactor = .SRC_ALPHA,
         .dstColorBlendFactor = .ONE_MINUS_SRC_ALPHA,
@@ -1017,11 +1015,11 @@ fn vk_debug_callback(message_severity: vk.DebugUtilsMessageSeverityFlagsEXT, mes
     const fmt = "{s}";
     const args = .{callback_data.pMessage};
 
-    if (message_severity.VERBOSE == 1) {
+    if (message_severity.VERBOSE_BIT_EXT == 1) {
         if (debug_verbose) log.debug(fmt, args);
-    } else if (message_severity.WARNING == 1) {
+    } else if (message_severity.WARNING_BIT_EXT == 1) {
         log.warn(fmt, args);
-    } else if (message_severity.ERROR == 1) {
+    } else if (message_severity.ERROR_BIT_EXT == 1) {
         log.err(fmt, args);
     } else {
         elog("Invalid message severity '{}'", .{message_severity});

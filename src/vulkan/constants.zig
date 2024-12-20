@@ -24,14 +24,13 @@ pub const COMPONENT_SWIZZLE_IDENTITY = c.VK_COMPONENT_SWIZZLE_IDENTITY;
 
 pub const SUBPASS_EXTERNAL = ~@as(c_uint, 0);
 
-// Enums/Flags
 pub const PhysicalDeviceType = enum(c_int) {
     OTHER = 0,
     INTEGRATED_GPU = 1,
     DISCRETE_GPU = 2,
     VIRTUAL_GPU = 3,
     CPU = 4,
-    MAX_ENUM = 2147483647,
+    pub const MAX_ENUM: c_int = 2147483647;
 };
 
 pub const PresentModeKHR = enum(c_int) {
@@ -41,19 +40,20 @@ pub const PresentModeKHR = enum(c_int) {
     FIFO_RELAXED_KHR = 3,
     SHARED_DEMAND_REFRESH_KHR = 1000111000,
     SHARED_CONTINUOUS_REFRESH_KHR = 1000111001,
-    MAX_ENUM_KHR = 2147483647,
+    pub const MAX_ENUM_KHR: c_int = 2147483647;
 };
 
 pub const QueueFlags = packed struct(u32) {
-    GRAPHICS_BIT: u1 = 0,
-    COMPUTE_BIT: u1 = 0,
-    TRANSFER_BIT: u1 = 0,
-    SPARSE_BINDING_BIT: u1 = 0,
-    PROTECTED_BIT: u1 = 0,
-    VIDEO_DECODE_BIT_KHR: u1 = 0,
-    VIDEO_ENCODE_BIT_KHR: u1 = 0,
-    OPTICAL_FLOW_BIT_NV: u1 = 0,
-    __reserved__: u24 = 0,
+    GRAPHICS_BIT: u1 = 0, // 1
+    COMPUTE_BIT: u1 = 0, // 2
+    TRANSFER_BIT: u1 = 0, // 4
+    SPARSE_BINDING_BIT: u1 = 0, // 8
+    PROTECTED_BIT: u1 = 0, // 16
+    VIDEO_DECODE_BIT_KHR: u1 = 0, // 32
+    VIDEO_ENCODE_BIT_KHR: u1 = 0, // 64
+    OPTICAL_FLOW_BIT_NV: u1 = 0, // 128
+    _reserved: u24 = 0,
+    pub const MAX_ENUM: c_int = 2147483647;
 };
 
 pub const Format = enum(c_int) {
@@ -307,62 +307,62 @@ pub const Format = enum(c_int) {
     R16G16_SFIXED5_NV = 1000464000,
     A1B5G5R5_UNORM_PACK16_KHR = 1000470000,
     A8_UNORM_KHR = 1000470001,
-    // ASTC_4x4_SFLOAT_BLOCK_EXT = 1000066000,
-    // ASTC_5x4_SFLOAT_BLOCK_EXT = 1000066001,
-    // ASTC_5x5_SFLOAT_BLOCK_EXT = 1000066002,
-    // ASTC_6x5_SFLOAT_BLOCK_EXT = 1000066003,
-    // ASTC_6x6_SFLOAT_BLOCK_EXT = 1000066004,
-    // ASTC_8x5_SFLOAT_BLOCK_EXT = 1000066005,
-    // ASTC_8x6_SFLOAT_BLOCK_EXT = 1000066006,
-    // ASTC_8x8_SFLOAT_BLOCK_EXT = 1000066007,
-    // ASTC_10x5_SFLOAT_BLOCK_EXT = 1000066008,
-    // ASTC_10x6_SFLOAT_BLOCK_EXT = 1000066009,
-    // ASTC_10x8_SFLOAT_BLOCK_EXT = 1000066010,
-    // ASTC_10x10_SFLOAT_BLOCK_EXT = 1000066011,
-    // ASTC_12x10_SFLOAT_BLOCK_EXT = 1000066012,
-    // ASTC_12x12_SFLOAT_BLOCK_EXT = 1000066013,
-    // G8B8G8R8_422_UNORM_KHR = 1000156000,
-    // B8G8R8G8_422_UNORM_KHR = 1000156001,
-    // G8_B8_R8_3PLANE_420_UNORM_KHR = 1000156002,
-    // G8_B8R8_2PLANE_420_UNORM_KHR = 1000156003,
-    // G8_B8_R8_3PLANE_422_UNORM_KHR = 1000156004,
-    // G8_B8R8_2PLANE_422_UNORM_KHR = 1000156005,
-    // G8_B8_R8_3PLANE_444_UNORM_KHR = 1000156006,
-    // R10X6_UNORM_PACK16_KHR = 1000156007,
-    // R10X6G10X6_UNORM_2PACK16_KHR = 1000156008,
-    // R10X6G10X6B10X6A10X6_UNORM_4PACK16_KHR = 1000156009,
-    // G10X6B10X6G10X6R10X6_422_UNORM_4PACK16_KHR = 1000156010,
-    // B10X6G10X6R10X6G10X6_422_UNORM_4PACK16_KHR = 1000156011,
-    // G10X6_B10X6_R10X6_3PLANE_420_UNORM_3PACK16_KHR = 1000156012,
-    // G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16_KHR = 1000156013,
-    // G10X6_B10X6_R10X6_3PLANE_422_UNORM_3PACK16_KHR = 1000156014,
-    // G10X6_B10X6R10X6_2PLANE_422_UNORM_3PACK16_KHR = 1000156015,
-    // G10X6_B10X6_R10X6_3PLANE_444_UNORM_3PACK16_KHR = 1000156016,
-    // R12X4_UNORM_PACK16_KHR = 1000156017,
-    // R12X4G12X4_UNORM_2PACK16_KHR = 1000156018,
-    // R12X4G12X4B12X4A12X4_UNORM_4PACK16_KHR = 1000156019,
-    // G12X4B12X4G12X4R12X4_422_UNORM_4PACK16_KHR = 1000156020,
-    // B12X4G12X4R12X4G12X4_422_UNORM_4PACK16_KHR = 1000156021,
-    // G12X4_B12X4_R12X4_3PLANE_420_UNORM_3PACK16_KHR = 1000156022,
-    // G12X4_B12X4R12X4_2PLANE_420_UNORM_3PACK16_KHR = 1000156023,
-    // G12X4_B12X4_R12X4_3PLANE_422_UNORM_3PACK16_KHR = 1000156024,
-    // G12X4_B12X4R12X4_2PLANE_422_UNORM_3PACK16_KHR = 1000156025,
-    // G12X4_B12X4_R12X4_3PLANE_444_UNORM_3PACK16_KHR = 1000156026,
-    // G16B16G16R16_422_UNORM_KHR = 1000156027,
-    // B16G16R16G16_422_UNORM_KHR = 1000156028,
-    // G16_B16_R16_3PLANE_420_UNORM_KHR = 1000156029,
-    // G16_B16R16_2PLANE_420_UNORM_KHR = 1000156030,
-    // G16_B16_R16_3PLANE_422_UNORM_KHR = 1000156031,
-    // G16_B16R16_2PLANE_422_UNORM_KHR = 1000156032,
-    // G16_B16_R16_3PLANE_444_UNORM_KHR = 1000156033,
-    // G8_B8R8_2PLANE_444_UNORM_EXT = 1000330000,
-    // G10X6_B10X6R10X6_2PLANE_444_UNORM_3PACK16_EXT = 1000330001,
-    // G12X4_B12X4R12X4_2PLANE_444_UNORM_3PACK16_EXT = 1000330002,
-    // G16_B16R16_2PLANE_444_UNORM_EXT = 1000330003,
-    // A4R4G4B4_UNORM_PACK16_EXT = 1000340000,
-    // A4B4G4R4_UNORM_PACK16_EXT = 1000340001,
-    // R16G16_S10_5_NV = 1000464000,
-    MAX_ENUM = 2147483647,
+    pub const ASTC_4x4_SFLOAT_BLOCK_EXT: @This() = .ASTC_4x4_SFLOAT_BLOCK;
+    pub const ASTC_5x4_SFLOAT_BLOCK_EXT: @This() = .ASTC_5x4_SFLOAT_BLOCK;
+    pub const ASTC_5x5_SFLOAT_BLOCK_EXT: @This() = .ASTC_5x5_SFLOAT_BLOCK;
+    pub const ASTC_6x5_SFLOAT_BLOCK_EXT: @This() = .ASTC_6x5_SFLOAT_BLOCK;
+    pub const ASTC_6x6_SFLOAT_BLOCK_EXT: @This() = .ASTC_6x6_SFLOAT_BLOCK;
+    pub const ASTC_8x5_SFLOAT_BLOCK_EXT: @This() = .ASTC_8x5_SFLOAT_BLOCK;
+    pub const ASTC_8x6_SFLOAT_BLOCK_EXT: @This() = .ASTC_8x6_SFLOAT_BLOCK;
+    pub const ASTC_8x8_SFLOAT_BLOCK_EXT: @This() = .ASTC_8x8_SFLOAT_BLOCK;
+    pub const ASTC_10x5_SFLOAT_BLOCK_EXT: @This() = .ASTC_10x5_SFLOAT_BLOCK;
+    pub const ASTC_10x6_SFLOAT_BLOCK_EXT: @This() = .ASTC_10x6_SFLOAT_BLOCK;
+    pub const ASTC_10x8_SFLOAT_BLOCK_EXT: @This() = .ASTC_10x8_SFLOAT_BLOCK;
+    pub const ASTC_10x10_SFLOAT_BLOCK_EXT: @This() = .ASTC_10x10_SFLOAT_BLOCK;
+    pub const ASTC_12x10_SFLOAT_BLOCK_EXT: @This() = .ASTC_12x10_SFLOAT_BLOCK;
+    pub const ASTC_12x12_SFLOAT_BLOCK_EXT: @This() = .ASTC_12x12_SFLOAT_BLOCK;
+    pub const G8B8G8R8_422_UNORM_KHR: @This() = .G8B8G8R8_422_UNORM;
+    pub const B8G8R8G8_422_UNORM_KHR: @This() = .B8G8R8G8_422_UNORM;
+    pub const G8_B8_R8_3PLANE_420_UNORM_KHR: @This() = .G8_B8_R8_3PLANE_420_UNORM;
+    pub const G8_B8R8_2PLANE_420_UNORM_KHR: @This() = .G8_B8R8_2PLANE_420_UNORM;
+    pub const G8_B8_R8_3PLANE_422_UNORM_KHR: @This() = .G8_B8_R8_3PLANE_422_UNORM;
+    pub const G8_B8R8_2PLANE_422_UNORM_KHR: @This() = .G8_B8R8_2PLANE_422_UNORM;
+    pub const G8_B8_R8_3PLANE_444_UNORM_KHR: @This() = .G8_B8_R8_3PLANE_444_UNORM;
+    pub const R10X6_UNORM_PACK16_KHR: @This() = .R10X6_UNORM_PACK16;
+    pub const R10X6G10X6_UNORM_2PACK16_KHR: @This() = .R10X6G10X6_UNORM_2PACK16;
+    pub const R10X6G10X6B10X6A10X6_UNORM_4PACK16_KHR: @This() = .R10X6G10X6B10X6A10X6_UNORM_4PACK16;
+    pub const G10X6B10X6G10X6R10X6_422_UNORM_4PACK16_KHR: @This() = .G10X6B10X6G10X6R10X6_422_UNORM_4PACK16;
+    pub const B10X6G10X6R10X6G10X6_422_UNORM_4PACK16_KHR: @This() = .B10X6G10X6R10X6G10X6_422_UNORM_4PACK16;
+    pub const G10X6_B10X6_R10X6_3PLANE_420_UNORM_3PACK16_KHR: @This() = .G10X6_B10X6_R10X6_3PLANE_420_UNORM_3PACK16;
+    pub const G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16_KHR: @This() = .G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16;
+    pub const G10X6_B10X6_R10X6_3PLANE_422_UNORM_3PACK16_KHR: @This() = .G10X6_B10X6_R10X6_3PLANE_422_UNORM_3PACK16;
+    pub const G10X6_B10X6R10X6_2PLANE_422_UNORM_3PACK16_KHR: @This() = .G10X6_B10X6R10X6_2PLANE_422_UNORM_3PACK16;
+    pub const G10X6_B10X6_R10X6_3PLANE_444_UNORM_3PACK16_KHR: @This() = .G10X6_B10X6_R10X6_3PLANE_444_UNORM_3PACK16;
+    pub const R12X4_UNORM_PACK16_KHR: @This() = .R12X4_UNORM_PACK16;
+    pub const R12X4G12X4_UNORM_2PACK16_KHR: @This() = .R12X4G12X4_UNORM_2PACK16;
+    pub const R12X4G12X4B12X4A12X4_UNORM_4PACK16_KHR: @This() = .R12X4G12X4B12X4A12X4_UNORM_4PACK16;
+    pub const G12X4B12X4G12X4R12X4_422_UNORM_4PACK16_KHR: @This() = .G12X4B12X4G12X4R12X4_422_UNORM_4PACK16;
+    pub const B12X4G12X4R12X4G12X4_422_UNORM_4PACK16_KHR: @This() = .B12X4G12X4R12X4G12X4_422_UNORM_4PACK16;
+    pub const G12X4_B12X4_R12X4_3PLANE_420_UNORM_3PACK16_KHR: @This() = .G12X4_B12X4_R12X4_3PLANE_420_UNORM_3PACK16;
+    pub const G12X4_B12X4R12X4_2PLANE_420_UNORM_3PACK16_KHR: @This() = .G12X4_B12X4R12X4_2PLANE_420_UNORM_3PACK16;
+    pub const G12X4_B12X4_R12X4_3PLANE_422_UNORM_3PACK16_KHR: @This() = .G12X4_B12X4_R12X4_3PLANE_422_UNORM_3PACK16;
+    pub const G12X4_B12X4R12X4_2PLANE_422_UNORM_3PACK16_KHR: @This() = .G12X4_B12X4R12X4_2PLANE_422_UNORM_3PACK16;
+    pub const G12X4_B12X4_R12X4_3PLANE_444_UNORM_3PACK16_KHR: @This() = .G12X4_B12X4_R12X4_3PLANE_444_UNORM_3PACK16;
+    pub const G16B16G16R16_422_UNORM_KHR: @This() = .G16B16G16R16_422_UNORM;
+    pub const B16G16R16G16_422_UNORM_KHR: @This() = .B16G16R16G16_422_UNORM;
+    pub const G16_B16_R16_3PLANE_420_UNORM_KHR: @This() = .G16_B16_R16_3PLANE_420_UNORM;
+    pub const G16_B16R16_2PLANE_420_UNORM_KHR: @This() = .G16_B16R16_2PLANE_420_UNORM;
+    pub const G16_B16_R16_3PLANE_422_UNORM_KHR: @This() = .G16_B16_R16_3PLANE_422_UNORM;
+    pub const G16_B16R16_2PLANE_422_UNORM_KHR: @This() = .G16_B16R16_2PLANE_422_UNORM;
+    pub const G16_B16_R16_3PLANE_444_UNORM_KHR: @This() = .G16_B16_R16_3PLANE_444_UNORM;
+    pub const G8_B8R8_2PLANE_444_UNORM_EXT: @This() = .G8_B8R8_2PLANE_444_UNORM;
+    pub const G10X6_B10X6R10X6_2PLANE_444_UNORM_3PACK16_EXT: @This() = .G10X6_B10X6R10X6_2PLANE_444_UNORM_3PACK16;
+    pub const G12X4_B12X4R12X4_2PLANE_444_UNORM_3PACK16_EXT: @This() = .G12X4_B12X4R12X4_2PLANE_444_UNORM_3PACK16;
+    pub const G16_B16R16_2PLANE_444_UNORM_EXT: @This() = .G16_B16R16_2PLANE_444_UNORM;
+    pub const A4R4G4B4_UNORM_PACK16_EXT: @This() = .A4R4G4B4_UNORM_PACK16;
+    pub const A4B4G4R4_UNORM_PACK16_EXT: @This() = .A4B4G4R4_UNORM_PACK16;
+    pub const R16G16_S10_5_NV: @This() = .R16G16_SFIXED5_NV;
+    pub const MAX_ENUM: c_int = 2147483647;
 };
 
 pub const ColorSpaceKHR = enum(c_int) {
@@ -382,41 +382,53 @@ pub const ColorSpaceKHR = enum(c_int) {
     PASS_THROUGH_EXT = 1000104013,
     EXTENDED_SRGB_NONLINEAR_EXT = 1000104014,
     DISPLAY_NATIVE_AMD = 1000213000,
-    MAX_ENUM_KHR = 2147483647,
+    const COLORSPACE_SRGB_NONLINEAR_KHR: @This() = .SRGB_NONLINEAR_KHR;
+    pub const DCI_P3_LINEAR_EXT: @This() = .DISPLAY_P3_LINEAR_EXT;
+    pub const MAX_ENUM_KHR: c_int = 2147483647;
 };
 
-pub const SHARING_MODE_EXCLUSIVE: c_int = 0;
-pub const SHARING_MODE_CONCURRENT: c_int = 1;
-pub const SHARING_MODE_MAX_ENUM: c_int = 2147483647;
+pub const SharingMode = enum(c_int) {
+    EXCLUSIVE = 0,
+    CONCURRENT = 1,
+    pub const MAX_ENUM: c_int = 2147483647;
+};
 
-pub const shader_stage_bit = struct {
-    pub const VERTEX: c_int = 1;
-    pub const TESSELLATION_CONTROL: c_int = 2;
-    pub const TESSELLATION_EVALUATION: c_int = 4;
-    pub const GEOMETRY: c_int = 8;
-    pub const FRAGMENT: c_int = 16;
-    pub const COMPUTE: c_int = 32;
-    pub const ALL_GRAPHICS: c_int = 31;
-    pub const ALL: c_int = 2147483647;
-    pub const RAYGEN_KHR: c_int = 256;
-    pub const ANY_HIT_KHR: c_int = 512;
-    pub const CLOSEST_HIT_KHR: c_int = 1024;
-    pub const MISS_KHR: c_int = 2048;
-    pub const INTERSECTION_KHR: c_int = 4096;
-    pub const CALLABLE_KHR: c_int = 8192;
-    pub const TASK_EXT: c_int = 64;
-    pub const MESH_EXT: c_int = 128;
-    pub const SUBPASS_SHADING_HUAWEI: c_int = 16384;
-    pub const CLUSTER_CULLING_HUAWEI: c_int = 524288;
-    pub const RAYGEN_NV: c_int = 256;
-    pub const ANY_HIT_NV: c_int = 512;
-    pub const CLOSEST_HIT_NV: c_int = 1024;
-    pub const MISS_NV: c_int = 2048;
-    pub const INTERSECTION_NV: c_int = 4096;
-    pub const CALLABLE_NV: c_int = 8192;
-    pub const TASK_NV: c_int = 64;
-    pub const MESH_NV: c_int = 128;
-    pub const FLAGS_MAX_ENUM: c_int = 2147483647;
+pub const ShaderStageFlagBits = packed struct(c_int) {
+    VERTEX_BIT: u1 = 0, // 1
+    TESSELLATION_CONTROL_BIT: u1 = 0, // 2
+    TESSELLATION_EVALUATION_BIT: u1 = 0, // 4
+    GEOMETRY_BIT: u1 = 0, // 8
+    FRAGMENT_BIT: u1 = 0, // 16
+    COMPUTE_BIT: u1 = 0, // 32
+    TASK_BIT_EXT: u1 = 0, // 64
+    MESH_BIT_EXT: u1 = 0, // 128
+    RAYGEN_BIT_KHR: u1 = 0, // 256
+    ANY_HIT_BIT_KHR: u1 = 0, // 512
+    CLOSEST_HIT_BIT_KHR: u1 = 0, // 1024
+    MISS_BIT_KHR: u1 = 0, // 2048
+    INTERSECTION_BIT_KHR: u1 = 0, // 4096
+    CALLABLE_BIT_KHR: u1 = 0, // 8192
+    SUBPASS_SHADING_BIT_HUAWEI: u1 = 0, // 16384
+    _reserved: u4 = 0,
+    CLUSTER_CULLING_BIT_HUAWEI: u1 = 0, // 524288
+    _reserved_: u12 = 0,
+    pub const ALL_GRAPHICS: @This() = .{
+        .VERTEX_BIT = 1,
+        .TESSELLATION_CONTROL_BIT = 1,
+        .TESSELLATION_EVALUATION_BIT = 1,
+        .GEOMETRY_BIT = 1,
+        .FRAGMENT_BIT = 1,
+    }; // 31
+    pub const ALL: @This() = @bitCast(@as(c_int, 2147483647));
+    pub const RAYGEN_BIT_NV: @This() = .{ .RAYGEN_BIT_KHR = 1 }; // 256
+    pub const ANY_HIT_BIT_NV: @This() = .{ .ANY_HIT_BIT_KHR = 1 }; // 512
+    pub const CLOSEST_HIT_BIT_NV: @This() = .{ .CLOSEST_HIT_BIT_KHR = 1 }; // 1024
+    pub const MISS_BIT_NV: @This() = .{ .MISS_BIT_KHR = 1 }; // 2048
+    pub const INTERSECTION_BIT_NV: @This() = .{ .INTERSECTION_BIT_KHR = 1 }; // 4096
+    pub const CALLABLE_BIT_NV: @This() = .{ .CALLABLE_BIT_KHR = 1 }; // 8192
+    pub const TASK_BIT_NV: @This() = .{ .TASK_BIT_EXT = 1 }; // 64
+    pub const MESH_BIT_NV: @This() = .{ .MESH_BIT_EXT = 1 }; // 128
+    pub const MAX_ENUM: c_int = 2147483647;
 };
 
 pub const DynamicState = enum(c_int) {
@@ -491,9 +503,25 @@ pub const DynamicState = enum(c_int) {
     REPRESENTATIVE_FRAGMENT_TEST_ENABLE_NV = 1000455031,
     COVERAGE_REDUCTION_MODE_NV = 1000455032,
     ATTACHMENT_FEEDBACK_LOOP_ENABLE_EXT = 1000524000,
-    LINE_STIPPLE = 1000259000,
+    LINE_STIPPLE_KHR = 1000259000,
     DEPTH_CLAMP_RANGE_EXT = 1000582000,
-    MAX_ENUM = 2147483647,
+    pub const LINE_STIPPLE_EXT: @This() = .LINE_STIPPLE_KHR;
+    pub const CULL_MODE_EXT: @This() = .CULL_MODE;
+    pub const FRONT_FACE_EXT: @This() = .FRONT_FACE;
+    pub const PRIMITIVE_TOPOLOGY_EXT: @This() = .PRIMITIVE_TOPOLOGY;
+    pub const VIEWPORT_WITH_COUNT_EXT: @This() = .VIEWPORT_WITH_COUNT;
+    pub const SCISSOR_WITH_COUNT_EXT: @This() = .SCISSOR_WITH_COUNT;
+    pub const VERTEX_INPUT_BINDING_STRIDE_EXT: @This() = .VERTEX_INPUT_BINDING_STRIDE;
+    pub const DEPTH_TEST_ENABLE_EXT: @This() = .DEPTH_TEST_ENABLE;
+    pub const DEPTH_WRITE_ENABLE_EXT: @This() = .DEPTH_WRITE_ENABLE;
+    pub const DEPTH_COMPARE_OP_EXT: @This() = .DEPTH_COMPARE_OP;
+    pub const DEPTH_BOUNDS_TEST_ENABLE_EXT: @This() = .DEPTH_BOUNDS_TEST_ENABLE;
+    pub const STENCIL_TEST_ENABLE_EXT: @This() = .STENCIL_TEST_ENABLE;
+    pub const STENCIL_OP_EXT: @This() = .STENCIL_OP;
+    pub const RASTERIZER_DISCARD_ENABLE_EXT: @This() = .RASTERIZER_DISCARD_ENABLE;
+    pub const DEPTH_BIAS_ENABLE_EXT: @This() = .DEPTH_BIAS_ENABLE;
+    pub const PRIMITIVE_RESTART_ENABLE_EXT: @This() = .PRIMITIVE_RESTART_ENABLE;
+    pub const MAX_ENUM: c_int = 2147483647;
 };
 
 pub const PrimitiveTopology = enum(c_int) {
@@ -508,7 +536,7 @@ pub const PrimitiveTopology = enum(c_int) {
     TRIANGLE_LIST_WITH_ADJACENCY = 8,
     TRIANGLE_STRIP_WITH_ADJACENCY = 9,
     PATCH_LIST = 10,
-    MAX_ENUM = 2147483647,
+    pub const MAX_ENUM: c_int = 2147483647;
 };
 
 pub const PolygonMode = enum(c_int) {
@@ -516,40 +544,43 @@ pub const PolygonMode = enum(c_int) {
     LINE = 1,
     POINT = 2,
     FILL_RECTANGLE_NV = 1000153000,
-    MAX_ENUM = 2147483647,
+    pub const MAX_ENUM: c_int = 2147483647;
 };
 
-pub const CullModeFlags = enum(c_int) {
-    NONE = 0,
-    FRONT_BIT = 1,
-    BACK_BIT = 2,
-    FRONT_AND_BACK = 3,
-    FLAG_BITS_MAX_ENUM = 2147483647,
+pub const CullModeFlags = packed struct(c_int) {
+    FRONT_BIT: u1 = 0,
+    BACK_BIT: u1 = 0,
+    _reserved: u30 = 0,
+    pub const NONE: @This() = {};
+    pub const FRONT_AND_BACK: @This() = .{ .FRONT_BIT = 1, .BACK_BIT = 1 };
+    pub const MAX_ENUM: c_int = 2147483647;
 };
 
 pub const FrontFace = enum(c_int) {
     COUNTER_CLOCKWISE = 0,
     CLOCKWISE = 1,
-    MAX_ENUM = 2147483647,
+    pub const MAX_ENUM: c_int = 2147483647;
 };
 
-pub const sample_count_flag_bits = struct {
-    pub const @"1_BIT": c_int = 1;
-    pub const @"2_BIT": c_int = 2;
-    pub const @"4_BIT": c_int = 4;
-    pub const @"8_BIT": c_int = 8;
-    pub const @"16_BIT": c_int = 16;
-    pub const @"32_BIT": c_int = 32;
-    pub const @"64_BIT": c_int = 64;
-    pub const FLAG_BITS_MAX_ENUM: c_int = 2147483647;
+pub const SampleCountFlags = packed struct(c_int) {
+    @"1_BIT": u1 = 0, // 1
+    @"2_BIT": u1 = 0, // 2
+    @"4_BIT": u1 = 0, // 4
+    @"8_BIT": u1 = 0, // 8
+    @"16_BIT": u1 = 0, // 16
+    @"32_BIT": u1 = 0, // 32
+    @"64_BIT": u1 = 0, // 64
+    _reserved: u25 = 0,
+    pub const MAX_ENUM: c_int = 2147483647;
 };
 
 pub const ColorComponentFlags = packed struct(u32) {
-    R: u1 = 0,
-    G: u1 = 0,
-    B: u1 = 0,
-    A: u1 = 0,
-    __reserved: u28 = 0,
+    R_BIT: u1 = 0, // 1
+    G_BIT: u1 = 0, // 2
+    B_BIT: u1 = 0, // 4
+    A_BIT: u1 = 0, // 8
+    _reserved: u28 = 0,
+    pub const MAX_ENUM: c_int = 2147483647;
 };
 
 pub const BlendFactor = enum(c_int) {
@@ -572,7 +603,7 @@ pub const BlendFactor = enum(c_int) {
     ONE_MINUS_SRC1_COLOR = 16,
     SRC1_ALPHA = 17,
     ONE_MINUS_SRC1_ALPHA = 18,
-    MAX_ENUM = 2147483647,
+    pub const MAX_ENUM: c_int = 2147483647;
 };
 
 pub const BlendOp = enum(c_int) {
@@ -627,7 +658,7 @@ pub const BlendOp = enum(c_int) {
     RED_EXT = 1000148043,
     GREEN_EXT = 1000148044,
     BLUE_EXT = 1000148045,
-    MAX_ENUM = 2147483647,
+    pub const MAX_ENUM: c_int = 2147483647;
 };
 
 pub const LogicOp = enum(c_int) {
@@ -647,7 +678,7 @@ pub const LogicOp = enum(c_int) {
     OR_INVERTED = 13,
     NAND = 14,
     SET = 15,
-    MAX_ENUM = 2147483647,
+    pub const MAX_ENUM: c_int = 2147483647;
 };
 
 pub const AttachmentLoadOp = enum(c_int) {
@@ -655,15 +686,20 @@ pub const AttachmentLoadOp = enum(c_int) {
     CLEAR = 1,
     DONT_CARE = 2,
     NONE_KHR = 1000400000,
-    MAX_ENUM = 2147483647,
+    pub const NONE_EXT: @This() = .NONE_KHR;
+    pub const MAX_ENUM: c_int = 2147483647;
 };
 
 pub const AttachmentStoreOp = enum(c_int) {
     STORE = 0,
     DONT_CARE = 1,
     NONE = 1000301000,
-    MAX_ENUM = 2147483647,
+    pub const NONE_KHR: @This() = .NONE;
+    pub const NONE_QCOM: @This() = .NONE;
+    pub const NONE_EXT: @This() = .NONE;
+    pub const MAX_ENUM: c_int = 2147483647;
 };
+
 pub const ImageLayout = enum(c_int) {
     UNDEFINED = 0,
     GENERAL = 1,
@@ -694,14 +730,16 @@ pub const ImageLayout = enum(c_int) {
     VIDEO_ENCODE_SRC_KHR = 1000299001,
     VIDEO_ENCODE_DPB_KHR = 1000299002,
     ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT = 1000339000,
-    // SHADING_RATE_OPTIMAL_NV = 1000164003,
-    // DEPTH_ATTACHMENT_OPTIMAL_KHR = 1000241000,
-    // DEPTH_READ_ONLY_OPTIMAL_KHR = 1000241001,
-    // STENCIL_ATTACHMENT_OPTIMAL_KHR = 1000241002,
-    // STENCIL_READ_ONLY_OPTIMAL_KHR = 1000241003,
-    // READ_ONLY_OPTIMAL_KHR = 1000314000,
-    // ATTACHMENT_OPTIMAL_KHR = 1000314001,
-    MAX_ENUM = 2147483647,
+    pub const DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL_KHR: @This() = .DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL;
+    pub const DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL_KHR: @This() = .DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL;
+    pub const SHADING_RATE_OPTIMAL_NV: @This() = .FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR;
+    pub const DEPTH_ATTACHMENT_OPTIMAL_KHR: @This() = .DEPTH_ATTACHMENT_OPTIMAL;
+    pub const DEPTH_READ_ONLY_OPTIMAL_KHR: @This() = .DEPTH_READ_ONLY_OPTIMAL;
+    pub const STENCIL_ATTACHMENT_OPTIMAL_KHR: @This() = .STENCIL_ATTACHMENT_OPTIMAL;
+    pub const STENCIL_READ_ONLY_OPTIMAL_KHR: @This() = .STENCIL_READ_ONLY_OPTIMAL;
+    pub const READ_ONLY_OPTIMAL_KHR: @This() = .READ_ONLY_OPTIMAL;
+    pub const ATTACHMENT_OPTIMAL_KHR: @This() = .ATTACHMENT_OPTIMAL;
+    pub const MAX_ENUM: c_int = 2147483647;
 };
 
 pub const PipelineBindPoint = enum(c_int) {
@@ -709,42 +747,42 @@ pub const PipelineBindPoint = enum(c_int) {
     COMPUTE = 1,
     RAY_TRACING_KHR = 1000165000,
     SUBPASS_SHADING_HUAWEI = 1000369003,
-    // RAY_TRACING_NV = 1000165000,
-    MAX_ENUM = 2147483647,
+    pub const RAY_TRACING_NV: @This() = .RAY_TRACING_KHR;
+    pub const MAX_ENUM: c_int = 2147483647;
 };
 
 pub const CommandPoolCreateFlags = packed struct(c_int) {
-    TRANSIENT: u1 = 0,
-    RESET_COMMAND_BUFFER: u1 = 0,
-    PROTECTED: u1 = 0,
-    __reserved__: u29 = 0,
+    TRANSIENT: u1 = 0, // 1
+    RESET_COMMAND_BUFFER: u1 = 0, // 2
+    PROTECTED: u1 = 0, // 4
+    __reserved: u29 = 0,
+    pub const MAX_ENUM: c_int = 2147483647;
 };
 
 pub const CommandBufferLevel = enum(c_int) {
     PRIMARY = 0,
     SECONDARY = 1,
+    pub const MAX_ENUM = 2147483647;
 };
 
 pub const SubpassContents = enum(c_int) {
     INLINE = 0,
     SECONDARY_COMMAND_BUFFERS = 1,
     INLINE_AND_SECONDARY_COMMAND_BUFFERS_KHR = 1000451000,
-    // INLINE_AND_SECONDARY_COMMAND_BUFFERS_EXT= 1000451000,
-    MAX_ENUM = 2147483647,
+    pub const INLINE_AND_SECONDARY_COMMAND_BUFFERS_EXT: @This() = .INLINE_AND_SECONDARY_COMMAND_BUFFERS_KHR;
+    pub const MAX_ENUM: c_int = 2147483647;
 };
 
 pub const FenceCreateFlags = packed struct(c_int) {
     SIGNALED: u1 = 0,
-    __reserved__: u31 = 0,
+    __reserved: u31 = 0,
+    pub const MAX_ENUM = 2147483647;
 };
 
 pub const CommandBufferResetFlags = packed struct(c_int) {
-    STENCIL_FACE_FRONT: u1 = 0,
-    STENCIL_FACE_BACK: u1 = 0,
-    __reserved__: u30 = 0,
-
-    pub const STENCIL_FACE_FRONT_AND_BACK = @This(){ .STENCIL_FACE_FRONT = 1, .STENCIL_FACE_BACK = 1 };
-    pub const STENCIL_FRONT_AND_BACK = @This(){ .STENCIL_FACE_FRONT = 1, .STENCIL_FACE_BACK = 1 };
+    RELEASE_RESOURCES_BIT: u1 = 0, // 1
+    __reserved: u31 = 0,
+    pub const MAX_ENUM: c_int = 2147483647;
 };
 
 pub const PipelineStageFlags = packed struct(c_int) {
@@ -774,9 +812,7 @@ pub const PipelineStageFlags = packed struct(c_int) {
     FRAGMENT_DENSITY_PROCESS_EXT: u1 = 0,
     TRANSFORM_FEEDBACK_EXT: u1 = 0,
     ACCELERATION_STRUCTURE_BUILD_KHR: u1 = 0,
-
-    __reserved__: u6 = 0,
-
+    __reserved: u6 = 0,
     pub const NONE: @This() = @intCast(0);
     pub const SHADING_RATE_IMAGE_BIT_NV: @This() = @intCast(4194304);
     pub const RAY_TRACING_SHADER_BIT_NV: @This() = @intCast(2097152);
@@ -785,63 +821,68 @@ pub const PipelineStageFlags = packed struct(c_int) {
     pub const MESH_SHADER_BIT_NV: @This() = @intCast(1048576);
     pub const NONE_KHR: @This() = @intCast(0);
     pub const COMMAND_PREPROCESS_BIT_EXT: @This() = @intCast(131072);
+    pub const MAX_ENUM: c_int = 2147483647;
 };
 
-pub const access_flags = struct {
-    pub const INDIRECT_COMMAND_READ_BIT: c_int = 1;
-    pub const INDEX_READ_BIT: c_int = 2;
-    pub const VERTEX_ATTRIBUTE_READ_BIT: c_int = 4;
-    pub const UNIFORM_READ_BIT: c_int = 8;
-    pub const INPUT_ATTACHMENT_READ_BIT: c_int = 16;
-    pub const SHADER_READ_BIT: c_int = 32;
-    pub const SHADER_WRITE_BIT: c_int = 64;
-    pub const COLOR_ATTACHMENT_READ_BIT: c_int = 128;
-    pub const COLOR_ATTACHMENT_WRITE_BIT: c_int = 256;
-    pub const DEPTH_STENCIL_ATTACHMENT_READ_BIT: c_int = 512;
-    pub const DEPTH_STENCIL_ATTACHMENT_WRITE_BIT: c_int = 1024;
-    pub const TRANSFER_READ_BIT: c_int = 2048;
-    pub const TRANSFER_WRITE_BIT: c_int = 4096;
-    pub const HOST_READ_BIT: c_int = 8192;
-    pub const HOST_WRITE_BIT: c_int = 16384;
-    pub const MEMORY_READ_BIT: c_int = 32768;
-    pub const MEMORY_WRITE_BIT: c_int = 65536;
-    pub const NONE: c_int = 0;
-    pub const TRANSFORM_FEEDBACK_WRITE_BIT_EXT: c_int = 33554432;
-    pub const TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT: c_int = 67108864;
-    pub const TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT: c_int = 134217728;
-    pub const CONDITIONAL_RENDERING_READ_BIT_EXT: c_int = 1048576;
-    pub const COLOR_ATTACHMENT_READ_NONCOHERENT_BIT_EXT: c_int = 524288;
-    pub const ACCELERATION_STRUCTURE_READ_BIT_KHR: c_int = 2097152;
-    pub const ACCELERATION_STRUCTURE_WRITE_BIT_KHR: c_int = 4194304;
-    pub const FRAGMENT_DENSITY_MAP_READ_BIT_EXT: c_int = 16777216;
-    pub const FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR: c_int = 8388608;
-    pub const COMMAND_PREPROCESS_READ_BIT_NV: c_int = 131072;
-    pub const COMMAND_PREPROCESS_WRITE_BIT_NV: c_int = 262144;
-    pub const SHADING_RATE_IMAGE_READ_BIT_NV: c_int = 8388608;
-    pub const ACCELERATION_STRUCTURE_READ_BIT_NV: c_int = 2097152;
-    pub const ACCELERATION_STRUCTURE_WRITE_BIT_NV: c_int = 4194304;
-    pub const NONE_KHR: c_int = 0;
-    pub const COMMAND_PREPROCESS_READ_BIT_EXT: c_int = 131072;
-    pub const COMMAND_PREPROCESS_WRITE_BIT_EXT: c_int = 262144;
+pub const AccessFlags = packed struct(c_int) {
+    INDIRECT_COMMAND_READ_BIT: u1 = 0, // 1
+    INDEX_READ_BIT: u1 = 0, // 2
+    VERTEX_ATTRIBUTE_READ_BIT: u1 = 0, // 4
+    UNIFORM_READ_BIT: u1 = 0, // 8
+    INPUT_ATTACHMENT_READ_BIT: u1 = 0, // 16
+    SHADER_READ_BIT: u1 = 0, // 32
+    SHADER_WRITE_BIT: u1 = 0, // 64
+    COLOR_ATTACHMENT_READ_BIT: u1 = 0, // 128
+    COLOR_ATTACHMENT_WRITE_BIT: u1 = 0, // 256
+    DEPTH_STENCIL_ATTACHMENT_READ_BIT: u1 = 0, // 512
+    DEPTH_STENCIL_ATTACHMENT_WRITE_BIT: u1 = 0, // 1024
+    TRANSFER_READ_BIT: u1 = 0, // 2048
+    TRANSFER_WRITE_BIT: u1 = 0, // 4096
+    HOST_READ_BIT: u1 = 0, // 8192
+    HOST_WRITE_BIT: u1 = 0, // 16384
+    MEMORY_READ_BIT: u1 = 0, // 32768
+    MEMORY_WRITE_BIT: u1 = 0, // 65536
+    COMMAND_PREPROCESS_READ_BIT_NV: u1 = 0, // 131072
+    COMMAND_PREPROCESS_WRITE_BIT_NV: u1 = 0, // 262144
+    COLOR_ATTACHMENT_READ_NONCOHERENT_BIT_EXT: u1 = 0, // 524288
+    CONDITIONAL_RENDERING_READ_BIT_EXT: u1 = 0, // 1048576
+    ACCELERATION_STRUCTURE_READ_BIT_KHR: u1 = 0, // 2097152
+    ACCELERATION_STRUCTURE_WRITE_BIT_KHR: u1 = 0, // 4194304
+    FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR: u1 = 0, // 8388608
+    FRAGMENT_DENSITY_MAP_READ_BIT_EXT: u1 = 0, // 16777216
+    TRANSFORM_FEEDBACK_WRITE_BIT_EXT: u1 = 0, // 33554432
+    TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT: u1 = 0, // 67108864
+    TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT: u1 = 0, // 134217728;
+    __reserved: u4 = 0,
+    pub const NONE: @This() = @bitCast(@as(c_int, 0));
+    pub const SHADING_RATE_IMAGE_READ_BIT_NV: @This() = .{ .FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR = 1 };
+    pub const ACCELERATION_STRUCTURE_READ_BIT_NV: @This() = .{ .ACCELERATION_STRUCTURE_READ_BIT_KHR = 1 };
+    pub const ACCELERATION_STRUCTURE_WRITE_BIT_NV: @This() = .{ .ACCELERATION_STRUCTURE_WRITE_BIT_KHR = 1 };
+    pub const NONE_KHR: @This() = NONE;
+    pub const COMMAND_PREPROCESS_READ_BIT_EXT: @This() = .{ .COMMAND_PREPROCESS_READ_BIT_NV = 1 };
+    pub const COMMAND_PREPROCESS_WRITE_BIT_EXT: @This() = .{ .COMMAND_PREPROCESS_WRITE_BIT_NV = 1 };
+    pub const MAX_ENUM: c_int = 2147483647;
 };
 
 pub const DebugUtilsMessageSeverityFlagsEXT = packed struct(c_int) {
-    VERBOSE: u1 = 0,
-    __reserved_1_3_: u3 = 0,
-    INFO: u1 = 0,
-    __reserved_5_7_: u3 = 0,
-    WARNING: u1 = 0,
-    __reserved_9_11_: u3 = 0,
-    ERROR: u1 = 0,
-    reserved_13_31_: u19 = 0,
+    VERBOSE_BIT_EXT: u1 = 0, // 1
+    __reserved_1: u3 = 0,
+    INFO_BIT_EXT: u1 = 0, // 16
+    __reserved_2: u3 = 0,
+    WARNING_BIT_EXT: u1 = 0, // 256
+    __reserved_3: u3 = 0,
+    ERROR_BIT_EXT: u1 = 0, // 4096
+    __reserved: u19 = 0,
+    pub const MAX_ENUM_EXT: c_int = 2147483647;
 };
 
 pub const DebugUtilsMessageTypeFlagsEXT = packed struct(c_int) {
-    GENERAL: u1 = 0,
-    VALIDATION: u1 = 0,
-    PERFORMANCE: u1 = 0,
-    DEVICE_ADDRESS_BINDING: u1 = 0,
+    GENERAL: u1 = 0, // 1
+    VALIDATION: u1 = 0, // 2
+    PERFORMANCE: u1 = 0, // 4
+    DEVICE_ADDRESS_BINDING: u1 = 0, // 8
     __reserved__: u28 = 0,
+    pub const MAX_ENUM_EXT: c_int = 2147483647;
 };
 
 pub const StructureType = enum(c_int) {
@@ -1772,9 +1813,6 @@ pub const StructureType = enum(c_int) {
     IMAGE_ALIGNMENT_CONTROL_CREATE_INFO_MESA = 1000575002,
     PHYSICAL_DEVICE_DEPTH_CLAMP_CONTROL_FEATURES_EXT = 1000582000,
     PIPELINE_VIEWPORT_DEPTH_CLAMP_CONTROL_CREATE_INFO_EXT = 1000582001,
-
-    MAX_ENUM = 2147483647,
-
     pub const PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES = @This().PHYSICAL_DEVICE_VARIABLE_POINTERS_FEATURES;
     pub const PHYSICAL_DEVICE_SHADER_DRAW_PARAMETER_FEATURES = @This().PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES;
     pub const DEBUG_REPORT_CREATE_INFO_EXT = @This().DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT;
@@ -1959,4 +1997,5 @@ pub const StructureType = enum(c_int) {
     pub const DEVICE_BUFFER_MEMORY_REQUIREMENTS_KHR = @This().DEVICE_BUFFER_MEMORY_REQUIREMENTS;
     pub const DEVICE_IMAGE_MEMORY_REQUIREMENTS_KHR = @This().DEVICE_IMAGE_MEMORY_REQUIREMENTS;
     pub const SHADER_REQUIRED_SUBGROUP_SIZE_CREATE_INFO_EXT = @This().PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO;
+    pub const MAX_ENUM: c_int = 2147483647;
 };
