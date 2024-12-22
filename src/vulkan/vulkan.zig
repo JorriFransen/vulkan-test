@@ -6,30 +6,31 @@ pub const Renderer = @import("renderer.zig");
 
 const s = @This();
 
-// Types
+pub const Flags = u32;
 pub const Bool32 = u32;
-pub const Result = c_int;
-pub const VoidFunction = ?*const fn () callconv(.c) void;
-pub const DebugUtilsMessengerCallback = ?*const fn (s.DebugUtilsMessageSeverityFlagsEXT, s.DebugUtilsMessageTypeFlagsEXT, [*c]const s.DebugUtilsMessengerCallbackData, ?*anyopaque) callconv(.c) s.Bool32;
+pub const DeviceSize = u64;
+pub const VoidFunction = ?*const fn () callconv(.C) void;
 
-// Handles
+pub const PFN_AllocationFunction = ?*const fn (?*anyopaque, usize, usize, s.SystemAllocationScope) callconv(.C) ?*anyopaque;
+pub const PFN_ReallocationFunction = ?*const fn (?*anyopaque, ?*anyopaque, usize, usize, s.SystemAllocationScope) callconv(.C) ?*anyopaque;
+pub const PFN_FreeFunction = ?*const fn (?*anyopaque, ?*anyopaque) callconv(.c) void;
+pub const PFN_InternalAllocationNotification = ?*const fn (?*anyopaque, usize, s.InternalAllocationType, s.SystemAllocationScope) callconv(.c) void;
+pub const PFN_InternalFreeNotification = ?*const fn (?*anyopaque, usize, s.InternalAllocationType, s.SystemAllocationScope) callconv(.c) void;
+pub const DebugUtilsMessengerCallback = ?*const fn (s.DebugUtilsMessageSeverityFlagsEXT, s.DebugUtilsMessageTypeFlagsEXT, [*c]const s.DebugUtilsMessengerCallbackData, ?*anyopaque) callconv(.C) s.Bool32;
+
 pub const handles = @import("handles.zig");
 pub usingnamespace handles;
 
-// Structs
 pub const structs = @import("structs.zig");
 pub usingnamespace structs;
 
-// Functions
 pub const functions = @import("functions.zig");
 pub usingnamespace functions;
 
-// Macros
 pub inline fn MAKE_VERSION(major: u32, minor: u32, patch: u32) u32 {
     return ((major << 22) | minor << 12) | patch;
 }
 
-// Constants
 pub const constants = @import("constants.zig");
 pub usingnamespace constants;
 

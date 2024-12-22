@@ -202,11 +202,11 @@ fn createInstance(window: *const Window) !vk.Instance {
     if (debug) {
         var count: u32 = undefined;
         var res = vk.enumerateInstanceLayerProperties(&count, null);
-        assert(res == vk.SUCCESS);
+        assert(res == .SUCCESS);
 
         available_layers = try alloc.gpa.alloc(vk.LayerProperties, count);
         res = vk.enumerateInstanceLayerProperties(&count, @constCast(available_layers.ptr));
-        assert(res == vk.SUCCESS);
+        assert(res == .SUCCESS);
 
         // for (available_layers) |l| dlog("available layer '{s}'", .{@as([*:0]const u8, @ptrCast(&l.layerName))});
     }
@@ -243,7 +243,7 @@ fn createInstance(window: *const Window) !vk.Instance {
     const instance_create_info = vk.InstanceCreateInfo{
         .sType = .INSTANCE_CREATE_INFO,
         .pApplicationInfo = &app_info,
-        .flags = if (is_mac) vk.INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR else 0,
+        .flags = .{ .ENUMERATE_PORTABILITY_BIT_KHR = if (is_mac) 1 else 0 },
         .enabledExtensionCount = @intCast(required_instance_extensions.items.len),
         .ppEnabledExtensionNames = required_instance_extensions.items.ptr,
         .enabledLayerCount = validation_layers.len,
@@ -253,7 +253,7 @@ fn createInstance(window: *const Window) !vk.Instance {
 
     var instance: vk.Instance = undefined;
     switch (vk.createInstance(&instance_create_info, null, &instance)) {
-        vk.SUCCESS => {
+        .SUCCESS => {
             dlog("vkCreateInstance: OK", .{});
         },
         else => |v| {
@@ -432,32 +432,32 @@ fn queryDeviceExtensionsSuitable(pdev: vk.PhysicalDevice) !bool {
 
 fn querySwapchainInfo(pdev: vk.PhysicalDevice, surface: vk.SurfaceKHR) !?SwapchainInfo {
     var surface_capabilities: vk.SurfaceCapabilitiesKHR = undefined;
-    if (vk.getPhysicalDeviceSurfaceCapabilitiesKHR(pdev, surface, &surface_capabilities) != vk.SUCCESS) {
+    if (vk.getPhysicalDeviceSurfaceCapabilitiesKHR(pdev, surface, &surface_capabilities) != .SUCCESS) {
         return error.Get_Physical_Device_Surface_Capabilities_Failed;
     }
 
     var format_count: u32 = undefined;
-    if (vk.getPhysicalDeviceSurfaceFormatsKHR(pdev, surface, &format_count, null) != vk.SUCCESS) {
+    if (vk.getPhysicalDeviceSurfaceFormatsKHR(pdev, surface, &format_count, null) != .SUCCESS) {
         return error.Get_Physical_Device_Surface_Formats_Failed;
     }
     if (format_count == 0) return null;
 
     var formats: []vk.SurfaceFormatKHR = undefined;
     formats = try alloc.gpa.alloc(vk.SurfaceFormatKHR, format_count);
-    if (vk.getPhysicalDeviceSurfaceFormatsKHR(pdev, surface, &format_count, @ptrCast(formats.ptr)) != vk.SUCCESS) {
+    if (vk.getPhysicalDeviceSurfaceFormatsKHR(pdev, surface, &format_count, @ptrCast(formats.ptr)) != .SUCCESS) {
         return error.Get_Physical_Device_Surface_Formats_Failed;
     }
     defer alloc.gpa.free(formats);
 
     var present_mode_count: u32 = undefined;
-    if (vk.getPhysicalDeviceSurfacePresentModesKHR(pdev, surface, &present_mode_count, null) != vk.SUCCESS) {
+    if (vk.getPhysicalDeviceSurfacePresentModesKHR(pdev, surface, &present_mode_count, null) != .SUCCESS) {
         return error.Get_Physical_Device_Surface_Presentmodes_Failed;
     }
     if (present_mode_count == 0) return null;
 
     var present_modes: []vk.PresentModeKHR = undefined;
     present_modes = try alloc.gpa.alloc(vk.PresentModeKHR, present_mode_count);
-    if (vk.getPhysicalDeviceSurfacePresentModesKHR(pdev, surface, &present_mode_count, @ptrCast(present_modes.ptr)) != vk.SUCCESS) {
+    if (vk.getPhysicalDeviceSurfacePresentModesKHR(pdev, surface, &present_mode_count, @ptrCast(present_modes.ptr)) != .SUCCESS) {
         return error.Get_Physical_Device_Surface_Presentmodes_Failed;
     }
     defer alloc.gpa.free(present_modes);
@@ -519,13 +519,13 @@ fn createLogicalDevice(this: *@This()) !void {
 
     var qci_array: [fin_array.len]vk.DeviceQueueCreateInfo = undefined;
     const qcis: []vk.DeviceQueueCreateInfo = qci_array[0..fin.len];
-    const que_prio: f32 = 1.0;
+    const que_prios = [_]f32{1.0};
 
     for (qcis, fin) |*qci, fi| qci.* = .{
         .sType = .DEVICE_QUEUE_CREATE_INFO,
         .queueFamilyIndex = fi,
         .queueCount = 1,
-        .pQueuePriorities = &que_prio,
+        .pQueuePriorities = &que_prios,
     };
 
     const device_features = vk.PhysicalDeviceFeatures{};
@@ -541,7 +541,7 @@ fn createLogicalDevice(this: *@This()) !void {
         .ppEnabledLayerNames = validation_layers.ptr,
     };
 
-    if (vk.createDevice(this.device_info.physical_device, &device_create_info, null, &this.device) != vk.SUCCESS) {
+    if (vk.createDevice(this.device_info.physical_device, &device_create_info, null, &this.device) != .SUCCESS) {
         elog("Failed to create logical device!", .{});
         return error.Logical_Device_Creation_Failed;
     }
@@ -580,29 +580,29 @@ pub fn createSwapchain(this: *@This(), fb_width: c_int, fb_height: c_int) !void 
         .imageColorSpace = dev_info.swapchain_info.surface_format.colorSpace,
         .imageExtent = extent,
         .imageArrayLayers = 1,
-        .imageUsage = vk.IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        .imageUsage = .{ .COLOR_ATTACHMENT_BIT = 1 },
         .imageSharingMode = if (same_family) .EXCLUSIVE else .CONCURRENT,
         .queueFamilyIndexCount = if (same_family) 0 else 2,
         .pQueueFamilyIndices = if (same_family) null else @ptrCast(&.{ dev_info.queue_info.graphics_index, dev_info.queue_info.present_index }),
         .preTransform = cap.currentTransform,
-        .compositeAlpha = vk.COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+        .compositeAlpha = .{ .OPAQUE_BIT_KHR = 1 },
         .presentMode = dev_info.swapchain_info.present_mode,
         .clipped = vk.TRUE,
         .oldSwapchain = null,
     };
 
     var swapchain_handle: vk.SwapchainKHR = undefined;
-    if (vk.createSwapchainKHR(this.device, &create_info, null, &swapchain_handle) != vk.SUCCESS) {
+    if (vk.createSwapchainKHR(this.device, &create_info, null, &swapchain_handle) != .SUCCESS) {
         return error.Create_Swapchain_Failed;
     }
 
     var image_count: u32 = undefined;
-    if (vk.getSwapchainImagesKHR(this.device, swapchain_handle, &image_count, null) != vk.SUCCESS) {
+    if (vk.getSwapchainImagesKHR(this.device, swapchain_handle, &image_count, null) != .SUCCESS) {
         return error.Get_Swapchain_Images_Failed;
     }
 
     const images = try alloc.gpa.alloc(vk.Image, image_count);
-    if (vk.getSwapchainImagesKHR(this.device, swapchain_handle, &image_count, images.ptr) != vk.SUCCESS) {
+    if (vk.getSwapchainImagesKHR(this.device, swapchain_handle, &image_count, images.ptr) != .SUCCESS) {
         return error.Get_Swapchain_Images_Failed;
     }
     assert(image_count == images.len);
@@ -612,16 +612,11 @@ pub fn createSwapchain(this: *@This(), fb_width: c_int, fb_height: c_int) !void 
         const view_create_info = vk.ImageViewCreateInfo{
             .sType = .IMAGE_VIEW_CREATE_INFO,
             .image = image,
-            .viewType = vk.IMAGE_VIEW_TYPE_2D,
+            .viewType = .@"2D",
             .format = dev_info.swapchain_info.surface_format.format,
-            .components = .{
-                .r = vk.COMPONENT_SWIZZLE_IDENTITY,
-                .g = vk.COMPONENT_SWIZZLE_IDENTITY,
-                .b = vk.COMPONENT_SWIZZLE_IDENTITY,
-                .a = vk.COMPONENT_SWIZZLE_IDENTITY,
-            },
+            .components = .{ .r = .IDENTITY, .g = .IDENTITY, .b = .IDENTITY, .a = .IDENTITY },
             .subresourceRange = .{
-                .aspectMask = vk.IMAGE_ASPECT_COLOR_BIT,
+                .aspectMask = .{ .COLOR_BIT = 1 },
                 .baseMipLevel = 0,
                 .levelCount = 1,
                 .baseArrayLayer = 0,
@@ -629,7 +624,7 @@ pub fn createSwapchain(this: *@This(), fb_width: c_int, fb_height: c_int) !void 
             },
         };
 
-        if (vk.createImageView(this.device, &view_create_info, null, view) != vk.SUCCESS) {
+        if (vk.createImageView(this.device, &view_create_info, null, view) != .SUCCESS) {
             return error.Create_Image_View_Failed;
         }
     }
@@ -670,7 +665,7 @@ fn createRenderPass(this: *@This()) !void {
         .srcSubpass = vk.SUBPASS_EXTERNAL,
         .dstSubpass = 0,
         .srcStageMask = .{ .COLOR_ATTACHMENT_OUTPUT = 1 },
-        .srcAccessMask = 0,
+        .srcAccessMask = vk.AccessFlags.NONE,
         .dstStageMask = .{ .COLOR_ATTACHMENT_OUTPUT = 1 },
         .dstAccessMask = .{ .COLOR_ATTACHMENT_WRITE_BIT = 1 },
     }};
@@ -684,7 +679,7 @@ fn createRenderPass(this: *@This()) !void {
         .pDependencies = &dependencies,
     };
 
-    if (vk.createRenderPass(this.device, &render_pass_create_info, null, &this.render_pass) != vk.SUCCESS) {
+    if (vk.createRenderPass(this.device, &render_pass_create_info, null, &this.render_pass) != .SUCCESS) {
         return error.CreateRenderPassFailed;
     }
 }
@@ -794,7 +789,7 @@ fn createGraphicsPipeline(this: *@This()) !void {
         .pPushConstantRanges = null,
     };
 
-    if (vk.createPipelineLayout(this.device, &pipeline_layout_create_info, null, &this.pipeline_layout) != vk.SUCCESS) {
+    if (vk.createPipelineLayout(this.device, &pipeline_layout_create_info, null, &this.pipeline_layout) != .SUCCESS) {
         return error.CreatePipelineLayoutFailed;
     }
 
@@ -817,7 +812,7 @@ fn createGraphicsPipeline(this: *@This()) !void {
         .basePipelineIndex = -1,
     }};
 
-    if (vk.createGraphicsPipelines(this.device, null, pipeline_create_infos.len, &pipeline_create_infos, null, &this.graphics_pipeline) != vk.SUCCESS) {
+    if (vk.createGraphicsPipelines(this.device, null, pipeline_create_infos.len, &pipeline_create_infos, null, &this.graphics_pipeline) != .SUCCESS) {
         return error.CreateGraphicsPipelinesFailed;
     }
 }
@@ -836,7 +831,7 @@ fn createFrameBuffers(this: *@This()) !void {
             .layers = 1,
         };
 
-        if (vk.createFramebuffer(this.device, &framebuffer_create_info, null, fb) != vk.SUCCESS) {
+        if (vk.createFramebuffer(this.device, &framebuffer_create_info, null, fb) != .SUCCESS) {
             return error.CreateFramebufferFailed;
         }
     }
@@ -849,7 +844,7 @@ fn createCommandPool(this: *@This()) !void {
         .queueFamilyIndex = this.device_info.queue_info.graphics_index,
     };
 
-    if (vk.createCommandPool(this.device, &create_info, null, &this.command_pool) != vk.SUCCESS) {
+    if (vk.createCommandPool(this.device, &create_info, null, &this.command_pool) != .SUCCESS) {
         return error.CreateCommandPoolFailed;
     }
 }
@@ -862,7 +857,7 @@ fn createCommandBuffer(this: *@This()) !void {
         .commandBufferCount = 1,
     };
 
-    if (vk.allocateCommandBuffers(this.device, &alloc_info, &this.command_buffer) != vk.SUCCESS) {
+    if (vk.allocateCommandBuffers(this.device, &alloc_info, &this.command_buffer) != .SUCCESS) {
         return error.AllocateCommandBuffersFailed;
     }
 }
@@ -877,13 +872,13 @@ fn createSyncObjects(this: *@This()) !void {
         .flags = .{ .SIGNALED = 1 },
     };
 
-    if (vk.createSemaphore(this.device, &sem_create_info, null, &this.image_available_semaphore) != vk.SUCCESS or
-        vk.createSemaphore(this.device, &sem_create_info, null, &this.render_finished_semaphore) != vk.SUCCESS)
+    if (vk.createSemaphore(this.device, &sem_create_info, null, &this.image_available_semaphore) != .SUCCESS or
+        vk.createSemaphore(this.device, &sem_create_info, null, &this.render_finished_semaphore) != .SUCCESS)
     {
         return error.CreateSemaphoreFailed;
     }
 
-    if (vk.createFence(this.device, &fence_create_info, null, &this.in_flight_fence) != vk.SUCCESS) {
+    if (vk.createFence(this.device, &fence_create_info, null, &this.in_flight_fence) != .SUCCESS) {
         return error.CreateFenceFailed;
     }
 }
@@ -895,7 +890,7 @@ fn recordCommandBuffer(this: *const @This(), image_index: u32) void {
         .pInheritanceInfo = null,
     };
 
-    if (vk.beginCommandBuffer(this.command_buffer, &begin_info) != vk.SUCCESS) {
+    if (vk.beginCommandBuffer(this.command_buffer, &begin_info) != .SUCCESS) {
         @panic("beginCommandBuffer failed!");
     }
 
@@ -936,7 +931,7 @@ fn recordCommandBuffer(this: *const @This(), image_index: u32) void {
 
     vk.cmdEndRenderPass(this.command_buffer);
 
-    if (vk.endCommandBuffer(this.command_buffer) != vk.SUCCESS) {
+    if (vk.endCommandBuffer(this.command_buffer) != .SUCCESS) {
         @panic("endCommandBuffer failed!");
     }
 }
@@ -946,7 +941,7 @@ pub fn drawFrame(this: *const @This()) void {
     _ = vk.resetFences(this.device, 1, @ptrCast(&this.in_flight_fence));
 
     var image_index: u32 = undefined;
-    if (vk.acquireNextImageKHR(this.device, this.swapchain.handle, std.math.maxInt(u64), this.image_available_semaphore, null, &image_index) != vk.SUCCESS) {
+    if (vk.acquireNextImageKHR(this.device, this.swapchain.handle, std.math.maxInt(u64), this.image_available_semaphore, null, &image_index) != .SUCCESS) {
         @panic("acquirenextImageKHR failed!");
     }
 
@@ -970,7 +965,7 @@ pub fn drawFrame(this: *const @This()) void {
         .pSignalSemaphores = &signal_semaphores,
     }};
 
-    if (vk.queueSubmit(this.graphics_que, submit_infos.len, &submit_infos, this.in_flight_fence) != vk.SUCCESS) {
+    if (vk.queueSubmit(this.graphics_que, submit_infos.len, &submit_infos, this.in_flight_fence) != .SUCCESS) {
         @panic("queueSubmit failed!");
     }
 
@@ -998,7 +993,7 @@ fn createShaderModule(this: *const @This(), code: []const u8) !vk.ShaderModule {
     };
 
     var shader_module: vk.ShaderModule = undefined;
-    if (vk.createShaderModule(this.device, &create_info, null, &shader_module) != vk.SUCCESS) {
+    if (vk.createShaderModule(this.device, &create_info, null, &shader_module) != .SUCCESS) {
         return error.createShaderModuleFailed;
     }
 

@@ -135,7 +135,7 @@ pub fn requiredVulkanInstanceExtensions(_: *const @This()) ![]const [*:0]const u
 
 pub fn createVulkanSurface(this: *const @This(), instance: vk.Instance) !vk.SurfaceKHR {
     var surface: vk.SurfaceKHR = undefined;
-    if (glfw.glfwCreateWindowSurface(instance, this.handle, null, &surface) != vk.SUCCESS) {
+    if (glfw.glfwCreateWindowSurface(instance, this.handle, null, &surface) != .SUCCESS) {
         elog("glfwCreateWindowSurface failed!", .{});
         return error.Vulkan_Surface_Creation_Failed;
     }
@@ -155,7 +155,7 @@ pub fn createVulkanSurface(this: *const @This(), instance: vk.Instance) !vk.Surf
     //     .window = @intCast(glfw.glfwGetX11Window(this.handle)),
     // };
     //
-    // if (vk.createXcbSurfaceKHR(instance, &create_info, null, &surface) != vk.SUCCESS) {
+    // if (vk.createXcbSurfaceKHR(instance, &create_info, null, &surface) != .SUCCESS) {
     //     elog("glfwCreateWindowSurface failed!", .{});
     //     return error.Vulkan_Surface_Creation_Failed;
     // }
@@ -169,7 +169,7 @@ pub fn createVulkanSurface(this: *const @This(), instance: vk.Instance) !vk.Surf
     //     .window = glfw.glfwGetX11Window(this.handle),
     // };
     //
-    // if (vk.createXlibSurfaceKHR(instance, &create_info, null, &surface) != vk.SUCCESS) {
+    // if (vk.createXlibSurfaceKHR(instance, &create_info, null, &surface) != .SUCCESS) {
     //     elog("glfwCreateWindowSurface failed!", .{});
     //     return error.Vulkan_Surface_Creation_Failed;
     // }

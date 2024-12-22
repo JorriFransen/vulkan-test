@@ -1,5 +1,8 @@
 const c = @import("platform").c;
 
+const vk = @import("vulkan");
+const Flags = vk.Flags;
+
 pub const API_VERSION_1_0 = c.VK_API_VERSION_1_0;
 pub const API_VERSION_1_1 = c.VK_API_VERSION_1_1;
 pub const API_VERSION_1_2 = c.VK_API_VERSION_1_2;
@@ -7,22 +10,92 @@ pub const API_VERSION_1_3 = c.VK_API_VERSION_1_3;
 
 pub const TRUE = 1;
 pub const FALSE = 0;
-pub const SUCCESS = 0;
 
-pub const INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR = c.VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
-pub const KHR_SWAPCHAIN_EXTENSION_NAME = c.VK_KHR_SWAPCHAIN_EXTENSION_NAME;
+pub const KHR_SWAPCHAIN_EXTENSION_NAME = "VK_KHR_swapchain";
 
-pub const FORMAT_B8G8R8A8_SRGB = c.VK_FORMAT_B8G8R8A8_SRGB;
-pub const COLOR_SPACE_SRGB_NONLINEAR_KHR = c.VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
-pub const IMAGE_ASPECT_COLOR_BIT = c.VK_IMAGE_ASPECT_COLOR_BIT;
-pub const IMAGE_USAGE_COLOR_ATTACHMENT_BIT = c.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-pub const COMPOSITE_ALPHA_OPAQUE_BIT_KHR = c.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+pub const SUBPASS_EXTERNAL = ~@as(u32, 0);
 
-pub const IMAGE_VIEW_TYPE_2D = c.VK_IMAGE_VIEW_TYPE_2D;
+pub const Result = enum(c_int) {
+    SUCCESS = 0,
+    NOT_READY = 1,
+    TIMEOUT = 2,
+    EVENT_SET = 3,
+    EVENT_RESET = 4,
+    INCOMPLETE = 5,
+    ERROR_OUT_OF_HOST_MEMORY = -1,
+    ERROR_OUT_OF_DEVICE_MEMORY = -2,
+    ERROR_INITIALIZATION_FAILED = -3,
+    ERROR_DEVICE_LOST = -4,
+    ERROR_MEMORY_MAP_FAILED = -5,
+    ERROR_LAYER_NOT_PRESENT = -6,
+    ERROR_EXTENSION_NOT_PRESENT = -7,
+    ERROR_FEATURE_NOT_PRESENT = -8,
+    ERROR_INCOMPATIBLE_DRIVER = -9,
+    ERROR_TOO_MANY_OBJECTS = -10,
+    ERROR_FORMAT_NOT_SUPPORTED = -11,
+    ERROR_FRAGMENTED_POOL = -12,
+    ERROR_UNKNOWN = -13,
+    ERROR_OUT_OF_POOL_MEMORY = -1000069000,
+    ERROR_INVALID_EXTERNAL_HANDLE = -1000072003,
+    ERROR_FRAGMENTATION = -1000161000,
+    ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS = -1000257000,
+    PIPELINE_COMPILE_REQUIRED = 1000297000,
+    ERROR_NOT_PERMITTED = -1000174001,
+    ERROR_SURFACE_LOST_KHR = -1000000000,
+    ERROR_NATIVE_WINDOW_IN_USE_KHR = -1000000001,
+    SUBOPTIMAL_KHR = 1000001003,
+    ERROR_OUT_OF_DATE_KHR = -1000001004,
+    ERROR_INCOMPATIBLE_DISPLAY_KHR = -1000003001,
+    ERROR_VALIDATION_FAILED_EXT = -1000011001,
+    ERROR_INVALID_SHADER_NV = -1000012000,
+    ERROR_IMAGE_USAGE_NOT_SUPPORTED_KHR = -1000023000,
+    ERROR_VIDEO_PICTURE_LAYOUT_NOT_SUPPORTED_KHR = -1000023001,
+    ERROR_VIDEO_PROFILE_OPERATION_NOT_SUPPORTED_KHR = -1000023002,
+    ERROR_VIDEO_PROFILE_FORMAT_NOT_SUPPORTED_KHR = -1000023003,
+    ERROR_VIDEO_PROFILE_CODEC_NOT_SUPPORTED_KHR = -1000023004,
+    ERROR_VIDEO_STD_VERSION_NOT_SUPPORTED_KHR = -1000023005,
+    ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT = -1000158000,
+    ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT = -1000255000,
+    THREAD_IDLE_KHR = 1000268000,
+    THREAD_DONE_KHR = 1000268001,
+    OPERATION_DEFERRED_KHR = 1000268002,
+    OPERATION_NOT_DEFERRED_KHR = 1000268003,
+    ERROR_INVALID_VIDEO_STD_PARAMETERS_KHR = -1000299000,
+    ERROR_COMPRESSION_EXHAUSTED_EXT = -1000338000,
+    INCOMPATIBLE_SHADER_BINARY_EXT = 1000482000,
+    PIPELINE_BINARY_MISSING_KHR = 1000483000,
+    ERROR_NOT_ENOUGH_SPACE_KHR = -1000483000,
+    // ERROR_INVALID_EXTERNAL_HANDLE_KHR = ERROR_INVALID_EXTERNAL_HANDLE,
+    // ERROR_FRAGMENTATION_EXT = ERROR_FRAGMENTATION,
+    // ERROR_NOT_PERMITTED_EXT = ERROR_NOT_PERMITTED,
+    // ERROR_NOT_PERMITTED_KHR = ERROR_NOT_PERMITTED,
+    // ERROR_INVALID_DEVICE_ADDRESS_EXT = ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS,
+    // ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS_KHR = ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS,
+    // PIPELINE_COMPILE_REQUIRED_EXT = PIPELINE_COMPILE_REQUIRED,
+    // ERROR_PIPELINE_COMPILE_REQUIRED_EXT = PIPELINE_COMPILE_REQUIRED,
+    // ERROR_INCOMPATIBLE_SHADER_BINARY_EXT = INCOMPATIBLE_SHADER_BINARY_EXT,
+    pub const ERROR_OUT_OF_POOL_MEMORY_KHR: @This() = .ERROR_OUT_OF_POOL_MEMORY;
+};
 
-pub const COMPONENT_SWIZZLE_IDENTITY = c.VK_COMPONENT_SWIZZLE_IDENTITY;
+pub const InstanceCreateFlags = packed struct(c_int) {
+    ENUMERATE_PORTABILITY_BIT_KHR: u1 = 0, // 1
+    __rerved: u31 = 0,
+    pub const MAX_ENUM: c_int = 2147483647;
+};
 
-pub const SUBPASS_EXTERNAL = ~@as(c_uint, 0);
+pub const SystemAllocationScope = enum(c_int) {
+    SCOPE_COMMAND = 0,
+    SCOPE_OBJECT = 1,
+    SCOPE_CACHE = 2,
+    SCOPE_DEVICE = 3,
+    SCOPE_INSTANCE = 4,
+    SCOPE_MAX_ENUM = 2147483647,
+};
+
+pub const InternalAllocationType = enum(c_int) {
+    EXECUTABLE = 0,
+    MAX_ENUM = 2147483647,
+};
 
 pub const PhysicalDeviceType = enum(c_int) {
     OTHER = 0,
@@ -41,6 +114,124 @@ pub const PresentModeKHR = enum(c_int) {
     SHARED_DEMAND_REFRESH_KHR = 1000111000,
     SHARED_CONTINUOUS_REFRESH_KHR = 1000111001,
     pub const MAX_ENUM_KHR: c_int = 2147483647;
+};
+
+pub const DeviceQueueCreateFlags = packed struct(c_int) {
+    PROTECTED_BIT: u1 = 0, // 1
+    __reserved: u31 = 0,
+    pub const MAX_ENUM: c_int = 2147483647;
+};
+
+pub const DeviceCreateFlags = packed struct(c_int) {
+    __reserved: u32 = 0,
+};
+
+pub const XcbSurfaceCreateFlagsKHR = packed struct(c_int) {
+    __reserved: u32 = 0,
+};
+
+pub const XlibSurfaceCreateFlagsKHR = packed struct(c_int) {
+    __reserved: u32 = 0,
+};
+
+pub const Win32SurfaceCreateFlagsKHR = packed struct(c_int) {
+    __reserved: u32 = 0,
+};
+
+pub const SurfaceTransformFlagsKHR = packed struct(c_int) {
+    IDENTITY_BIT_KHR: u1 = 0, // 1
+    ROTATE_90_BIT_KHR: u1 = 0, // 2
+    ROTATE_180_BIT_KHR: u1 = 0, // 4
+    ROTATE_270_BIT_KHR: u1 = 0, // 8
+    HORIZONTAL_MIRROR_BIT_KHR: u1 = 0, // 16
+    HORIZONTAL_MIRROR_ROTATE_90_BIT_KHR: u1 = 0, // 32
+    HORIZONTAL_MIRROR_ROTATE_180_BIT_KHR: u1 = 0, // 64
+    HORIZONTAL_MIRROR_ROTATE_270_BIT_KHR: u1 = 0, // 128
+    INHERIT_BIT_KHR: u1 = 0, // 256
+    __reserved: u23 = 0,
+    pub const MAX_ENUM_KHR: c_int = 2147483647;
+};
+
+pub const CompositeAlphaFlagsKHR = packed struct(c_int) {
+    OPAQUE_BIT_KHR: u1 = 0, // 1
+    PRE_MULTIPLIED_BIT_KHR: u1 = 0, // 2
+    POST_MULTIPLIED_BIT_KHR: u1 = 0, // 4
+    INHERIT_BIT_KHR: u1 = 0, // 8
+    __reserved: u28 = 0,
+    pub const MAX_ENUM_KHR: c_int = 2147483647;
+};
+
+pub const ImageUsageFlags = packed struct(c_int) {
+    TRANSFER_SRC_BIT: u1 = 0, // 1
+    TRANSFER_DST_BIT: u1 = 0, // 2
+    SAMPLED_BIT: u1 = 0, // 4
+    STORAGE_BIT: u1 = 0, // 8
+    COLOR_ATTACHMENT_BIT: u1 = 0, // 16
+    DEPTH_STENCIL_ATTACHMENT_BIT: u1 = 0, // 32
+    TRANSIENT_ATTACHMENT_BIT: u1 = 0, // 64
+    INPUT_ATTACHMENT_BIT: u1 = 0, // 128
+    FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR: u1 = 0, // 256
+    FRAGMENT_DENSITY_MAP_BIT_EXT: u1 = 0, // 512
+    VIDEO_DECODE_DST_BIT_KHR: u1 = 0, // 1024
+    VIDEO_DECODE_SRC_BIT_KHR: u1 = 0, // 2048
+    VIDEO_DECODE_DPB_BIT_KHR: u1 = 0, // 4096
+    VIDEO_ENCODE_DST_BIT_KHR: u1 = 0, // 8192
+    VIDEO_ENCODE_SRC_BIT_KHR: u1 = 0, // 16384
+    VIDEO_ENCODE_DPB_BIT_KHR: u1 = 0, // 32768
+    __reserved_1: u3 = 0,
+    INVOCATION_MASK_BIT_HUAWEI: u1 = 0, // 262144
+    ATTACHMENT_FEEDBACK_LOOP_BIT_EXT: u1 = 0, // 524288
+    SAMPLE_WEIGHT_BIT_QCOM: u1 = 0, // 1048576
+    SAMPLE_BLOCK_MATCH_BIT_QCOM: u1 = 0, // 2097152
+    HOST_TRANSFER_BIT_EXT: u1 = 0, // 4194304
+    __reserved_2: u8 = 0,
+    pub const SHADING_RATE_IMAGE_BIT_NV: @This() = .{ .FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR = 1 };
+    pub const MAX_ENUM: c_int = 2147483647;
+};
+
+pub const ImageViewCreateFlags = packed struct(c_int) {
+    FRAGMENT_DENSITY_MAP_DYNAMIC_BIT_EXT: u1 = 0, // 1
+    FRAGMENT_DENSITY_MAP_DEFERRED_BIT_EXT: u1 = 0, // 2
+    DESCRIPTOR_BUFFER_CAPTURE_REPLAY_BIT_EXT: u1 = 0, // 4
+    __reserved: u29 = 0,
+    pub const MAX_ENUM: c_int = 2147483647;
+};
+
+pub const ImageViewType = enum(c_int) {
+    @"1D" = 0,
+    @"2D" = 1,
+    @"3D" = 2,
+    CUBE = 3,
+    @"1D_ARRAY" = 4,
+    @"2D_ARRAY" = 5,
+    CUBE_ARRAY = 6,
+    pub const MAX_ENUM: c_int = 2147483647;
+};
+
+pub const ImageAspectFlags = packed struct(c_int) {
+    COLOR_BIT: u1 = 0, //  1
+    DEPTH_BIT: u1 = 0, //  2
+    STENCIL_BIT: u1 = 0, //  4
+    METADATA_BIT: u1 = 0, //  8
+    PLANE_0_BIT: u1 = 0, //  16
+    PLANE_1_BIT: u1 = 0, //  32
+    PLANE_2_BIT: u1 = 0, //  64
+    MEMORY_PLANE_0_BIT_EXT: u1 = 0, //  128
+    MEMORY_PLANE_1_BIT_EXT: u1 = 0, //  256
+    MEMORY_PLANE_2_BIT_EXT: u1 = 0, //  512
+    MEMORY_PLANE_3_BIT_EXT: u1 = 0, //  1024
+    __reserved: u21 = 0,
+    pub const NONE: @This() = @as(c_int, @bitCast(0));
+    pub const PLANE_0_BIT_KHR: @This() = .{ .PLANE_0_BIT = 0 };
+    pub const PLANE_1_BIT_KHR: @This() = .{ .PLANE_1_BIT = 0 };
+    pub const PLANE_2_BIT_KHR: @This() = .{ .PLANE_2_BIT = 0 };
+    pub const NONE_KHR: @This() = NONE;
+    pub const MAX_ENUM: c_int = 2147483647;
+};
+
+pub const ShaderModuleCreateFlags = packed struct(c_int) {
+    __reserved: u32 = 0,
+    pub const MAX_ENUM: c_int = 2147483647;
 };
 
 pub const QueueFlags = packed struct(u32) {
@@ -393,7 +584,7 @@ pub const SharingMode = enum(c_int) {
     pub const MAX_ENUM: c_int = 2147483647;
 };
 
-pub const ShaderStageFlagBits = packed struct(c_int) {
+pub const ShaderStageFlags = packed struct(c_int) {
     VERTEX_BIT: u1 = 0, // 1
     TESSELLATION_CONTROL_BIT: u1 = 0, // 2
     TESSELLATION_EVALUATION_BIT: u1 = 0, // 4
@@ -430,6 +621,9 @@ pub const ShaderStageFlagBits = packed struct(c_int) {
     pub const MESH_BIT_NV: @This() = .{ .MESH_BIT_EXT = 1 }; // 128
     pub const MAX_ENUM: c_int = 2147483647;
 };
+
+pub const PipelineVertexInputStateCreateFlags = Flags;
+pub const PipelineInputAssemblyStateCreateFlags = Flags;
 
 pub const DynamicState = enum(c_int) {
     VIEWPORT = 0,
@@ -580,6 +774,17 @@ pub const ColorComponentFlags = packed struct(u32) {
     B_BIT: u1 = 0, // 4
     A_BIT: u1 = 0, // 8
     _reserved: u28 = 0,
+    pub const MAX_ENUM: c_int = 2147483647;
+};
+
+pub const ComponentSwizzle = enum(c_int) {
+    IDENTITY = 0,
+    ZERO = 1,
+    ONE = 2,
+    R = 3,
+    G = 4,
+    B = 5,
+    A = 6,
     pub const MAX_ENUM: c_int = 2147483647;
 };
 
@@ -883,6 +1088,23 @@ pub const DebugUtilsMessageTypeFlagsEXT = packed struct(c_int) {
     DEVICE_ADDRESS_BINDING: u1 = 0, // 8
     __reserved__: u28 = 0,
     pub const MAX_ENUM_EXT: c_int = 2147483647;
+};
+
+pub const SwapchainCreateFlagsKHR = packed struct(c_int) {
+    SPLIT_INSTANCE_BIND_REGIONS_BIT_KHR: u1 = 0, // 1
+    PROTECTED_BIT_KHR: u1 = 0, // 2
+    MUTABLE_FORMAT_BIT_KHR: u1 = 0, // 4
+    DEFERRED_MEMORY_ALLOCATION_BIT_EXT: u1 = 0, // 8
+    __reserved: u28 = 0,
+    pub const MAX_ENUM_KHR: c_int = 2147483647;
+};
+
+pub const PipelineShaderStageCreateFlags = packed struct(c_int) {
+    __reserved: u32 = 0,
+};
+
+pub const PipelineDynamicStateCreateFlags = packed struct(c_int) {
+    __reserved: u32 = 0,
 };
 
 pub const StructureType = enum(c_int) {

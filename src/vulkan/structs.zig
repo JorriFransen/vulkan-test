@@ -29,21 +29,21 @@ pub const LayerProperties = extern struct {
 pub const InstanceCreateInfo = extern struct {
     sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
-    flags: c.VkInstanceCreateFlags = std.mem.zeroes(c.VkInstanceCreateFlags),
-    pApplicationInfo: [*c]const ApplicationInfo = std.mem.zeroes([*c]const ApplicationInfo),
+    flags: s.InstanceCreateFlags = std.mem.zeroes(s.InstanceCreateFlags),
+    pApplicationInfo: *const ApplicationInfo,
     enabledLayerCount: u32 = 0,
-    ppEnabledLayerNames: [*c]const [*c]const u8 = std.mem.zeroes([*c]const [*c]const u8),
+    ppEnabledLayerNames: ?[*]const [*:0]const u8 = null,
     enabledExtensionCount: u32 = 0,
-    ppEnabledExtensionNames: [*c]const [*c]const u8 = std.mem.zeroes([*c]const [*c]const u8),
+    ppEnabledExtensionNames: ?[*]const [*:0]const u8 = null,
 };
 
 pub const AllocationCallbacks = extern struct {
     pUserData: ?*anyopaque = null,
-    pfnAllocation: c.PFN_vkAllocationFunction = std.mem.zeroes(c.PFN_vkAllocationFunction),
-    pfnReallocation: c.PFN_vkReallocationFunction = std.mem.zeroes(c.PFN_vkReallocationFunction),
-    pfnFree: c.PFN_vkFreeFunction = std.mem.zeroes(c.PFN_vkFreeFunction),
-    pfnInternalAllocation: c.PFN_vkInternalAllocationNotification = std.mem.zeroes(c.PFN_vkInternalAllocationNotification),
-    pfnInternalFree: c.PFN_vkInternalFreeNotification = std.mem.zeroes(c.PFN_vkInternalFreeNotification),
+    pfnAllocation: s.PFN_AllocationFunction = std.mem.zeroes(s.PFN_AllocationFunction),
+    pfnReallocation: s.PFN_ReallocationFunction = std.mem.zeroes(s.PFN_ReallocationFunction),
+    pfnFree: s.PFN_FreeFunction = std.mem.zeroes(s.PFN_FreeFunction),
+    pfnInternalAllocation: s.PFN_InternalAllocationNotification = std.mem.zeroes(s.PFN_InternalAllocationNotification),
+    pfnInternalFree: s.PFN_InternalFreeNotification = std.mem.zeroes(s.PFN_InternalFreeNotification),
 };
 
 pub const PhysicalDeviceProperties = extern struct {
@@ -51,11 +51,128 @@ pub const PhysicalDeviceProperties = extern struct {
     driverVersion: u32 = 0,
     vendorID: u32 = 0,
     deviceID: u32 = 0,
-    deviceType: s.PhysicalDeviceType = std.mem.zeroes(s.PhysicalDeviceType),
+    deviceType: s.PhysicalDeviceType,
     deviceName: [256]u8 = std.mem.zeroes([256]u8),
     pipelineCacheUUID: [16]u8 = std.mem.zeroes([16]u8),
-    limits: c.VkPhysicalDeviceLimits = std.mem.zeroes(c.VkPhysicalDeviceLimits),
-    sparseProperties: c.VkPhysicalDeviceSparseProperties = std.mem.zeroes(c.VkPhysicalDeviceSparseProperties),
+    limits: PhysicalDeviceLimits,
+    sparseProperties: PhysicalDeviceSparseProperties,
+};
+
+pub const PhysicalDeviceLimits = extern struct {
+    maxImageDimension1D: u32 = 0,
+    maxImageDimension2D: u32 = 0,
+    maxImageDimension3D: u32 = 0,
+    maxImageDimensionCube: u32 = 0,
+    maxImageArrayLayers: u32 = 0,
+    maxTexelBufferElements: u32 = 0,
+    maxUniformBufferRange: u32 = 0,
+    maxStorageBufferRange: u32 = 0,
+    maxPushConstantsSize: u32 = 0,
+    maxMemoryAllocationCount: u32 = 0,
+    maxSamplerAllocationCount: u32 = 0,
+    bufferImageGranularity: s.DeviceSize = 0,
+    sparseAddressSpaceSize: s.DeviceSize = 0,
+    maxBoundDescriptorSets: u32 = 0,
+    maxPerStageDescriptorSamplers: u32 = 0,
+    maxPerStageDescriptorUniformBuffers: u32 = 0,
+    maxPerStageDescriptorStorageBuffers: u32 = 0,
+    maxPerStageDescriptorSampledImages: u32 = 0,
+    maxPerStageDescriptorStorageImages: u32 = 0,
+    maxPerStageDescriptorInputAttachments: u32 = 0,
+    maxPerStageResources: u32 = 0,
+    maxDescriptorSetSamplers: u32 = 0,
+    maxDescriptorSetUniformBuffers: u32 = 0,
+    maxDescriptorSetUniformBuffersDynamic: u32 = 0,
+    maxDescriptorSetStorageBuffers: u32 = 0,
+    maxDescriptorSetStorageBuffersDynamic: u32 = 0,
+    maxDescriptorSetSampledImages: u32 = 0,
+    maxDescriptorSetStorageImages: u32 = 0,
+    maxDescriptorSetInputAttachments: u32 = 0,
+    maxVertexInputAttributes: u32 = 0,
+    maxVertexInputBindings: u32 = 0,
+    maxVertexInputAttributeOffset: u32 = 0,
+    maxVertexInputBindingStride: u32 = 0,
+    maxVertexOutputComponents: u32 = 0,
+    maxTessellationGenerationLevel: u32 = 0,
+    maxTessellationPatchSize: u32 = 0,
+    maxTessellationControlPerVertexInputComponents: u32 = 0,
+    maxTessellationControlPerVertexOutputComponents: u32 = 0,
+    maxTessellationControlPerPatchOutputComponents: u32 = 0,
+    maxTessellationControlTotalOutputComponents: u32 = 0,
+    maxTessellationEvaluationInputComponents: u32 = 0,
+    maxTessellationEvaluationOutputComponents: u32 = 0,
+    maxGeometryShaderInvocations: u32 = 0,
+    maxGeometryInputComponents: u32 = 0,
+    maxGeometryOutputComponents: u32 = 0,
+    maxGeometryOutputVertices: u32 = 0,
+    maxGeometryTotalOutputComponents: u32 = 0,
+    maxFragmentInputComponents: u32 = 0,
+    maxFragmentOutputAttachments: u32 = 0,
+    maxFragmentDualSrcAttachments: u32 = 0,
+    maxFragmentCombinedOutputResources: u32 = 0,
+    maxComputeSharedMemorySize: u32 = 0,
+    maxComputeWorkGroupCount: [3]u32 = std.mem.zeroes([3]u32),
+    maxComputeWorkGroupInvocations: u32 = 0,
+    maxComputeWorkGroupSize: [3]u32 = std.mem.zeroes([3]u32),
+    subPixelPrecisionBits: u32 = 0,
+    subTexelPrecisionBits: u32 = 0,
+    mipmapPrecisionBits: u32 = 0,
+    maxDrawIndexedIndexValue: u32 = 0,
+    maxDrawIndirectCount: u32 = 0,
+    maxSamplerLodBias: f32 = 0,
+    maxSamplerAnisotropy: f32 = 0,
+    maxViewports: u32 = 0,
+    maxViewportDimensions: [2]u32 = std.mem.zeroes([2]u32),
+    viewportBoundsRange: [2]f32 = std.mem.zeroes([2]f32),
+    viewportSubPixelBits: u32 = 0,
+    minMemoryMapAlignment: usize = 0,
+    minTexelBufferOffsetAlignment: s.DeviceSize = 0,
+    minUniformBufferOffsetAlignment: s.DeviceSize = 0,
+    minStorageBufferOffsetAlignment: s.DeviceSize = 0,
+    minTexelOffset: i32 = 0,
+    maxTexelOffset: u32 = 0,
+    minTexelGatherOffset: i32 = 0,
+    maxTexelGatherOffset: u32 = 0,
+    minInterpolationOffset: f32 = 0,
+    maxInterpolationOffset: f32 = 0,
+    subPixelInterpolationOffsetBits: u32 = 0,
+    maxFramebufferWidth: u32 = 0,
+    maxFramebufferHeight: u32 = 0,
+    maxFramebufferLayers: u32 = 0,
+    framebufferColorSampleCounts: s.SampleCountFlags = std.mem.zeroes(s.SampleCountFlags),
+    framebufferDepthSampleCounts: s.SampleCountFlags = std.mem.zeroes(s.SampleCountFlags),
+    framebufferStencilSampleCounts: s.SampleCountFlags = std.mem.zeroes(s.SampleCountFlags),
+    framebufferNoAttachmentsSampleCounts: s.SampleCountFlags = std.mem.zeroes(s.SampleCountFlags),
+    maxColorAttachments: u32 = 0,
+    sampledImageColorSampleCounts: s.SampleCountFlags = std.mem.zeroes(s.SampleCountFlags),
+    sampledImageIntegerSampleCounts: s.SampleCountFlags = std.mem.zeroes(s.SampleCountFlags),
+    sampledImageDepthSampleCounts: s.SampleCountFlags = std.mem.zeroes(s.SampleCountFlags),
+    sampledImageStencilSampleCounts: s.SampleCountFlags = std.mem.zeroes(s.SampleCountFlags),
+    storageImageSampleCounts: s.SampleCountFlags = std.mem.zeroes(s.SampleCountFlags),
+    maxSampleMaskWords: u32 = 0,
+    timestampComputeAndGraphics: s.Bool32 = s.FALSE,
+    timestampPeriod: f32 = 0,
+    maxClipDistances: u32 = 0,
+    maxCullDistances: u32 = 0,
+    maxCombinedClipAndCullDistances: u32 = 0,
+    discreteQueuePriorities: u32 = 0,
+    pointSizeRange: [2]f32 = std.mem.zeroes([2]f32),
+    lineWidthRange: [2]f32 = std.mem.zeroes([2]f32),
+    pointSizeGranularity: f32 = 0,
+    lineWidthGranularity: f32 = 0,
+    strictLines: s.Bool32 = s.FALSE,
+    standardSampleLocations: s.Bool32 = s.FALSE,
+    optimalBufferCopyOffsetAlignment: s.DeviceSize = 0,
+    optimalBufferCopyRowPitchAlignment: s.DeviceSize = 0,
+    nonCoherentAtomSize: s.DeviceSize = 0,
+};
+
+pub const PhysicalDeviceSparseProperties = extern struct {
+    residencyStandard2DBlockShape: s.Bool32 = s.FALSE,
+    residencyStandard2DMultisampleBlockShape: s.Bool32 = s.FALSE,
+    residencyStandard3DBlockShape: s.Bool32 = s.FALSE,
+    residencyAlignedMipSize: s.Bool32 = s.FALSE,
+    residencyNonResidentStrict: s.Bool32 = s.FALSE,
 };
 
 pub const PhysicalDeviceFeatures = extern struct {
@@ -120,71 +237,77 @@ pub const QueueFamilyProperties = extern struct {
     queueFlags: s.QueueFlags = std.mem.zeroes(s.QueueFlags),
     queueCount: u32 = 0,
     timestampValidBits: u32 = 0,
-    minImageTransferGranularity: c.VkExtent3D = std.mem.zeroes(c.VkExtent3D),
+    minImageTransferGranularity: Extent3D,
 };
 
 pub const DeviceQueueCreateInfo = extern struct {
     sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
-    flags: c.VkDeviceQueueCreateFlags = std.mem.zeroes(c.VkDeviceQueueCreateFlags),
+    flags: s.DeviceQueueCreateFlags = std.mem.zeroes(s.DeviceQueueCreateFlags),
     queueFamilyIndex: u32 = 0,
     queueCount: u32 = 0,
-    pQueuePriorities: [*c]const f32 = std.mem.zeroes([*c]const f32),
+    pQueuePriorities: [*]const f32,
 };
 
 pub const DeviceCreateInfo = extern struct {
     sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
-    flags: c.VkDeviceCreateFlags = std.mem.zeroes(c.VkDeviceCreateFlags),
+    flags: s.DeviceCreateFlags = std.mem.zeroes(s.DeviceCreateFlags),
     queueCreateInfoCount: u32 = 0,
     pQueueCreateInfos: [*]const DeviceQueueCreateInfo,
     enabledLayerCount: u32 = 0,
-    ppEnabledLayerNames: [*c]const [*c]const u8 = std.mem.zeroes([*c]const [*c]const u8),
+    ppEnabledLayerNames: [*]const [*:0]const u8,
     enabledExtensionCount: u32 = 0,
-    ppEnabledExtensionNames: [*c]const [*c]const u8 = std.mem.zeroes([*c]const [*c]const u8),
-    pEnabledFeatures: [*c]const PhysicalDeviceFeatures = std.mem.zeroes([*c]const PhysicalDeviceFeatures),
+    ppEnabledExtensionNames: [*]const [*:0]const u8,
+    pEnabledFeatures: ?*const PhysicalDeviceFeatures = null,
 };
 
 pub const XcbSurfaceCreateInfoKHR = extern struct {
     sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
-    flags: c.VkXcbSurfaceCreateFlagsKHR = std.mem.zeroes(c.VkXcbSurfaceCreateFlagsKHR),
-    connection: *c.xcb_connection_t,
-    window: c.xcb_window_t = 0,
+    flags: s.XcbSurfaceCreateFlagsKHR = std.mem.zeroes(s.XcbSurfaceCreateFlagsKHR),
+    connection: *s.xcb_connection_t,
+    window: s.xcb_window_t = 0,
 };
 
 pub const XlibSurfaceCreateInfoKHR = extern struct {
     sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
-    flags: c.VkXlibSurfaceCreateFlagsKHR = std.mem.zeroes(c.VkXlibSurfaceCreateFlagsKHR),
-    dpy: *c.Display,
-    window: c.Window,
+    flags: s.XlibSurfaceCreateFlagsKHR = std.mem.zeroes(s.XlibSurfaceCreateFlagsKHR),
+    dpy: *s.Display,
+    window: s.Window,
 };
 
 pub const Win32SurfaceCreateInfoKHR = extern struct {
     sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
-    flags: c.VkWin32SurfaceCreateFlagsKHR = std.mem.zeroes(c.VkWin32SurfaceCreateFlagsKHR),
-    hinstance: c.HINSTANCE,
-    hwnd: c.HWND,
+    flags: s.Win32SurfaceCreateFlagsKHR = std.mem.zeroes(s.Win32SurfaceCreateFlagsKHR),
+    hinstance: s.HINSTANCE,
+    hwnd: s.HWND,
 };
 
 pub const SurfaceCapabilitiesKHR = extern struct {
     minImageCount: u32 = 0,
     maxImageCount: u32 = 0,
-    currentExtent: Extent2D = std.mem.zeroes(Extent2D),
-    minImageExtent: Extent2D = std.mem.zeroes(Extent2D),
-    maxImageExtent: Extent2D = std.mem.zeroes(Extent2D),
+    currentExtent: Extent2D,
+    minImageExtent: Extent2D,
+    maxImageExtent: Extent2D,
     maxImageArrayLayers: u32 = 0,
-    supportedTransforms: c.VkSurfaceTransformFlagsKHR = std.mem.zeroes(c.VkSurfaceTransformFlagsKHR),
-    currentTransform: c.VkSurfaceTransformFlagBitsKHR = std.mem.zeroes(c.VkSurfaceTransformFlagBitsKHR),
-    supportedCompositeAlpha: c.VkCompositeAlphaFlagsKHR = std.mem.zeroes(c.VkCompositeAlphaFlagsKHR),
-    supportedUsageFlags: c.VkImageUsageFlags = std.mem.zeroes(c.VkImageUsageFlags),
+    supportedTransforms: s.SurfaceTransformFlagsKHR = std.mem.zeroes(s.SurfaceTransformFlagsKHR),
+    currentTransform: s.SurfaceTransformFlagsKHR = std.mem.zeroes(s.SurfaceTransformFlagsKHR),
+    supportedCompositeAlpha: s.CompositeAlphaFlagsKHR = std.mem.zeroes(s.CompositeAlphaFlagsKHR),
+    supportedUsageFlags: s.ImageUsageFlags = std.mem.zeroes(s.ImageUsageFlags),
 };
 
 pub const SurfaceFormatKHR = extern struct {
     format: s.Format = std.mem.zeroes(s.Format),
     colorSpace: s.ColorSpaceKHR = std.mem.zeroes(s.ColorSpaceKHR),
+};
+
+pub const Extent3D = extern struct {
+    width: u32 = 0,
+    height: u32 = 0,
+    depth: u32 = 0,
 };
 
 pub const Extent2D = extern struct {
@@ -195,75 +318,103 @@ pub const Extent2D = extern struct {
 pub const SwapchainCreateInfoKHR = extern struct {
     sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
-    flags: c.VkSwapchainCreateFlagsKHR = std.mem.zeroes(c.VkSwapchainCreateFlagsKHR),
+    flags: s.SwapchainCreateFlagsKHR = std.mem.zeroes(s.SwapchainCreateFlagsKHR),
     surface: s.SurfaceKHR = null,
     minImageCount: u32 = 0,
     imageFormat: s.Format = std.mem.zeroes(s.Format),
     imageColorSpace: s.ColorSpaceKHR = std.mem.zeroes(s.ColorSpaceKHR),
-    imageExtent: Extent2D = std.mem.zeroes(Extent2D),
+    imageExtent: Extent2D,
     imageArrayLayers: u32 = 0,
-    imageUsage: c.VkImageUsageFlags = std.mem.zeroes(c.VkImageUsageFlags),
-    imageSharingMode: s.SharingMode = std.mem.zeroes(s.SharingMode),
+    imageUsage: s.ImageUsageFlags,
+    imageSharingMode: s.SharingMode,
     queueFamilyIndexCount: u32 = 0,
-    pQueueFamilyIndices: [*c]const u32 = null,
-    preTransform: c.VkSurfaceTransformFlagBitsKHR = std.mem.zeroes(c.VkSurfaceTransformFlagBitsKHR),
-    compositeAlpha: c.VkCompositeAlphaFlagBitsKHR = std.mem.zeroes(c.VkCompositeAlphaFlagBitsKHR),
+    pQueueFamilyIndices: ?[*]const u32,
+    preTransform: s.SurfaceTransformFlagsKHR = std.mem.zeroes(s.SurfaceTransformFlagsKHR),
+    compositeAlpha: s.CompositeAlphaFlagsKHR = std.mem.zeroes(s.CompositeAlphaFlagsKHR),
     presentMode: s.PresentModeKHR = std.mem.zeroes(s.PresentModeKHR),
     clipped: s.Bool32 = s.FALSE,
-    oldSwapchain: c.VkSwapchainKHR = null,
+    oldSwapchain: s.SwapchainKHR = null,
 };
 
 pub const ImageViewCreateInfo = extern struct {
     sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
-    flags: c.VkImageViewCreateFlags = std.mem.zeroes(c.VkImageViewCreateFlags),
+    flags: s.ImageViewCreateFlags = std.mem.zeroes(s.ImageViewCreateFlags),
     image: s.Image = null,
-    viewType: c.VkImageViewType = std.mem.zeroes(c.VkImageViewType),
+    viewType: s.ImageViewType = std.mem.zeroes(s.ImageViewType),
     format: s.Format = std.mem.zeroes(s.Format),
-    components: c.VkComponentMapping = std.mem.zeroes(c.VkComponentMapping),
-    subresourceRange: c.VkImageSubresourceRange = std.mem.zeroes(c.VkImageSubresourceRange),
+    components: ComponentMapping = std.mem.zeroes(ComponentMapping),
+    subresourceRange: ImageSubresourceRange = std.mem.zeroes(ImageSubresourceRange),
+};
+
+pub const ComponentMapping = extern struct {
+    r: s.ComponentSwizzle,
+    g: s.ComponentSwizzle,
+    b: s.ComponentSwizzle,
+    a: s.ComponentSwizzle,
+};
+
+pub const ImageSubresourceRange = extern struct {
+    aspectMask: s.ImageAspectFlags = std.mem.zeroes(s.ImageAspectFlags),
+    baseMipLevel: u32 = 0,
+    levelCount: u32 = 0,
+    baseArrayLayer: u32 = 0,
+    layerCount: u32 = 0,
 };
 
 pub const ShaderModuleCreateInfo = extern struct {
     sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
-    flags: c.VkShaderModuleCreateFlags = std.mem.zeroes(c.VkShaderModuleCreateFlags),
-    codeSize: usize = std.mem.zeroes(usize),
+    flags: s.ShaderModuleCreateFlags = std.mem.zeroes(s.ShaderModuleCreateFlags),
+    codeSize: usize,
     pCode: [*]const u32,
 };
 
 pub const PipelineShaderStageCreateInfo = extern struct {
     sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
-    flags: c.VkPipelineShaderStageCreateFlags = std.mem.zeroes(c.VkPipelineShaderStageCreateFlags),
-    stage: s.ShaderStageFlagBits = std.mem.zeroes(s.ShaderStageFlagBits),
-    module: s.ShaderModule = null,
-    pName: [*c]const u8 = null,
-    pSpecializationInfo: [*c]const c.VkSpecializationInfo = null,
+    flags: s.PipelineShaderStageCreateFlags = std.mem.zeroes(s.PipelineShaderStageCreateFlags),
+    stage: s.ShaderStageFlags,
+    module: s.ShaderModule,
+    pName: [*:0]const u8,
+    pSpecializationInfo: ?*const SpecializationInfo = null,
+};
+
+pub const SpecializationInfo = extern struct {
+    mapEntryCount: u32,
+    pMapEntries: [*]const SpecializationMapEntry,
+    dataSize: usize = 0,
+    pData: ?*const anyopaque = null,
+};
+
+pub const SpecializationMapEntry = extern struct {
+    constantID: u32 = 0,
+    offset: u32 = 0,
+    size: usize = 0,
 };
 
 pub const PipelineDynamicStateCreateInfo = extern struct {
     sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
-    flags: c.VkPipelineDynamicStateCreateFlags = std.mem.zeroes(c.VkPipelineDynamicStateCreateFlags),
-    dynamicStateCount: u32 = 0,
-    pDynamicStates: [*c]const s.DynamicState = null,
+    flags: s.PipelineDynamicStateCreateFlags = std.mem.zeroes(s.PipelineDynamicStateCreateFlags),
+    dynamicStateCount: u32,
+    pDynamicStates: [*]const s.DynamicState,
 };
 
 pub const PipelineVertexInputStateCreateInfo = extern struct {
     sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
-    flags: c.VkPipelineVertexInputStateCreateFlags = std.mem.zeroes(c.VkPipelineVertexInputStateCreateFlags),
-    vertexBindingDescriptionCount: u32 = 0,
-    pVertexBindingDescriptions: [*c]const c.VkVertexInputBindingDescription = std.mem.zeroes([*c]const c.VkVertexInputBindingDescription),
-    vertexAttributeDescriptionCount: u32 = 0,
-    pVertexAttributeDescriptions: [*c]const c.VkVertexInputAttributeDescription = std.mem.zeroes([*c]const c.VkVertexInputAttributeDescription),
+    flags: s.PipelineVertexInputStateCreateFlags = 0,
+    vertexBindingDescriptionCount: u32,
+    pVertexBindingDescriptions: ?[*]const c.VkVertexInputBindingDescription,
+    vertexAttributeDescriptionCount: u32,
+    pVertexAttributeDescriptions: ?[*]const c.VkVertexInputAttributeDescription,
 };
 
 pub const PipelineInputAssemblyStateCreateInfo = extern struct {
     sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
-    flags: c.VkPipelineInputAssemblyStateCreateFlags = std.mem.zeroes(c.VkPipelineInputAssemblyStateCreateFlags),
+    flags: s.PipelineInputAssemblyStateCreateFlags = std.mem.zeroes(s.PipelineInputAssemblyStateCreateFlags),
     topology: s.PrimitiveTopology = std.mem.zeroes(s.PrimitiveTopology),
     primitiveRestartEnable: s.Bool32 = s.FALSE,
 };
@@ -294,7 +445,7 @@ pub const PipelineViewportStateCreateInfo = extern struct {
     pNext: ?*const anyopaque = null,
     flags: c.VkPipelineViewportStateCreateFlags = std.mem.zeroes(c.VkPipelineViewportStateCreateFlags),
     viewportCount: u32 = 0,
-    pViewports: [*c]const c.VkViewport = std.mem.zeroes([*c]const c.VkViewport),
+    pViewports: [*c]const s.Viewport = std.mem.zeroes([*c]const s.Viewport),
     scissorCount: u32 = 0,
     pScissors: [*c]const Rect2D = std.mem.zeroes([*c]const Rect2D),
 };
@@ -395,11 +546,11 @@ pub const SubpassDescription = extern struct {
     flags: c.VkSubpassDescriptionFlags = std.mem.zeroes(c.VkSubpassDescriptionFlags),
     pipelineBindPoint: s.PipelineBindPoint = std.mem.zeroes(s.PipelineBindPoint),
     inputAttachmentCount: u32 = 0,
-    pInputAttachments: [*c]const c.VkAttachmentReference = null,
+    pInputAttachments: [*c]const s.AttachmentReference = null,
     colorAttachmentCount: u32 = 0,
     pColorAttachments: [*c]const AttachmentReference = null,
-    pResolveAttachments: [*c]const c.VkAttachmentReference = null,
-    pDepthStencilAttachment: [*c]const c.VkAttachmentReference = null,
+    pResolveAttachments: [*c]const s.AttachmentReference = null,
+    pDepthStencilAttachment: [*c]const s.AttachmentReference = null,
     preserveAttachmentCount: u32 = 0,
     pPreserveAttachments: [*c]const u32 = null,
 };
@@ -434,7 +585,7 @@ pub const GraphicsPipelineCreateInfo = extern struct {
     layout: s.PipelineLayout = std.mem.zeroes(s.PipelineLayout),
     renderPass: s.RenderPass = null,
     subpass: u32 = 0,
-    basePipelineHandle: c.VkPipeline = null,
+    basePipelineHandle: s.Pipeline = null,
     basePipelineIndex: i32 = 0,
 };
 
@@ -511,7 +662,7 @@ pub const SubpassDependency = extern struct {
     dstSubpass: u32 = 0,
     srcStageMask: s.PipelineStageFlags = std.mem.zeroes(s.PipelineStageFlags),
     dstStageMask: s.PipelineStageFlags = std.mem.zeroes(s.PipelineStageFlags),
-    srcAccessMask: c.VkAccessFlags = std.mem.zeroes(c.VkAccessFlags),
+    srcAccessMask: s.AccessFlags = std.mem.zeroes(s.AccessFlags),
     dstAccessMask: s.AccessFlags = std.mem.zeroes(s.AccessFlags),
     dependencyFlags: c.VkDependencyFlags = std.mem.zeroes(c.VkDependencyFlags),
 };
