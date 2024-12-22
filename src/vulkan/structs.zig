@@ -279,8 +279,8 @@ pub const Win32SurfaceCreateInfoKHR = extern struct {
     sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
     flags: s.Win32SurfaceCreateFlagsKHR = std.mem.zeroes(s.Win32SurfaceCreateFlagsKHR),
-    hinstance: s.HINSTANCE,
-    hwnd: s.HWND,
+    hinstance: s.win32.HINSTANCE,
+    hwnd: s.win32.HWND,
 };
 
 pub const SurfaceCapabilitiesKHR = extern struct {

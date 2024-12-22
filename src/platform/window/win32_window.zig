@@ -14,7 +14,7 @@ const platform = @import("platform");
 const win32 = platform.windows;
 
 pub fn initSystem() !void {
-    assert(root.cmd_line_options.glfw_window_api == .win32);
+    assert(root.cmd_line_options.glfw_window_api == .win32 or root.cmd_line_options.glfw_window_api == .default);
     // if (win32.AttachConsole(win32.ATTACH_PARENT_PROCESS) == 0) {
     //     if (win32.CreateFileW(W("nul"), win32.GENERIC_READ | win32.GENERIC_WRITE, 0, null, win32.OPEN_EXISTING, win32.FILE_ATTRIBUTE_NORMAL, null)) |nul_handle| {
     //         _ = win32.SetStdHandle(win32.STD_INPUT_HANDLE, nul_handle);
@@ -141,7 +141,7 @@ pub fn createVulkanSurface(this: *const @This(), instance: vk.Instance) !vk.Surf
     var surface: vk.SurfaceKHR = undefined;
 
     const create_info = vk.Win32SurfaceCreateInfoKHR{
-        .sType = vk.structure_type.WIN32_SURFACE_CREATE_INFO_KHR,
+        .sType = .WIN32_SURFACE_CREATE_INFO_KHR,
         .hwnd = @ptrCast(this.handle),
         .hinstance = @ptrCast(win32.GetModuleHandleW(null)),
     };

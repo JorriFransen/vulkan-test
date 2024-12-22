@@ -4,6 +4,7 @@ const assert = std.debug.assert;
 
 const platform = @import("platform");
 pub const x = platform.x;
+pub const win32 = platform.windows;
 
 pub const Renderer = @import("renderer.zig");
 
