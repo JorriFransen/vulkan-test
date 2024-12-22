@@ -1,7 +1,4 @@
 const std = @import("std");
-
-const c = @import("platform").c;
-
 const s = @import("vulkan.zig");
 
 pub const ApplicationInfo = extern struct {
@@ -401,14 +398,27 @@ pub const PipelineDynamicStateCreateInfo = extern struct {
     pDynamicStates: [*]const s.DynamicState,
 };
 
+pub const VertexInputBindingDescription = extern struct {
+    binding: u32,
+    stride: u32,
+    inputRate: s.VertexInputRate,
+};
+
+pub const VertexInputAttributeDescription = extern struct {
+    location: u32,
+    binding: u32,
+    format: s.Format,
+    offset: u32,
+};
+
 pub const PipelineVertexInputStateCreateInfo = extern struct {
     sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
     flags: s.PipelineVertexInputStateCreateFlags = 0,
     vertexBindingDescriptionCount: u32,
-    pVertexBindingDescriptions: ?[*]const c.VkVertexInputBindingDescription,
+    pVertexBindingDescriptions: ?[*]const VertexInputBindingDescription,
     vertexAttributeDescriptionCount: u32,
-    pVertexAttributeDescriptions: ?[*]const c.VkVertexInputAttributeDescription,
+    pVertexAttributeDescriptions: ?[*]const VertexInputAttributeDescription,
 };
 
 pub const PipelineInputAssemblyStateCreateInfo = extern struct {
@@ -422,7 +432,7 @@ pub const PipelineInputAssemblyStateCreateInfo = extern struct {
 pub const PipelineTessellationStateCreateInfo = extern struct {
     sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
-    flags: c.VkPipelineTessellationStateCreateFlags = std.mem.zeroes(c.VkPipelineTessellationStateCreateFlags),
+    flags: s.PipelineTessellationStateCreateFlags = std.mem.zeroes(s.PipelineTessellationStateCreateFlags),
     patchControlPoints: u32 = 0,
 };
 
@@ -435,25 +445,30 @@ pub const Viewport = extern struct {
     maxDepth: f32 = 0.0,
 };
 
+pub const Offset2D = extern struct {
+    x: i32 = 0,
+    y: i32 = 0,
+};
+
 pub const Rect2D = extern struct {
-    offset: c.VkOffset2D = std.mem.zeroes(c.VkOffset2D),
-    extent: Extent2D = std.mem.zeroes(Extent2D),
+    offset: Offset2D = .{},
+    extent: Extent2D = .{},
 };
 
 pub const PipelineViewportStateCreateInfo = extern struct {
     sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
-    flags: c.VkPipelineViewportStateCreateFlags = std.mem.zeroes(c.VkPipelineViewportStateCreateFlags),
-    viewportCount: u32 = 0,
-    pViewports: [*c]const s.Viewport = std.mem.zeroes([*c]const s.Viewport),
-    scissorCount: u32 = 0,
-    pScissors: [*c]const Rect2D = std.mem.zeroes([*c]const Rect2D),
+    flags: s.PipelineViewportStateCreateFlags = std.mem.zeroes(s.PipelineViewportStateCreateFlags),
+    viewportCount: u32,
+    pViewports: ?[*]const s.Viewport = null,
+    scissorCount: u32,
+    pScissors: ?[*]const Rect2D = null,
 };
 
 pub const PipelineRasterizationStateCreateInfo = extern struct {
     sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
-    flags: c.VkPipelineRasterizationStateCreateFlags = std.mem.zeroes(c.VkPipelineRasterizationStateCreateFlags),
+    flags: s.PipelineRasterizationStateCreateFlags = std.mem.zeroes(s.PipelineRasterizationStateCreateFlags),
     depthClampEnable: s.Bool32 = s.FALSE,
     rasterizerDiscardEnable: s.Bool32 = s.FALSE,
     polygonMode: s.PolygonMode = std.mem.zeroes(s.PolygonMode),
@@ -469,11 +484,11 @@ pub const PipelineRasterizationStateCreateInfo = extern struct {
 pub const PipelineMultisampleStateCreateInfo = extern struct {
     sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
-    flags: c.VkPipelineMultisampleStateCreateFlags = std.mem.zeroes(c.VkPipelineMultisampleStateCreateFlags),
+    flags: s.PipelineMultisampleStateCreateFlags = std.mem.zeroes(s.PipelineMultisampleStateCreateFlags),
     rasterizationSamples: s.SampleCountFlags = std.mem.zeroes(s.SampleCountFlags),
     sampleShadingEnable: s.Bool32 = s.FALSE,
     minSampleShading: f32 = 0.0,
-    pSampleMask: [*c]const c.VkSampleMask = std.mem.zeroes([*c]const c.VkSampleMask),
+    pSampleMask: ?[*]const s.SampleMask = null,
     alphaToCoverageEnable: s.Bool32 = s.FALSE,
     alphaToOneEnable: s.Bool32 = s.FALSE,
 };
@@ -481,98 +496,114 @@ pub const PipelineMultisampleStateCreateInfo = extern struct {
 pub const PipelineDepthStencilStateCreateInfo = extern struct {
     sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
-    flags: c.VkPipelineDepthStencilStateCreateFlags = std.mem.zeroes(c.VkPipelineDepthStencilStateCreateFlags),
+    flags: s.PipelineDepthStencilStateCreateFlags = std.mem.zeroes(s.PipelineDepthStencilStateCreateFlags),
     depthTestEnable: s.Bool32 = s.FALSE,
     depthWriteEnable: s.Bool32 = s.FALSE,
-    depthCompareOp: c.VkCompareOp = std.mem.zeroes(c.VkCompareOp),
+    depthCompareOp: s.CompareOp = std.mem.zeroes(s.CompareOp),
     depthBoundsTestEnable: s.Bool32 = s.FALSE,
     stencilTestEnable: s.Bool32 = s.FALSE,
-    front: c.VkStencilOpState = std.mem.zeroes(c.VkStencilOpState),
-    back: c.VkStencilOpState = std.mem.zeroes(c.VkStencilOpState),
+    front: StencilOpState = std.mem.zeroes(StencilOpState),
+    back: StencilOpState = std.mem.zeroes(StencilOpState),
     minDepthBounds: f32 = 0.0,
     maxDepthBounds: f32 = 0.0,
 };
 
+pub const StencilOpState = extern struct {
+    failOp: s.StencilOp,
+    passOp: s.StencilOp,
+    depthFailOp: s.StencilOp,
+    compareOp: s.CompareOp,
+    compareMask: u32 = 0,
+    writeMask: u32 = 0,
+    reference: u32 = 0,
+};
+
 pub const PipelineColorBlendAttachmentState = extern struct {
     blendEnable: s.Bool32 = s.FALSE,
-    srcColorBlendFactor: s.BlendFactor = std.mem.zeroes(s.BlendFactor),
-    dstColorBlendFactor: s.BlendFactor = std.mem.zeroes(s.BlendFactor),
-    colorBlendOp: s.BlendOp = std.mem.zeroes(s.BlendOp),
-    srcAlphaBlendFactor: s.BlendFactor = std.mem.zeroes(s.BlendFactor),
-    dstAlphaBlendFactor: s.BlendFactor = std.mem.zeroes(s.BlendFactor),
-    alphaBlendOp: s.BlendOp = std.mem.zeroes(s.BlendOp),
-    colorWriteMask: s.ColorComponentFlags = std.mem.zeroes(s.ColorComponentFlags),
+    srcColorBlendFactor: s.BlendFactor,
+    dstColorBlendFactor: s.BlendFactor,
+    colorBlendOp: s.BlendOp,
+    srcAlphaBlendFactor: s.BlendFactor,
+    dstAlphaBlendFactor: s.BlendFactor,
+    alphaBlendOp: s.BlendOp,
+    colorWriteMask: s.ColorComponentFlags,
 };
 
 pub const PipelineColorBlendStateCreateInfo = extern struct {
     sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
-    flags: c.VkPipelineColorBlendStateCreateFlags = std.mem.zeroes(c.VkPipelineColorBlendStateCreateFlags),
+    flags: s.PipelineColorBlendStateCreateFlags = std.mem.zeroes(s.PipelineColorBlendStateCreateFlags),
     logicOpEnable: s.Bool32 = s.FALSE,
-    logicOp: s.LogicOp = std.mem.zeroes(s.LogicOp),
+    logicOp: s.LogicOp,
     attachmentCount: u32 = 0,
-    pAttachments: [*c]const PipelineColorBlendAttachmentState = null,
+    pAttachments: ?[*]const PipelineColorBlendAttachmentState = null,
     blendConstants: [4]f32 = std.mem.zeroes([4]f32),
 };
 
 pub const PipelineLayoutCreateInfo = extern struct {
     sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
-    flags: c.VkPipelineLayoutCreateFlags = std.mem.zeroes(c.VkPipelineLayoutCreateFlags),
-    setLayoutCount: u32 = 0,
-    pSetLayouts: [*c]const c.VkDescriptorSetLayout = std.mem.zeroes([*c]const c.VkDescriptorSetLayout),
-    pushConstantRangeCount: u32 = 0,
-    pPushConstantRanges: [*c]const c.VkPushConstantRange = std.mem.zeroes([*c]const c.VkPushConstantRange),
+    flags: s.PipelineLayoutCreateFlags = std.mem.zeroes(s.PipelineLayoutCreateFlags),
+    setLayoutCount: u32,
+    pSetLayouts: ?[*]const s.DescriptorSetLayout,
+    pushConstantRangeCount: u32,
+    pPushConstantRanges: ?[*]const s.PushConstantRange,
+};
+
+pub const PushConstantRange = extern struct {
+    stageFlags: s.ShaderStageFlags,
+    offset: u32,
+    size: u32,
 };
 
 pub const AttachmentDescription = extern struct {
-    flags: c.VkAttachmentDescriptionFlags = std.mem.zeroes(c.VkAttachmentDescriptionFlags),
-    format: s.Format = std.mem.zeroes(s.Format),
-    samples: s.SampleCountFlags = std.mem.zeroes(s.SampleCountFlags),
-    loadOp: s.AttachmentLoadOp = std.mem.zeroes(s.AttachmentLoadOp),
-    storeOp: s.AttachmentStoreOp = std.mem.zeroes(s.AttachmentStoreOp),
-    stencilLoadOp: s.AttachmentLoadOp = std.mem.zeroes(s.AttachmentLoadOp),
-    stencilStoreOp: s.AttachmentStoreOp = std.mem.zeroes(s.AttachmentStoreOp),
-    initialLayout: s.ImageLayout = std.mem.zeroes(s.ImageLayout),
-    finalLayout: s.ImageLayout = std.mem.zeroes(s.ImageLayout),
+    flags: s.AttachmentDescriptionFlags = std.mem.zeroes(s.AttachmentDescriptionFlags),
+    format: s.Format,
+    samples: s.SampleCountFlags,
+    loadOp: s.AttachmentLoadOp,
+    storeOp: s.AttachmentStoreOp,
+    stencilLoadOp: s.AttachmentLoadOp,
+    stencilStoreOp: s.AttachmentStoreOp,
+    initialLayout: s.ImageLayout,
+    finalLayout: s.ImageLayout,
 };
 
 pub const AttachmentReference = extern struct {
-    attachment: u32 = 0,
-    layout: s.ImageLayout = std.mem.zeroes(s.ImageLayout),
+    attachment: u32,
+    layout: s.ImageLayout,
 };
 
 pub const SubpassDescription = extern struct {
-    flags: c.VkSubpassDescriptionFlags = std.mem.zeroes(c.VkSubpassDescriptionFlags),
+    flags: s.SubpassDescriptionFlags = std.mem.zeroes(s.SubpassDescriptionFlags),
     pipelineBindPoint: s.PipelineBindPoint = std.mem.zeroes(s.PipelineBindPoint),
-    inputAttachmentCount: u32 = 0,
-    pInputAttachments: [*c]const s.AttachmentReference = null,
-    colorAttachmentCount: u32 = 0,
-    pColorAttachments: [*c]const AttachmentReference = null,
-    pResolveAttachments: [*c]const s.AttachmentReference = null,
-    pDepthStencilAttachment: [*c]const s.AttachmentReference = null,
-    preserveAttachmentCount: u32 = 0,
-    pPreserveAttachments: [*c]const u32 = null,
+    inputAttachmentCount: u32,
+    pInputAttachments: ?[*]const s.AttachmentReference = null,
+    colorAttachmentCount: u32,
+    pColorAttachments: ?[*]const AttachmentReference = null,
+    pResolveAttachments: ?[*]const s.AttachmentReference = null,
+    pDepthStencilAttachment: ?[*]const s.AttachmentReference = null,
+    preserveAttachmentCount: u32,
+    pPreserveAttachments: ?[*]const u32 = null,
 };
 
 pub const RenderPassCreateInfo = extern struct {
     sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
-    flags: c.VkRenderPassCreateFlags = std.mem.zeroes(c.VkRenderPassCreateFlags),
-    attachmentCount: u32 = 0,
-    pAttachments: [*]const AttachmentDescription,
-    subpassCount: u32 = 0,
-    pSubpasses: [*]const SubpassDescription,
-    dependencyCount: u32 = 0,
+    flags: s.RenderPassCreateFlags = std.mem.zeroes(s.RenderPassCreateFlags),
+    attachmentCount: u32,
+    pAttachments: ?[*]const AttachmentDescription = null,
+    subpassCount: u32,
+    pSubpasses: ?[*]const SubpassDescription = null,
+    dependencyCount: u32,
     pDependencies: ?[*]const SubpassDependency = null,
 };
 
 pub const GraphicsPipelineCreateInfo = extern struct {
     sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
-    flags: c.VkPipelineCreateFlags = std.mem.zeroes(c.VkPipelineCreateFlags),
-    stageCount: u32 = 0,
-    pStages: [*c]const PipelineShaderStageCreateInfo = null,
+    flags: s.PipelineCreateFlags = std.mem.zeroes(s.PipelineCreateFlags),
+    stageCount: u32,
+    pStages: [*]const PipelineShaderStageCreateInfo,
     pVertexInputState: ?*const PipelineVertexInputStateCreateInfo = null,
     pInputAssemblyState: ?*const PipelineInputAssemblyStateCreateInfo = null,
     pTessellationState: ?*const PipelineTessellationStateCreateInfo = null,
@@ -582,61 +613,72 @@ pub const GraphicsPipelineCreateInfo = extern struct {
     pDepthStencilState: ?*const PipelineDepthStencilStateCreateInfo = null,
     pColorBlendState: ?*const PipelineColorBlendStateCreateInfo = null,
     pDynamicState: ?*const PipelineDynamicStateCreateInfo = null,
-    layout: s.PipelineLayout = std.mem.zeroes(s.PipelineLayout),
-    renderPass: s.RenderPass = null,
-    subpass: u32 = 0,
-    basePipelineHandle: s.Pipeline = null,
-    basePipelineIndex: i32 = 0,
+    layout: s.PipelineLayout,
+    renderPass: s.RenderPass,
+    subpass: u32,
+    basePipelineHandle: s.Pipeline,
+    basePipelineIndex: i32,
 };
 
 pub const FramebufferCreateInfo = extern struct {
     sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
-    flags: c.VkFramebufferCreateFlags = std.mem.zeroes(c.VkFramebufferCreateFlags),
-    renderPass: s.RenderPass = null,
-    attachmentCount: u32 = 0,
-    pAttachments: [*c]const s.ImageView = null,
-    width: u32 = 0,
-    height: u32 = 0,
-    layers: u32 = 0,
+    flags: s.FramebufferCreateFlags = std.mem.zeroes(s.FramebufferCreateFlags),
+    renderPass: s.RenderPass,
+    attachmentCount: u32,
+    pAttachments: ?[*]const s.ImageView,
+    width: u32,
+    height: u32,
+    layers: u32,
 };
 
 pub const CommandPoolCreateInfo = extern struct {
     sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
     flags: s.CommandPoolCreateFlags = std.mem.zeroes(s.CommandPoolCreateFlags),
-    queueFamilyIndex: u32 = 0,
+    queueFamilyIndex: u32,
 };
 
 pub const CommandBufferAllocateInfo = extern struct {
     sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
-    commandPool: s.CommandPool = null,
+    commandPool: s.CommandPool,
     level: s.CommandBufferLevel = std.mem.zeroes(s.CommandBufferLevel),
-    commandBufferCount: u32 = 0,
+    commandBufferCount: u32,
 };
 
 pub const CommandBufferBeginInfo = extern struct {
     sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
-    flags: c.VkCommandBufferUsageFlags = std.mem.zeroes(c.VkCommandBufferUsageFlags),
-    pInheritanceInfo: [*c]const c.VkCommandBufferInheritanceInfo = std.mem.zeroes([*c]const c.VkCommandBufferInheritanceInfo),
+    flags: s.CommandBufferUsageFlags = std.mem.zeroes(s.CommandBufferUsageFlags),
+    pInheritanceInfo: ?*const s.CommandBufferInheritanceInfo = null,
+};
+
+pub const CommandBufferInheritanceInfo = extern struct {
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    pNext: ?*const anyopaque = null,
+    renderPass: s.RenderPass = null,
+    subpass: u32,
+    framebuffer: s.Framebuffer,
+    occlusionQueryEnable: s.Bool32 = s.FALSE,
+    queryFlags: s.QueryControlFlags = std.mem.zeroes(s.QueryControlFlags),
+    pipelineStatistics: s.QueryPipelineStatisticFlags = std.mem.zeroes(s.QueryPipelineStatisticFlags),
 };
 
 pub const RenderPassBeginInfo = extern struct {
     sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
-    renderPass: s.RenderPass = null,
-    framebuffer: s.Framebuffer = null,
-    renderArea: Rect2D = std.mem.zeroes(Rect2D),
-    clearValueCount: u32 = 0,
+    renderPass: s.RenderPass,
+    framebuffer: s.Framebuffer,
+    renderArea: Rect2D = .{},
+    clearValueCount: u32,
     pClearValues: ?[*]const ClearValue = null,
 };
 
 pub const SemaphoreCreateInfo = extern struct {
     sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
-    flags: c.VkSemaphoreCreateFlags = std.mem.zeroes(c.VkSemaphoreCreateFlags),
+    flags: s.SemaphoreCreateFlags = std.mem.zeroes(s.SemaphoreCreateFlags),
 };
 
 pub const FenceCreateInfo = extern struct {
@@ -648,62 +690,88 @@ pub const FenceCreateInfo = extern struct {
 pub const SubmitInfo = extern struct {
     sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
-    waitSemaphoreCount: u32 = 0,
+    waitSemaphoreCount: u32,
     pWaitSemaphores: [*]const s.Semaphore,
     pWaitDstStageMask: [*]const s.PipelineStageFlags,
-    commandBufferCount: u32 = 0,
+    commandBufferCount: u32,
     pCommandBuffers: [*]const s.CommandBuffer,
-    signalSemaphoreCount: u32 = 0,
+    signalSemaphoreCount: u32,
     pSignalSemaphores: [*]const s.Semaphore,
 };
 
 pub const SubpassDependency = extern struct {
-    srcSubpass: u32 = 0,
-    dstSubpass: u32 = 0,
+    srcSubpass: u32,
+    dstSubpass: u32,
     srcStageMask: s.PipelineStageFlags = std.mem.zeroes(s.PipelineStageFlags),
     dstStageMask: s.PipelineStageFlags = std.mem.zeroes(s.PipelineStageFlags),
     srcAccessMask: s.AccessFlags = std.mem.zeroes(s.AccessFlags),
     dstAccessMask: s.AccessFlags = std.mem.zeroes(s.AccessFlags),
-    dependencyFlags: c.VkDependencyFlags = std.mem.zeroes(c.VkDependencyFlags),
+    dependencyFlags: s.DependencyFlags = std.mem.zeroes(s.DependencyFlags),
 };
 
 pub const PresentInfoKHR = extern struct {
     sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
-    waitSemaphoreCount: u32 = 0,
+    waitSemaphoreCount: u32,
     pWaitSemaphores: [*]const s.Semaphore,
-    swapchainCount: u32 = 0,
+    swapchainCount: u32,
     pSwapchains: [*]const s.SwapchainKHR,
     pImageIndices: [*]const u32,
     pResults: ?[*]s.Result,
 };
 
+pub const ClearColorValue = extern union {
+    float32: [4]f32,
+    int32: [4]i32,
+    uint32: [4]u32,
+};
+
+pub const ClearDepthStencilValue = extern struct {
+    depth: f32 = 0.0,
+    stencil: u32 = 0,
+};
+
 pub const ClearValue = extern union {
-    color: c.VkClearColorValue,
-    depthStencil: c.VkClearDepthStencilValue,
+    color: s.ClearColorValue,
+    depthStencil: s.ClearDepthStencilValue,
+};
+
+pub const DebugUtilsLabelEXT = extern struct {
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    pNext: ?*const anyopaque = null,
+    pLabelName: [*:0]const u8,
+    color: [4]f32,
+};
+
+pub const DebugUtilsObjectNameInfoEXT = extern struct {
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    pNext: ?*const anyopaque = std.mem.zeroes(?*const anyopaque),
+    objectType: s.ObjectType = std.mem.zeroes(s.ObjectType),
+    objectHandle: u64 = 0,
+    pObjectName: [*:0]const u8,
 };
 
 pub const DebugUtilsMessengerCallbackData = extern struct {
     sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
-    flags: c.VkDebugUtilsMessengerCallbackDataFlagsEXT = std.mem.zeroes(c.VkDebugUtilsMessengerCallbackDataFlagsEXT),
-    pMessageIdName: [*c]const u8 = std.mem.zeroes([*c]const u8),
+    flags: s.DebugUtilsMessengerCallbackDataFlagsEXT,
+    pMessageIdName: [*:0]const u8,
     messageIdNumber: i32 = 0,
-    pMessage: [*c]const u8 = std.mem.zeroes([*c]const u8),
+    pMessage: [*:0]const u8,
     queueLabelCount: u32 = 0,
-    pQueueLabels: [*c]const c.VkDebugUtilsLabelEXT = std.mem.zeroes([*c]const c.VkDebugUtilsLabelEXT),
+    pQueueLabels: [*]const s.DebugUtilsLabelEXT,
     cmdBufLabelCount: u32 = 0,
-    pCmdBufLabels: [*c]const c.VkDebugUtilsLabelEXT = std.mem.zeroes([*c]const c.VkDebugUtilsLabelEXT),
+    pCmdBufLabels: [*]const s.DebugUtilsLabelEXT,
     objectCount: u32 = 0,
-    pObjects: [*c]const c.VkDebugUtilsObjectNameInfoEXT = std.mem.zeroes([*c]const c.VkDebugUtilsObjectNameInfoEXT),
+    pObjects: [*]const s.DebugUtilsObjectNameInfoEXT,
 };
 
 pub const DebugUtilsMessengerCreateInfoEXT = extern struct {
     sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
-    flags: c.VkDebugUtilsMessengerCreateFlagsEXT = std.mem.zeroes(c.VkDebugUtilsMessengerCreateFlagsEXT),
-    messageSeverity: s.DebugUtilsMessageSeverityFlagsEXT = std.mem.zeroes(s.DebugUtilsMessageSeverityFlagsEXT),
-    messageType: s.DebugUtilsMessageTypeFlagsEXT = std.mem.zeroes(s.DebugUtilsMessageTypeFlagsEXT),
-    pfnUserCallback: s.DebugUtilsMessengerCallback = null,
+    flags: s.DebugUtilsMessengerCreateFlagsEXT = std.mem.zeroes(s.DebugUtilsMessengerCreateFlagsEXT),
+    messageSeverity: s.DebugUtilsMessageSeverityFlagsEXT,
+    messageType: s.DebugUtilsMessageTypeFlagsEXT,
+    pfnUserCallback: s.DebugUtilsMessengerCallback,
     pUserData: ?*anyopaque = null,
 };

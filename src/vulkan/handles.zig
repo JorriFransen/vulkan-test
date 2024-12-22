@@ -16,4 +16,5 @@ pub const CommandPool = ?*opaque {};
 pub const CommandBuffer = ?*opaque {};
 pub const Semaphore = ?*opaque {};
 pub const Fence = ?*opaque {};
+pub const DescriptorSetLayout = ?*opaque {};
 pub const DebugUtilsMessengerEXT = ?*opaque {};

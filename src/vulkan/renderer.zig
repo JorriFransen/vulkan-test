@@ -18,8 +18,7 @@ const ilog = vlog.info;
 
 const debug = builtin.mode == .Debug;
 const debug_verbose = debug and options.vulkan_verbose;
-const is_mac = true;
-// const is_mac = builtin.target.os.tag == .macos;
+const is_mac = builtin.target.os.tag == .macos;
 
 const Renderer = @This();
 
@@ -657,6 +656,8 @@ fn createRenderPass(this: *@This()) !void {
 
     const subpasses = [_]vk.SubpassDescription{.{
         .pipelineBindPoint = .GRAPHICS,
+        .inputAttachmentCount = 0,
+        .preserveAttachmentCount = 0,
         .colorAttachmentCount = color_attachment_refs.len,
         .pColorAttachments = &color_attachment_refs,
     }};
@@ -820,12 +821,13 @@ fn createGraphicsPipeline(this: *@This()) !void {
 fn createFrameBuffers(this: *@This()) !void {
     this.swapchain.framebuffers = try alloc.gpa.alloc(vk.Framebuffer, this.swapchain.image_views.len);
 
-    for (this.swapchain.image_views, this.swapchain.framebuffers) |*iv, *fb| {
+    for (this.swapchain.image_views, this.swapchain.framebuffers) |iv, *fb| {
+        const attachments = [_]vk.ImageView{iv};
         const framebuffer_create_info = vk.FramebufferCreateInfo{
             .sType = .FRAMEBUFFER_CREATE_INFO,
             .renderPass = this.render_pass,
             .attachmentCount = 1,
-            .pAttachments = iv,
+            .pAttachments = &attachments,
             .width = this.swapchain.extent.width,
             .height = this.swapchain.extent.height,
             .layers = 1,
@@ -886,8 +888,6 @@ fn createSyncObjects(this: *@This()) !void {
 fn recordCommandBuffer(this: *const @This(), image_index: u32) void {
     const begin_info = vk.CommandBufferBeginInfo{
         .sType = .COMMAND_BUFFER_BEGIN_INFO,
-        .flags = 0,
-        .pInheritanceInfo = null,
     };
 
     if (vk.beginCommandBuffer(this.command_buffer, &begin_info) != .SUCCESS) {

@@ -8,8 +8,15 @@ const s = @This();
 
 pub const Flags = u32;
 pub const Bool32 = u32;
+pub const SampleMask = u32;
 pub const DeviceSize = u64;
 pub const VoidFunction = ?*const fn () callconv(.C) void;
+
+pub const xcb_connection_t = opaque {};
+pub const xcb_window_t = u32;
+pub const Display = opaque {};
+pub const XID = c_ulong;
+pub const Window = XID;
 
 pub const PFN_AllocationFunction = ?*const fn (?*anyopaque, usize, usize, s.SystemAllocationScope) callconv(.C) ?*anyopaque;
 pub const PFN_ReallocationFunction = ?*const fn (?*anyopaque, ?*anyopaque, usize, usize, s.SystemAllocationScope) callconv(.C) ?*anyopaque;
@@ -29,6 +36,10 @@ pub usingnamespace functions;
 
 pub inline fn MAKE_VERSION(major: u32, minor: u32, patch: u32) u32 {
     return ((major << 22) | minor << 12) | patch;
+}
+
+pub inline fn MAKE_API_VERSION(variant: u32, major: u32, minor: u32, patch: u32) u32 {
+    return ((variant << 29) | (major << 22) | (minor << 12) | patch);
 }
 
 pub const constants = @import("constants.zig");

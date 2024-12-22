@@ -69,8 +69,6 @@ pub fn vMain() !u8 {
         renderer.drawFrame();
     }
 
-    fixenum(@import("vulkan").ImageLayout);
-    dlog("{}", .{@import("vulkan").PipelineStageFlags.SHADING_RATE_IMAGE_BIT_NV});
     return 0;
 }
 
@@ -78,36 +76,4 @@ pub fn main() !u8 {
     const result = try vMain();
     alloc.deinit();
     return result;
-}
-
-const fixme =
-    \\DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL_KHR=1000117000
-    \\DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL_KHR=1000117001
-    \\SHADING_RATE_OPTIMAL_NV=1000164003
-    \\DEPTH_ATTACHMENT_OPTIMAL_KHR=1000241000
-    \\DEPTH_READ_ONLY_OPTIMAL_KHR=1000241001
-    \\STENCIL_ATTACHMENT_OPTIMAL_KHR=1000241002
-    \\STENCIL_READ_ONLY_OPTIMAL_KHR=1000241003
-    \\READ_ONLY_OPTIMAL_KHR=1000314000
-    \\ATTACHMENT_OPTIMAL_KHR=1000314001
-;
-fn fixenum(comptime ETYPE: type) void {
-    var it = std.mem.splitScalar(u8, fixme, '\n');
-
-    var first = true;
-    while (it.next()) |line| {
-        var line_it = std.mem.splitScalar(u8, line, '=');
-        const name = line_it.next() orelse return;
-        const val_str = line_it.next() orelse return;
-        const n = std.fmt.parseInt(c_int, val_str, 10) catch unreachable;
-        const tag: ETYPE = @enumFromInt(n);
-
-        if (first) {
-            first = false;
-            std.debug.print("-----------------------------------\n", .{});
-        }
-
-        std.debug.print("pub const {s}: @This() = .{s};\n", .{ name, @tagName(tag) });
-    }
-    std.debug.print("-----------------------------------\n", .{});
 }

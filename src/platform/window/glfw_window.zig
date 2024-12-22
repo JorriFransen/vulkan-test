@@ -16,7 +16,7 @@ const elog = log.err;
 const ilog = log.info;
 
 pub const x = if (builtin.os.tag == .linux) struct {
-    pub const getXCBConnection = f("XGetXCBConnection", fn (display: *c.Display) callconv(.C) *c.xcb_connection_t);
+    pub const getXCBConnection = f("XGetXCBConnection", fn (display: *vk.Display) callconv(.C) *vk.xcb_connection_t);
 };
 
 pub fn initSystem() !void {

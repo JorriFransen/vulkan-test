@@ -3,17 +3,16 @@ const c = @import("platform").c;
 const vk = @import("vulkan");
 const Flags = vk.Flags;
 
-pub const API_VERSION_1_0 = c.VK_API_VERSION_1_0;
-pub const API_VERSION_1_1 = c.VK_API_VERSION_1_1;
-pub const API_VERSION_1_2 = c.VK_API_VERSION_1_2;
-pub const API_VERSION_1_3 = c.VK_API_VERSION_1_3;
+pub const API_VERSION_1_0 = vk.MAKE_API_VERSION(0, 1, 0, 0);
+pub const API_VERSION_1_1 = vk.MAKE_API_VERSION(0, 1, 1, 0);
+pub const API_VERSION_1_2 = vk.MAKE_API_VERSION(0, 1, 2, 0);
+pub const API_VERSION_1_3 = vk.MAKE_API_VERSION(0, 1, 3, 0);
 
 pub const TRUE = 1;
 pub const FALSE = 0;
 
-pub const KHR_SWAPCHAIN_EXTENSION_NAME = "VK_KHR_swapchain";
-
 pub const SUBPASS_EXTERNAL = ~@as(u32, 0);
+pub const KHR_SWAPCHAIN_EXTENSION_NAME = "VK_KHR_swapchain";
 
 pub const Result = enum(c_int) {
     SUCCESS = 0,
@@ -65,15 +64,15 @@ pub const Result = enum(c_int) {
     INCOMPATIBLE_SHADER_BINARY_EXT = 1000482000,
     PIPELINE_BINARY_MISSING_KHR = 1000483000,
     ERROR_NOT_ENOUGH_SPACE_KHR = -1000483000,
-    // ERROR_INVALID_EXTERNAL_HANDLE_KHR = ERROR_INVALID_EXTERNAL_HANDLE,
-    // ERROR_FRAGMENTATION_EXT = ERROR_FRAGMENTATION,
-    // ERROR_NOT_PERMITTED_EXT = ERROR_NOT_PERMITTED,
-    // ERROR_NOT_PERMITTED_KHR = ERROR_NOT_PERMITTED,
-    // ERROR_INVALID_DEVICE_ADDRESS_EXT = ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS,
-    // ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS_KHR = ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS,
-    // PIPELINE_COMPILE_REQUIRED_EXT = PIPELINE_COMPILE_REQUIRED,
-    // ERROR_PIPELINE_COMPILE_REQUIRED_EXT = PIPELINE_COMPILE_REQUIRED,
-    // ERROR_INCOMPATIBLE_SHADER_BINARY_EXT = INCOMPATIBLE_SHADER_BINARY_EXT,
+    pub const ERROR_INVALID_EXTERNAL_HANDLE_KHR: @This() = .ERROR_INVALID_EXTERNAL_HANDLE;
+    pub const ERROR_FRAGMENTATION_EXT: @This() = .ERROR_FRAGMENTATION;
+    pub const ERROR_NOT_PERMITTED_EXT: @This() = .ERROR_NOT_PERMITTED;
+    pub const ERROR_NOT_PERMITTED_KHR: @This() = .ERROR_NOT_PERMITTED;
+    pub const ERROR_INVALID_DEVICE_ADDRESS_EXT: @This() = .ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS;
+    pub const ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS_KHR: @This() = .ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS;
+    pub const PIPELINE_COMPILE_REQUIRED_EXT: @This() = .PIPELINE_COMPILE_REQUIRED;
+    pub const ERROR_PIPELINE_COMPILE_REQUIRED_EXT: @This() = .PIPELINE_COMPILE_REQUIRED;
+    pub const ERROR_INCOMPATIBLE_SHADER_BINARY_EXT: @This() = .INCOMPATIBLE_SHADER_BINARY_EXT;
     pub const ERROR_OUT_OF_POOL_MEMORY_KHR: @This() = .ERROR_OUT_OF_POOL_MEMORY;
 };
 
@@ -967,12 +966,6 @@ pub const SubpassContents = enum(c_int) {
     pub const MAX_ENUM: c_int = 2147483647;
 };
 
-pub const FenceCreateFlags = packed struct(Flags) {
-    SIGNALED: u1 = 0,
-    __reserved: u31 = 0,
-    pub const MAX_ENUM: Flags = 2147483647;
-};
-
 pub const CommandBufferResetFlags = packed struct(Flags) {
     RELEASE_RESOURCES_BIT: u1 = 0, // 1
     __reserved: u31 = 0,
@@ -1090,6 +1083,259 @@ pub const SwapchainCreateFlagsKHR = packed struct(Flags) {
 
 pub const PipelineShaderStageCreateFlags = Flags;
 pub const PipelineDynamicStateCreateFlags = Flags;
+pub const PipelineTessellationStateCreateFlags = Flags;
+pub const PipelineViewportStateCreateFlags = Flags;
+pub const PipelineRasterizationStateCreateFlags = Flags;
+pub const PipelineMultisampleStateCreateFlags = Flags;
+
+pub const PipelineDepthStencilStateCreateFlags = packed struct(Flags) {
+    RASTERIZATION_ORDER_ATTACHMENT_DEPTH_ACCESS_BIT_EXT: u1 = 0, // 1
+    RASTERIZATION_ORDER_ATTACHMENT_STENCIL_ACCESS_BIT_EXT: u1 = 0, // 2
+    __reserved: u30 = 0,
+    pub const RASTERIZATION_ORDER_ATTACHMENT_DEPTH_ACCESS_BIT_ARM: @This() = .{ .RASTERIZATION_ORDER_ATTACHMENT_DEPTH_ACCESS_BIT_EXT = 1 };
+    pub const RASTERIZATION_ORDER_ATTACHMENT_STENCIL_ACCESS_BIT_ARM: c_int = .{ .RASTERIZATION_ORDER_ATTACHMENT_STENCIL_ACCESS_BIT_EXT = 1 };
+    pub const MAX_ENUM: Flags = 2147483647;
+};
+
+pub const CompareOp = enum(c_int) {
+    NEVER = 0,
+    LESS = 1,
+    EQUAL = 2,
+    LESS_OR_EQUAL = 3,
+    GREATER = 4,
+    NOT_EQUAL = 5,
+    GREATER_OR_EQUAL = 6,
+    ALWAYS = 7,
+    pub const MAX_ENUM: c_int = 2147483647;
+};
+
+pub const StencilOp = enum(c_int) {
+    KEEP = 0,
+    ZERO = 1,
+    REPLACE = 2,
+    INCREMENT_AND_CLAMP = 3,
+    DECREMENT_AND_CLAMP = 4,
+    INVERT = 5,
+    INCREMENT_AND_WRAP = 6,
+    DECREMENT_AND_WRAP = 7,
+    pub const MAX_ENUM: c_int = 2147483647;
+};
+
+pub const PipelineColorBlendStateCreateFlags = packed struct(Flags) {
+    RASTERIZATION_ORDER_ATTACHMENT_ACCESS_BIT_EXT: u1 = 0, // 1
+    __reserved: u31 = 0,
+    pub const RASTERIZATION_ORDER_ATTACHMENT_ACCESS_BIT_ARM: @This() = .{ .RASTERIZATION_ORDER_ATTACHMENT_ACCESS_BIT_EXT = 1 };
+    pub const MAX_ENUM: Flags = 2147483647;
+};
+
+pub const PipelineLayoutCreateFlags = packed struct(Flags) {
+    __reserved_1: u1 = 0,
+    INDEPENDENT_SETS_BIT_EXT: u1 = 0, // 2
+    __reserved_2: u30 = 0,
+    pub const MAX_ENUM: Flags = 2147483647;
+};
+
+pub const AttachmentDescriptionFlags = packed struct(Flags) {
+    MAY_ALIAS_BIT: u1 = 0, // 1
+    __reserved: u31 = 0,
+    pub const MAX_ENUM: Flags = 2147483647;
+};
+
+pub const SubpassDescriptionFlags = packed struct(Flags) {
+    PER_VIEW_ATTRIBUTES_BIT_NVX: u1 = 0, // 1
+    PER_VIEW_POSITION_X_ONLY_BIT_NVX: u1 = 0, // 2
+    FRAGMENT_REGION_BIT_QCOM: u1 = 0, // 4
+    SHADER_RESOLVE_BIT_QCOM: u1 = 0, // 8
+    RASTERIZATION_ORDER_ATTACHMENT_COLOR_ACCESS_BIT_EXT: u1 = 0, // 16
+    RASTERIZATION_ORDER_ATTACHMENT_DEPTH_ACCESS_BIT_EXT: u1 = 0, // 32
+    RASTERIZATION_ORDER_ATTACHMENT_STENCIL_ACCESS_BIT_EXT: u1 = 0, // 64
+    ENABLE_LEGACY_DITHERING_BIT_EXT: u1 = 0, // 128
+    __reserved: u24 = 0,
+    pub const RASTERIZATION_ORDER_ATTACHMENT_COLOR_ACCESS_BIT_ARM: @This() = .{ .RASTERIZATION_ORDER_ATTACHMENT_COLOR_ACCESS_BIT_EXT = 1 };
+    pub const RASTERIZATION_ORDER_ATTACHMENT_DEPTH_ACCESS_BIT_ARM: @This() = .{ .RASTERIZATION_ORDER_ATTACHMENT_DEPTH_ACCESS_BIT_EXT = 1 };
+    pub const RASTERIZATION_ORDER_ATTACHMENT_STENCIL_ACCESS_BIT_ARM: @This() = .{ .RASTERIZATION_ORDER_ATTACHMENT_STENCIL_ACCESS_BIT_EXT = 1 };
+    pub const MAX_ENUM: Flags = 2147483647;
+};
+
+pub const RenderPassCreateFlags = packed struct(Flags) {
+    __reserved_1: u1 = 0,
+    TRANSFORM_BIT_QCOM: u1 = 0, // 2
+    __reserved_2: u30 = 0,
+    pub const MAX_ENUM: Flags = 2147483647;
+};
+
+pub const PipelineCreateFlags = packed struct(Flags) {
+    DISABLE_OPTIMIZATION_BIT: u1 = 0, // 1
+    ALLOW_DERIVATIVES_BIT: u1 = 0, // 2
+    DERIVATIVE_BIT: u1 = 0, // 4
+    VIEW_INDEX_FROM_DEVICE_INDEX_BIT: u1 = 0, // 8
+    DISPATCH_BASE_BIT: u1 = 0, // 16
+    DEFER_COMPILE_BIT_NV: u1 = 0, // 32
+    CAPTURE_STATISTICS_BIT_KHR: u1 = 0, // 64
+    CAPTURE_INTERNAL_REPRESENTATIONS_BIT_KHR: u1 = 0, // 128
+    FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT: u1 = 0, // 256
+    EARLY_RETURN_ON_FAILURE_BIT: u1 = 0, // 512
+    LINK_TIME_OPTIMIZATION_BIT_EXT: u1 = 0, // 1024
+    LIBRARY_BIT_KHR: u1 = 0, // 2048
+    RAY_TRACING_SKIP_TRIANGLES_BIT_KHR: u1 = 0, // 4096
+    RAY_TRACING_SKIP_AABBS_BIT_KHR: u1 = 0, // 8192
+    RAY_TRACING_NO_NULL_ANY_HIT_SHADERS_BIT_KHR: u1 = 0, // 16384
+    RAY_TRACING_NO_NULL_CLOSEST_HIT_SHADERS_BIT_KHR: u1 = 0, // 32768
+    RAY_TRACING_NO_NULL_MISS_SHADERS_BIT_KHR: u1 = 0, // 65536
+    RAY_TRACING_NO_NULL_INTERSECTION_SHADERS_BIT_KHR: u1 = 0, // 131072
+    INDIRECT_BINDABLE_BIT_NV: u1 = 0, // 262144
+    RAY_TRACING_SHADER_GROUP_HANDLE_CAPTURE_REPLAY_BIT_KHR: u1 = 0, // 524288
+    RAY_TRACING_ALLOW_MOTION_BIT_NV: u1 = 0, // 1048576
+    STATE_CREATE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR: u1 = 0, // 2097152
+    RENDERING_FRAGMENT_DENSITY_MAP_ATTACHMENT_BIT_EXT: u1 = 0, // 4194304
+    RETAIN_LINK_TIME_OPTIMIZATION_INFO_BIT_EXT: u1 = 0, // 8388608
+    RAY_TRACING_OPACITY_MICROMAP_BIT_EXT: u1 = 0, // 16777216
+    COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT: u1 = 0, // 33554432
+    DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT: u1 = 0, // 67108864
+    NO_PROTECTED_ACCESS_BIT_EXT: u1 = 0, // 134217728
+    __reserved_1: u1 = 0,
+    DESCRIPTOR_BUFFER_BIT_EXT: u1 = 0, // 536870912
+    PROTECTED_ACCESS_ONLY_BIT_EXT: u1 = 0, // 1073741824
+    __reserved_2: u1 = 0,
+    pub const RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR: @This() = .{ .STATE_CREATE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR = 1 };
+    pub const DISPATCH_BASE: @This() = .{ .DISPATCH_BASE_BIT = 1 };
+    pub const STATE_CREATE_FRAGMENT_DENSITY_MAP_ATTACHMENT_BIT_EXT: @This() = .{ .RENDERING_FRAGMENT_DENSITY_MAP_ATTACHMENT_BIT_EXT = 1 };
+    pub const VIEW_INDEX_FROM_DEVICE_INDEX_BIT_KHR: @This() = .{ .VIEW_INDEX_FROM_DEVICE_INDEX_BIT = 1 };
+    pub const DISPATCH_BASE_KHR: @This() = .{ .DISPATCH_BASE_BIT = 1 };
+    pub const FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_EXT: @This() = .{ .FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT = 1 };
+    pub const EARLY_RETURN_ON_FAILURE_BIT_EXT: @This() = .{ .EARLY_RETURN_ON_FAILURE_BIT = 1 };
+    pub const MAX_ENUM: Flags = 2147483647;
+};
+
+pub const FramebufferCreateFlags = packed struct(Flags) {
+    IMAGELESS_BIT: u1 = 0, // 1
+    __reserved: u31 = 0,
+    pub const IMAGELESS_BIT_KHR: @This() = .{ .IMAGELESS_BIT = 1 };
+    pub const MAX_ENUM: c_int = 2147483647;
+};
+
+pub const CommandBufferUsageFlags = packed struct(Flags) {
+    ONE_TIME_SUBMIT_BIT: u1 = 0, // 1
+    RENDER_PASS_CONTINUE_BIT: u1 = 0, // 2
+    SIMULTANEOUS_USE_BIT: u1 = 0, // 4
+    __reserved: u29 = 0,
+    pub const MAX_ENUM: Flags = 2147483647;
+};
+
+pub const QueryControlFlags = packed struct(Flags) {
+    PRECISE_BIT: u1 = 0, // 1
+    __reserved: u31 = 0,
+    pub const MAX_ENUM: Flags = 2147483647;
+};
+
+pub const QueryPipelineStatisticFlags = packed struct(Flags) {
+    INPUT_ASSEMBLY_VERTICES_BIT: u1 = 0, // 1
+    INPUT_ASSEMBLY_PRIMITIVES_BIT: u1 = 0, // 2
+    VERTEX_SHADER_INVOCATIONS_BIT: u1 = 0, // 4
+    GEOMETRY_SHADER_INVOCATIONS_BIT: u1 = 0, // 8
+    GEOMETRY_SHADER_PRIMITIVES_BIT: u1 = 0, // 16
+    CLIPPING_INVOCATIONS_BIT: u1 = 0, // 32
+    CLIPPING_PRIMITIVES_BIT: u1 = 0, // 64
+    FRAGMENT_SHADER_INVOCATIONS_BIT: u1 = 0, // 128
+    TESSELLATION_CONTROL_SHADER_PATCHES_BIT: u1 = 0, // 256
+    TESSELLATION_EVALUATION_SHADER_INVOCATIONS_BIT: u1 = 0, // 512
+    COMPUTE_SHADER_INVOCATIONS_BIT: u1 = 0, // 1024
+    TASK_SHADER_INVOCATIONS_BIT_EXT: u1 = 0, // 2048
+    MESH_SHADER_INVOCATIONS_BIT_EXT: u1 = 0, // 4096
+    CLUSTER_CULLING_SHADER_INVOCATIONS_BIT_HUAWEI: u1 = 0, // 8192
+    __reserved: u18 = 0,
+    pub const FLAG_BITS_MAX_ENUM: Flags = 2147483647;
+};
+
+pub const SemaphoreCreateFlags = Flags;
+
+pub const FenceCreateFlags = packed struct(Flags) {
+    SIGNALED: u1 = 0,
+    __reserved: u31 = 0,
+    pub const MAX_ENUM: Flags = 2147483647;
+};
+
+pub const DependencyFlags = packed struct(Flags) {
+    BY_REGION_BIT: u1 = 0, // 1
+    VIEW_LOCAL_BIT: u1 = 0, // 2
+    DEVICE_GROUP_BIT: u1 = 0, // 4
+    FEEDBACK_LOOP_BIT_EXT: u1 = 0, // 8
+    __reserved: u28 = 0,
+    pub const VIEW_LOCAL_BIT_KHR: @This() = .{ .VIEW_LOCAL_BIT = 1 };
+    pub const DEVICE_GROUP_BIT_KHR: @This() = .{ .DEVICE_GROUP_BIT = 1 };
+    pub const MAX_ENUM: Flags = 2147483647;
+};
+
+pub const DebugUtilsMessengerCallbackDataFlagsEXT = Flags;
+
+pub const ObjectType = enum(c_int) {
+    UNKNOWN = 0,
+    INSTANCE = 1,
+    PHYSICAL_DEVICE = 2,
+    DEVICE = 3,
+    QUEUE = 4,
+    SEMAPHORE = 5,
+    COMMAND_BUFFER = 6,
+    FENCE = 7,
+    DEVICE_MEMORY = 8,
+    BUFFER = 9,
+    IMAGE = 10,
+    EVENT = 11,
+    QUERY_POOL = 12,
+    BUFFER_VIEW = 13,
+    IMAGE_VIEW = 14,
+    SHADER_MODULE = 15,
+    PIPELINE_CACHE = 16,
+    PIPELINE_LAYOUT = 17,
+    RENDER_PASS = 18,
+    PIPELINE = 19,
+    DESCRIPTOR_SET_LAYOUT = 20,
+    SAMPLER = 21,
+    DESCRIPTOR_POOL = 22,
+    DESCRIPTOR_SET = 23,
+    FRAMEBUFFER = 24,
+    COMMAND_POOL = 25,
+    SAMPLER_YCBCR_CONVERSION = 1000156000,
+    DESCRIPTOR_UPDATE_TEMPLATE = 1000085000,
+    PRIVATE_DATA_SLOT = 1000295000,
+    SURFACE_KHR = 1000000000,
+    SWAPCHAIN_KHR = 1000001000,
+    DISPLAY_KHR = 1000002000,
+    DISPLAY_MODE_KHR = 1000002001,
+    DEBUG_REPORT_CALLBACK_EXT = 1000011000,
+    VIDEO_SESSION_KHR = 1000023000,
+    VIDEO_SESSION_PARAMETERS_KHR = 1000023001,
+    CU_MODULE_NVX = 1000029000,
+    CU_FUNCTION_NVX = 1000029001,
+    DEBUG_UTILS_MESSENGER_EXT = 1000128000,
+    ACCELERATION_STRUCTURE_KHR = 1000150000,
+    VALIDATION_CACHE_EXT = 1000160000,
+    ACCELERATION_STRUCTURE_NV = 1000165000,
+    PERFORMANCE_CONFIGURATION_INTEL = 1000210000,
+    DEFERRED_OPERATION_KHR = 1000268000,
+    INDIRECT_COMMANDS_LAYOUT_NV = 1000277000,
+    CUDA_MODULE_NV = 1000307000,
+    CUDA_FUNCTION_NV = 1000307001,
+    BUFFER_COLLECTION_FUCHSIA = 1000366000,
+    MICROMAP_EXT = 1000396000,
+    OPTICAL_FLOW_SESSION_NV = 1000464000,
+    SHADER_EXT = 1000482000,
+    PIPELINE_BINARY_KHR = 1000483000,
+    INDIRECT_COMMANDS_LAYOUT_EXT = 1000572000,
+    INDIRECT_EXECUTION_SET_EXT = 1000572001,
+    pub const MAX_ENUM = 2147483647;
+    pub const DESCRIPTOR_UPDATE_TEMPLATE_KHR: @This() = .DESCRIPTOR_UPDATE_TEMPLATE;
+    pub const SAMPLER_YCBCR_CONVERSION_KHR: @This() = .SAMPLER_YCBCR_CONVERSION_INFO;
+    pub const PRIVATE_DATA_SLOT_EXT: @This() = .PRIVATE_DATA_SLOT;
+};
+
+pub const DebugUtilsMessengerCreateFlagsEXT = Flags;
+
+pub const VertexInputRate = enum(c_int) {
+    VERTEX = 0,
+    INSTANCE = 1,
+    pub const MAX_ENUM: c_int = 2147483647;
+};
 
 pub const StructureType = enum(c_int) {
     APPLICATION_INFO = 0,
@@ -2204,4 +2450,8 @@ pub const StructureType = enum(c_int) {
     pub const DEVICE_IMAGE_MEMORY_REQUIREMENTS_KHR = @This().DEVICE_IMAGE_MEMORY_REQUIREMENTS;
     pub const SHADER_REQUIRED_SUBGROUP_SIZE_CREATE_INFO_EXT = @This().PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO;
     pub const MAX_ENUM: c_int = 2147483647;
+    pub const VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT: c_int = 1;
+    pub const VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT: c_int = 2;
+    pub const VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT: c_int = 4;
+    pub const VK_COMMAND_BUFFER_USAGE_FLAG_BITS_MAX_ENUM: c_int = 2147483647;
 };
