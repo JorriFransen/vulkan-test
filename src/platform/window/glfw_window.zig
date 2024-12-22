@@ -67,6 +67,9 @@ pub fn deinitSystem() void {
 handle: *glfw.GLFWwindow,
 input: platform.InputState = .{},
 last_input: platform.InputState = .{},
+framebuffer_resize_callback: ?PFN_FramebufferResize,
+
+pub const PFN_FramebufferResize = *const fn (window: *const @This(), width: c_int, height: c_int) void;
 
 pub fn create(this: *@This(), title: [:0]const u8) !void {
     glfw.glfwWindowHint(glfw.CLIENT_API, glfw.NO_API);
@@ -90,11 +93,13 @@ pub fn create(this: *@This(), title: [:0]const u8) !void {
     dlog("glfw platform: {}", .{glfw_platform});
 
     _ = glfw.glfwSetKeyCallback(handle, keyCallback);
+    _ = glfw.glfwSetFramebufferSizeCallback(handle, framebufferResizeCallback);
 
     glfw.glfwSetWindowUserPointer(handle, this);
 
     this.* = .{
         .handle = handle,
+        .framebuffer_resize_callback = null,
     };
 }
 
@@ -183,4 +188,9 @@ fn keyCallback(window: *glfw.GLFWwindow, key: glfw.Key, scancode: c_int, action:
     if (key == .escape) {
         this.input.escape_pressed = action == .press;
     }
+}
+
+fn framebufferResizeCallback(window: *glfw.GLFWwindow, width: c_int, height: c_int) callconv(.C) void {
+    const this: *@This() = @alignCast(@ptrCast(glfw.glfwGetWindowUserPointer(window)));
+    if (this.framebuffer_resize_callback) |cb| cb(this, width, height);
 }

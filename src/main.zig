@@ -38,6 +38,8 @@ pub const std_options = std.Options{
     },
 };
 
+var renderer: Renderer = undefined;
+
 pub fn vMain() !u8 {
     var args = try std.process.argsWithAllocator(alloc.gpa);
     defer args.deinit();
@@ -51,13 +53,10 @@ pub fn vMain() !u8 {
     try window.create("Vulkan Test");
     defer window.close();
 
-    var renderer = try Renderer.init(&window);
-    defer renderer.deinit();
+    window.framebuffer_resize_callback = fb_resize_callback;
 
-    var width: i32 = undefined;
-    var height: i32 = undefined;
-    window.frameBufferSize(&width, &height);
-    dlog("frame_buffer_size: {}, {}", .{ width, height });
+    renderer = try Renderer.init(&window);
+    defer renderer.deinit();
 
     while (!window.shouldClose()) {
         window.update();
@@ -76,4 +75,9 @@ pub fn main() !u8 {
     const result = try vMain();
     alloc.deinit();
     return result;
+}
+
+fn fb_resize_callback(_: *const Window, width: c_int, height: c_int) void {
+    std.log.scoped(.window).debug("Resize! {}, {}", .{ width, height });
+    renderer.framebuffer_resized = true;
 }

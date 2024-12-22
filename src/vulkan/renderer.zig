@@ -24,13 +24,21 @@ const Renderer = @This();
 
 const MAX_FRAMES_IN_FLIGHT = 2;
 
+window: *const Window = undefined,
 instance: vk.Instance = null,
 surface: vk.SurfaceKHR = null,
 device: vk.Device = null,
 device_info: PDevInfo = undefined,
 graphics_que: vk.Queue = null,
 present_que: vk.Queue = null,
-swapchain: SwapchainData = undefined,
+
+swapchain: vk.SwapchainKHR = null,
+images: []vk.Image = undefined,
+image_views: []vk.ImageView = undefined,
+swapchain_extent: vk.Extent2D = undefined,
+framebuffers: []vk.Framebuffer = undefined,
+framebuffer_resized: bool = false,
+
 render_pass: vk.RenderPass = null,
 pipeline_layout: vk.PipelineLayout = null,
 graphics_pipeline: vk.Pipeline = null,
@@ -47,7 +55,7 @@ const PDevInfo = struct {
     name: [256]u8 = std.mem.zeroes([256]u8),
     queue_info: QueueFamilyInfo,
     swapchain_info: SwapchainInfo,
-    physical_device: vk.PhysicalDevice = null,
+    physical_device: vk.PhysicalDevice,
 };
 
 const QueueFamilyInfo = struct {
@@ -60,29 +68,6 @@ const SwapchainInfo = struct {
     surface_capabilities: vk.SurfaceCapabilitiesKHR,
     surface_format: vk.SurfaceFormatKHR,
     present_mode: vk.PresentModeKHR,
-};
-
-const SwapchainData = struct {
-    handle: vk.SwapchainKHR = null,
-    image_format: vk.Format,
-    extent: vk.Extent2D,
-
-    images: []vk.Image = std.mem.zeroes([]vk.Image),
-    image_views: []vk.ImageView = std.mem.zeroes([]vk.ImageView),
-
-    framebuffers: []vk.Framebuffer = std.mem.zeroes([]vk.Framebuffer),
-
-    pub fn deinit(this: *const @This(), renderer: *const Renderer, allocator: std.mem.Allocator) void {
-        for (this.framebuffers) |fb| {
-            vk.destroyFramebuffer(renderer.device, fb, null);
-        }
-        alloc.gpa.free(this.framebuffers);
-
-        for (this.image_views) |v| vk.destroyImageView(renderer.device, v, null);
-        allocator.free(this.image_views);
-        allocator.free(this.images);
-        vk.destroySwapchainKHR(renderer.device, this.handle, null);
-    }
 };
 
 const validation_layers: []const [*:0]const u8 = if (debug) &.{
@@ -110,6 +95,7 @@ pub fn init(window: *const Window) !Renderer {
     const device_info = try choosePhysicalDevice(instance, surface);
 
     var result: Renderer = .{
+        .window = window,
         .instance = instance,
         .surface = surface,
         .device_info = device_info,
@@ -118,10 +104,8 @@ pub fn init(window: *const Window) !Renderer {
 
     try result.createLogicalDevice();
 
-    var width: c_int = undefined;
-    var height: c_int = undefined;
-    window.frameBufferSize(&width, &height);
-    try result.createSwapchain(width, height);
+    try result.createSwapchain();
+    try result.createImageViews();
 
     try result.createRenderPass();
     try result.createGraphicsPipeline();
@@ -136,7 +120,7 @@ pub fn init(window: *const Window) !Renderer {
 pub fn deinit(this: *const @This()) void {
     const dev = this.device;
 
-    _ = vk.deviceWaitIdle(dev);
+    this.cleanupSwapchain();
 
     for (0..MAX_FRAMES_IN_FLIGHT) |i| {
         vk.destroyFence(dev, this.in_flight_fences[i], null);
@@ -148,7 +132,7 @@ pub fn deinit(this: *const @This()) void {
     vk.destroyPipeline(dev, this.graphics_pipeline, null);
     vk.destroyPipelineLayout(dev, this.pipeline_layout, null);
     vk.destroyRenderPass(dev, this.render_pass, null);
-    this.swapchain.deinit(this, alloc.gpa);
+
     vk.destroyDevice(dev, null);
     vk.destroySurfaceKHR(this.instance, this.surface, null);
     if (debug) vke.destroyDebugUtilsMessenger(this.instance, this.debug_messenger, null);
@@ -357,6 +341,7 @@ fn choosePhysicalDevice(instance: vk.Instance, surface: vk.SurfaceKHR) !PDevInfo
             .name = props.deviceName,
             .queue_info = queue_info,
             .swapchain_info = swapchain_info,
+            .physical_device = null,
         };
 
         const new_best = if (suitable_device_found) info.score > best_device_info.score else true;
@@ -556,15 +541,40 @@ fn createLogicalDevice(this: *@This()) !void {
     vk.getDeviceQueue(this.device, dev_info.queue_info.present_index, 0, &this.present_que);
 }
 
-pub fn createSwapchain(this: *@This(), fb_width: c_int, fb_height: c_int) !void {
+pub fn recreateSwapchain(this: *@This()) !void {
+    this.cleanupSwapchain();
+
+    try this.createSwapchain();
+    try this.createImageViews();
+    try this.createFrameBuffers();
+}
+
+pub fn cleanupSwapchain(this: *const @This()) void {
+    _ = vk.deviceWaitIdle(this.device);
+
+    for (this.framebuffers) |fb| vk.destroyFramebuffer(this.device, fb, null);
+    alloc.gpa.free(this.framebuffers);
+
+    for (this.image_views) |v| vk.destroyImageView(this.device, v, null);
+    alloc.gpa.free(this.image_views);
+
+    alloc.gpa.free(this.images);
+
+    vk.destroySwapchainKHR(this.device, this.swapchain, null);
+}
+
+pub fn createSwapchain(this: *@This()) !void {
     const dev_info = &this.device_info;
-    const cap = &dev_info.swapchain_info.surface_capabilities;
+    const info = (try querySwapchainInfo(dev_info.physical_device, this.surface)).?;
+    const cap = &info.surface_capabilities;
+
+    var fb_width: c_int = undefined;
+    var fb_height: c_int = undefined;
+    this.window.frameBufferSize(&fb_width, &fb_height);
 
     dlog("cap.currentExtent: {}", .{cap.currentExtent});
-    const extent = switch (cap.currentExtent.width) {
+    this.swapchain_extent = switch (cap.currentExtent.width) {
         std.math.maxInt(u32) => blk: {
-            // window.frameBufferSize(&width, &height);
-
             var actual_extent = vk.Extent2D{ .width = @intCast(fb_width), .height = @intCast(fb_height) };
             actual_extent.width = std.math.clamp(actual_extent.width, cap.minImageExtent.width, cap.maxImageExtent.width);
             actual_extent.height = std.math.clamp(actual_extent.height, cap.minImageExtent.height, cap.maxImageExtent.height);
@@ -574,7 +584,7 @@ pub fn createSwapchain(this: *@This(), fb_width: c_int, fb_height: c_int) !void 
         else => cap.currentExtent,
     };
 
-    dlog("swapchain extent: {}", .{extent});
+    dlog("swapchain extent: {}", .{this.swapchain_extent});
 
     const same_family = dev_info.queue_info.graphics_index == dev_info.queue_info.present_index;
 
@@ -584,7 +594,7 @@ pub fn createSwapchain(this: *@This(), fb_width: c_int, fb_height: c_int) !void 
         .minImageCount = dev_info.swapchain_info.min_image_count,
         .imageFormat = dev_info.swapchain_info.surface_format.format,
         .imageColorSpace = dev_info.swapchain_info.surface_format.colorSpace,
-        .imageExtent = extent,
+        .imageExtent = this.swapchain_extent,
         .imageArrayLayers = 1,
         .imageUsage = .{ .COLOR_ATTACHMENT_BIT = 1 },
         .imageSharingMode = if (same_family) .EXCLUSIVE else .CONCURRENT,
@@ -597,29 +607,31 @@ pub fn createSwapchain(this: *@This(), fb_width: c_int, fb_height: c_int) !void 
         .oldSwapchain = null,
     };
 
-    var swapchain_handle: vk.SwapchainKHR = undefined;
-    if (vk.createSwapchainKHR(this.device, &create_info, null, &swapchain_handle) != .SUCCESS) {
+    if (vk.createSwapchainKHR(this.device, &create_info, null, &this.swapchain) != .SUCCESS) {
         return error.Create_Swapchain_Failed;
     }
 
     var image_count: u32 = undefined;
-    if (vk.getSwapchainImagesKHR(this.device, swapchain_handle, &image_count, null) != .SUCCESS) {
+    if (vk.getSwapchainImagesKHR(this.device, this.swapchain, &image_count, null) != .SUCCESS) {
         return error.Get_Swapchain_Images_Failed;
     }
 
-    const images = try alloc.gpa.alloc(vk.Image, image_count);
-    if (vk.getSwapchainImagesKHR(this.device, swapchain_handle, &image_count, images.ptr) != .SUCCESS) {
+    this.images = try alloc.gpa.alloc(vk.Image, image_count);
+    if (vk.getSwapchainImagesKHR(this.device, this.swapchain, &image_count, this.images.ptr) != .SUCCESS) {
         return error.Get_Swapchain_Images_Failed;
     }
-    assert(image_count == images.len);
+    assert(image_count == this.images.len);
+}
 
-    const image_views = try alloc.gpa.alloc(vk.ImageView, image_count);
-    for (images, image_views) |image, *view| {
+fn createImageViews(this: *@This()) !void {
+    this.image_views = try alloc.gpa.alloc(vk.ImageView, this.images.len);
+
+    for (this.images, this.image_views) |image, *view| {
         const view_create_info = vk.ImageViewCreateInfo{
             .sType = .IMAGE_VIEW_CREATE_INFO,
             .image = image,
             .viewType = .@"2D",
-            .format = dev_info.swapchain_info.surface_format.format,
+            .format = this.device_info.swapchain_info.surface_format.format,
             .components = .{ .r = .IDENTITY, .g = .IDENTITY, .b = .IDENTITY, .a = .IDENTITY },
             .subresourceRange = .{
                 .aspectMask = .{ .COLOR_BIT = 1 },
@@ -634,19 +646,11 @@ pub fn createSwapchain(this: *@This(), fb_width: c_int, fb_height: c_int) !void 
             return error.Create_Image_View_Failed;
         }
     }
-
-    this.swapchain = .{
-        .handle = swapchain_handle,
-        .images = images,
-        .image_views = image_views,
-        .image_format = dev_info.swapchain_info.surface_format.format,
-        .extent = extent,
-    };
 }
 
 fn createRenderPass(this: *@This()) !void {
     const color_attachments = [_]vk.AttachmentDescription{.{
-        .format = this.swapchain.image_format,
+        .format = this.device_info.swapchain_info.surface_format.format,
         .samples = .{ .@"1_BIT" = 1 },
         .loadOp = .CLEAR,
         .storeOp = .STORE,
@@ -826,17 +830,17 @@ fn createGraphicsPipeline(this: *@This()) !void {
 }
 
 fn createFrameBuffers(this: *@This()) !void {
-    this.swapchain.framebuffers = try alloc.gpa.alloc(vk.Framebuffer, this.swapchain.image_views.len);
+    this.framebuffers = try alloc.gpa.alloc(vk.Framebuffer, this.image_views.len);
 
-    for (this.swapchain.image_views, this.swapchain.framebuffers) |iv, *fb| {
+    for (this.image_views, this.framebuffers) |iv, *fb| {
         const attachments = [_]vk.ImageView{iv};
         const framebuffer_create_info = vk.FramebufferCreateInfo{
             .sType = .FRAMEBUFFER_CREATE_INFO,
             .renderPass = this.render_pass,
             .attachmentCount = 1,
             .pAttachments = &attachments,
-            .width = this.swapchain.extent.width,
-            .height = this.swapchain.extent.height,
+            .width = this.swapchain_extent.width,
+            .height = this.swapchain_extent.height,
             .layers = 1,
         };
 
@@ -910,10 +914,10 @@ fn recordCommandBuffer(this: *const @This(), image_index: u32) void {
     const render_pass_info = vk.RenderPassBeginInfo{
         .sType = .RENDER_PASS_BEGIN_INFO,
         .renderPass = this.render_pass,
-        .framebuffer = this.swapchain.framebuffers[image_index],
+        .framebuffer = this.framebuffers[image_index],
         .renderArea = .{
             .offset = .{ .x = 0, .y = 0 },
-            .extent = this.swapchain.extent,
+            .extent = this.swapchain_extent,
         },
         .clearValueCount = 1,
         .pClearValues = &clear_values,
@@ -925,8 +929,8 @@ fn recordCommandBuffer(this: *const @This(), image_index: u32) void {
     const viewport = vk.Viewport{
         .x = 0,
         .y = 0,
-        .width = @floatFromInt(this.swapchain.extent.width),
-        .height = @floatFromInt(this.swapchain.extent.height),
+        .width = @floatFromInt(this.swapchain_extent.width),
+        .height = @floatFromInt(this.swapchain_extent.height),
         .minDepth = 0,
         .maxDepth = 1,
     };
@@ -934,7 +938,7 @@ fn recordCommandBuffer(this: *const @This(), image_index: u32) void {
 
     const scissor = vk.Rect2D{
         .offset = .{ .x = 0, .y = 0 },
-        .extent = this.swapchain.extent,
+        .extent = this.swapchain_extent,
     };
     vk.cmdSetScissor(cmd_buf, 0, 1, &scissor);
 
@@ -952,12 +956,20 @@ pub fn drawFrame(this: *@This()) void {
     const cmd_buf = this.command_buffers[cfi];
 
     _ = vk.waitForFences(this.device, 1, @ptrCast(&this.in_flight_fences[cfi]), vk.TRUE, std.math.maxInt(u64));
-    _ = vk.resetFences(this.device, 1, @ptrCast(&this.in_flight_fences[cfi]));
 
     var image_index: u32 = undefined;
-    if (vk.acquireNextImageKHR(this.device, this.swapchain.handle, std.math.maxInt(u64), this.image_available_semaphores[cfi], null, &image_index) != .SUCCESS) {
-        @panic("acquirenextImageKHR failed!");
+    switch (vk.acquireNextImageKHR(this.device, this.swapchain, std.math.maxInt(u64), this.image_available_semaphores[cfi], null, &image_index)) {
+        .SUCCESS => {}, // ok
+        .ERROR_OUT_OF_DATE_KHR => {
+            dlog("swapchain out of date!", .{});
+            this.recreateSwapchain() catch @panic("recreateSwapchain Failed!");
+            return;
+        },
+        .SUBOPTIMAL_KHR => dlog("Using suboptimal swapchain...", .{}),
+        else => @panic("AcquireNextImageKHR Failed!"),
     }
+
+    _ = vk.resetFences(this.device, 1, @ptrCast(&this.in_flight_fences[cfi]));
 
     _ = vk.resetCommandBuffer(cmd_buf, .{});
 
@@ -983,7 +995,7 @@ pub fn drawFrame(this: *@This()) void {
         @panic("queueSubmit failed!");
     }
 
-    const swapchains = [_]vk.SwapchainKHR{this.swapchain.handle};
+    const swapchains = [_]vk.SwapchainKHR{this.swapchain};
     const image_indices = [swapchains.len]u32{image_index};
 
     const present_info = vk.PresentInfoKHR{
@@ -996,7 +1008,20 @@ pub fn drawFrame(this: *@This()) void {
         .pResults = null,
     };
 
-    _ = vk.queuePresentKHR(this.present_que, &present_info);
+    var recreate = false;
+    switch (vk.queuePresentKHR(this.present_que, &present_info)) {
+        .SUCCESS => {}, //ok
+        .ERROR_OUT_OF_DATE_KHR, .SUBOPTIMAL_KHR => {
+            dlog("swapchain out of date!", .{});
+            recreate = true;
+        },
+        else => @panic("queuePresentKHR Failed!"),
+    }
+
+    if (recreate or this.framebuffer_resized) {
+        this.framebuffer_resized = false;
+        this.recreateSwapchain() catch @panic("recreateSwapchain Failed!");
+    }
 
     this.current_frame = (this.current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
 }

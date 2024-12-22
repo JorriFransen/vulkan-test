@@ -21,6 +21,7 @@ pub extern fn glfwWindowShouldClose(window: *GLFWwindow) callconv(.C) c_int;
 pub extern fn glfwSetWindowShouldClose(window: *GLFWwindow, value: c_int) callconv(.C) void;
 pub extern fn glfwPollEvents() callconv(.C) void;
 pub extern fn glfwSetKeyCallback(window: *GLFWwindow, callback: GLFWkeyfun) callconv(.C) GLFWkeyfun;
+pub extern fn glfwSetFramebufferSizeCallback(window: *GLFWwindow, callback: GLFWframebuffersizefun) callconv(.C) GLFWframebuffersizefun;
 pub extern fn glfwDestroyWindow(window: *GLFWwindow) callconv(.C) void;
 pub extern fn glfwTerminate() callconv(.C) void;
 pub extern fn glfwGetFramebufferSize(window: *const GLFWwindow, width: ?*c_int, height: ?*c_int) callconv(.C) void;
@@ -39,6 +40,7 @@ pub extern fn glfwCreateWindowSurface(instance: vk.Instance, window: *GLFWwindow
 pub const GLFWwindow = extern struct { dummy: c_long = 0 };
 pub const GLFWmonitor = extern struct { dummy: c_long = 0 };
 pub const GLFWkeyfun = *const fn (window: *GLFWwindow, key: Key, scancode: c_int, action: Action, mods: c_int) callconv(.C) void;
+pub const GLFWframebuffersizefun = *const fn (window: *GLFWwindow, width: c_int, height: c_int) callconv(.C) void;
 
 pub const Platform = enum(c_int) {
     ANY = 0x00060000,
