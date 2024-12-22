@@ -34,9 +34,11 @@ const MAX_TITLE = 1024;
 handle: win32.HWND,
 close_requested: bool = false,
 title: [MAX_TITLE]u16 = std.mem.zeroes([MAX_TITLE]u16),
+new_fb_size: ?win32.POINT,
 
 input: platform.InputState = .{},
 last_input: platform.InputState = .{},
+framebuffer_resize_callback: ?platform.window.PFN_FramebufferResize,
 
 pub fn create(this: *@This(), title: [:0]const u8) !void {
     var instance: win32.HINSTANCE = undefined;
@@ -75,7 +77,7 @@ pub fn create(this: *@This(), title: [:0]const u8) !void {
 
     const style = win32.WINDOW_STYLE.OVERLAPPED_WINDOW();
 
-    if (win32.CreateWindowExW(.{}, window_class.lpszClassName, @ptrCast(&this.title), style, win32.CW_USEDEFAULT, win32.CW_USEDEFAULT, 800, 600, null, null, instance, null)) |handle| {
+    if (win32.CreateWindowExW(.{}, window_class.lpszClassName, @ptrCast(&this.title), style, win32.CW_USEDEFAULT, win32.CW_USEDEFAULT, win32.CW_USEDEFAULT, win32.CW_USEDEFAULT, null, null, instance, null)) |handle| {
         this.handle = handle;
     } else {
         try win32.report_error();
@@ -111,6 +113,11 @@ pub fn update(this: *@This()) void {
             this.close_requested = true;
             break;
         }
+    }
+
+    if (this.new_fb_size) |s| {
+        if (this.framebuffer_resize_callback) |cb| cb(this, s.x, s.y);
+        this.new_fb_size = null;
     }
 }
 
@@ -202,10 +209,10 @@ fn windowProc(_hwnd: ?win32.HWND, uMsg: u32, wParam: win32.WPARAM, lParam: win32
     const this: *@This() = @ptrFromInt(data_int);
 
     switch (uMsg) {
-        // win32.WM_SIZE => {
-        //     dlog("wm_size: {}, {}", .{ win32.LOWORD(lParam), win32.HIWORD(lParam) });
-        //     return 0;
-        // },
+        win32.WM_SIZE => {
+            this.new_fb_size = .{ .x = win32.LOWORD(lParam), .y = win32.HIWORD(lParam) };
+            return 0;
+        },
         win32.WM_DESTROY => {
             win32.PostQuitMessage(0);
             this.close_requested = true;

@@ -53,10 +53,10 @@ pub fn vMain() !u8 {
     try window.create("Vulkan Test");
     defer window.close();
 
-    window.framebuffer_resize_callback = fb_resize_callback;
-
     renderer = try Renderer.init(&window);
     defer renderer.deinit();
+
+    window.framebuffer_resize_callback = framebufferResizeCallback;
 
     while (!window.shouldClose()) {
         window.update();
@@ -71,13 +71,12 @@ pub fn vMain() !u8 {
     return 0;
 }
 
+fn framebufferResizeCallback(_: *const Window, width: c_int, height: c_int) void {
+    renderer.handleFramebufferResize(width, height);
+}
+
 pub fn main() !u8 {
     const result = try vMain();
     alloc.deinit();
     return result;
-}
-
-fn fb_resize_callback(_: *const Window, width: c_int, height: c_int) void {
-    std.log.scoped(.window).debug("Resize! {}, {}", .{ width, height });
-    renderer.framebuffer_resized = true;
 }

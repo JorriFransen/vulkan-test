@@ -1064,3 +1064,7 @@ fn vk_debug_callback(message_severity: vk.DebugUtilsMessageSeverityFlagsEXT, mes
 
     return vk.FALSE;
 }
+
+pub fn handleFramebufferResize(this: *@This(), _: c_int, _: c_int) void {
+    this.framebuffer_resized = true;
+}

@@ -65,11 +65,10 @@ pub fn deinitSystem() void {
 }
 
 handle: *glfw.GLFWwindow,
+
 input: platform.InputState = .{},
 last_input: platform.InputState = .{},
-framebuffer_resize_callback: ?PFN_FramebufferResize,
-
-pub const PFN_FramebufferResize = *const fn (window: *const @This(), width: c_int, height: c_int) void;
+framebuffer_resize_callback: ?platform.window.PFN_FramebufferResize,
 
 pub fn create(this: *@This(), title: [:0]const u8) !void {
     glfw.glfwWindowHint(glfw.CLIENT_API, glfw.NO_API);
