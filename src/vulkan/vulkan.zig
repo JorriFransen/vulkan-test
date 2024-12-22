@@ -2,6 +2,9 @@ const std = @import("std");
 const dlog = std.log.debug;
 const assert = std.debug.assert;
 
+const platform = @import("platform");
+pub const x = platform.x;
+
 pub const Renderer = @import("renderer.zig");
 
 const s = @This();
@@ -11,12 +14,6 @@ pub const Bool32 = u32;
 pub const SampleMask = u32;
 pub const DeviceSize = u64;
 pub const VoidFunction = ?*const fn () callconv(.C) void;
-
-pub const xcb_connection_t = opaque {};
-pub const xcb_window_t = u32;
-pub const Display = opaque {};
-pub const XID = c_ulong;
-pub const Window = XID;
 
 pub const PFN_AllocationFunction = ?*const fn (?*anyopaque, usize, usize, s.SystemAllocationScope) callconv(.C) ?*anyopaque;
 pub const PFN_ReallocationFunction = ?*const fn (?*anyopaque, ?*anyopaque, usize, usize, s.SystemAllocationScope) callconv(.C) ?*anyopaque;

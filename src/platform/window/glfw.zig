@@ -7,7 +7,8 @@ pub const NO_API: c_int = 0;
 pub const TRUE = 1;
 pub const FALSE = 0;
 
-const c = @import("platform").c;
+const platform = @import("platform");
+const x = platform.x;
 const vk = @import("vulkan");
 
 pub extern fn glfwInit() callconv(.C) c_int;
@@ -31,8 +32,8 @@ pub extern fn glfwVulkanSupported() callconv(.C) c_int;
 pub extern fn glfwGetRequiredInstanceExtensions(count: *u32) callconv(.C) [*c][*c]const u8;
 pub extern fn glfwSetWindowUserPointer(window: *GLFWwindow, ptr: *anyopaque) callconv(.C) void;
 pub extern fn glfwGetWindowUserPointer(window: *GLFWwindow) callconv(.C) *anyopaque;
-pub extern fn glfwGetX11Display() callconv(.C) *vk.Display;
-pub extern fn glfwGetX11Window(window: *GLFWwindow) callconv(.C) vk.Window;
+pub extern fn glfwGetX11Display() callconv(.C) *x.Display;
+pub extern fn glfwGetX11Window(window: *GLFWwindow) callconv(.C) x.Window;
 pub extern fn glfwCreateWindowSurface(instance: vk.Instance, window: *GLFWwindow, allocator: ?*vk.AllocationCallbacks, surface: *vk.SurfaceKHR) vk.Result;
 
 pub const GLFWwindow = extern struct { dummy: c_long = 0 };

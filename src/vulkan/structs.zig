@@ -263,16 +263,16 @@ pub const XcbSurfaceCreateInfoKHR = extern struct {
     sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
     flags: s.XcbSurfaceCreateFlagsKHR = std.mem.zeroes(s.XcbSurfaceCreateFlagsKHR),
-    connection: *s.xcb_connection_t,
-    window: s.xcb_window_t = 0,
+    connection: *s.x.xcb_connection_t,
+    window: s.x.xcb_window_t = 0,
 };
 
 pub const XlibSurfaceCreateInfoKHR = extern struct {
     sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
     flags: s.XlibSurfaceCreateFlagsKHR = std.mem.zeroes(s.XlibSurfaceCreateFlagsKHR),
-    dpy: *s.Display,
-    window: s.Window,
+    dpy: *s.x.Display,
+    window: s.x.Window,
 };
 
 pub const Win32SurfaceCreateInfoKHR = extern struct {

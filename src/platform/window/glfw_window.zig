@@ -4,7 +4,7 @@ const builtin = @import("builtin");
 
 const f = @import("externFn").externFn;
 const platform = @import("platform");
-const c = platform.c;
+const x = platform.x;
 const glfw = platform.glfw;
 const vk = @import("vulkan");
 
@@ -14,10 +14,6 @@ const log = std.log.scoped(.window);
 const dlog = log.debug;
 const elog = log.err;
 const ilog = log.info;
-
-pub const x = if (builtin.os.tag == .linux) struct {
-    pub const getXCBConnection = f("XGetXCBConnection", fn (display: *vk.Display) callconv(.C) *vk.xcb_connection_t);
-};
 
 pub fn initSystem() !void {
     const wayland_support = glfw.glfwPlatformSupported(.WAYLAND) == glfw.TRUE;
@@ -134,33 +130,33 @@ pub fn requiredVulkanInstanceExtensions(_: *const @This()) ![]const [*:0]const u
 }
 
 pub fn createVulkanSurface(this: *const @This(), instance: vk.Instance) !vk.SurfaceKHR {
-    var surface: vk.SurfaceKHR = undefined;
-    if (glfw.glfwCreateWindowSurface(instance, this.handle, null, &surface) != .SUCCESS) {
-        elog("glfwCreateWindowSurface failed!", .{});
-        return error.Vulkan_Surface_Creation_Failed;
-    }
-    return surface;
-
     // var surface: vk.SurfaceKHR = undefined;
-    // dlog("createVulkanSurface()", .{});
-    //
-    // const display = glfw.glfwGetX11Display();
-    // dlog("Got x11 display!", .{});
-    // const connection = x.getXCBConnection(display);
-    // dlog("Got xcb connection!", .{});
-    //
-    // const create_info = vk.XcbSurfaceCreateInfoKHR{
-    //     .sType = .XCB_SURFACE_CREATE_INFO_KHR,
-    //     .connection = connection,
-    //     .window = @intCast(glfw.glfwGetX11Window(this.handle)),
-    // };
-    //
-    // if (vk.createXcbSurfaceKHR(instance, &create_info, null, &surface) != .SUCCESS) {
+    // if (glfw.glfwCreateWindowSurface(instance, this.handle, null, &surface) != .SUCCESS) {
     //     elog("glfwCreateWindowSurface failed!", .{});
     //     return error.Vulkan_Surface_Creation_Failed;
     // }
-    //
     // return surface;
+
+    var surface: vk.SurfaceKHR = undefined;
+    dlog("createVulkanSurface()", .{});
+
+    const display = glfw.glfwGetX11Display();
+    dlog("Got x11 display!", .{});
+    const connection = x.getXCBConnection(display);
+    dlog("Got xcb connection!", .{});
+
+    const create_info = vk.XcbSurfaceCreateInfoKHR{
+        .sType = .XCB_SURFACE_CREATE_INFO_KHR,
+        .connection = connection,
+        .window = @intCast(glfw.glfwGetX11Window(this.handle)),
+    };
+
+    if (vk.createXcbSurfaceKHR(instance, &create_info, null, &surface) != .SUCCESS) {
+        elog("glfwCreateWindowSurface failed!", .{});
+        return error.Vulkan_Surface_Creation_Failed;
+    }
+
+    return surface;
 
     // var surface: vk.SurfaceKHR = undefined;
     // const create_info = vk.XlibSurfaceCreateInfoKHR{
