@@ -51,7 +51,7 @@ pub fn vMain() !u8 {
     try window.create("Vulkan Test");
     defer window.close();
 
-    const renderer = try Renderer.init(&window);
+    var renderer = try Renderer.init(&window);
     defer renderer.deinit();
 
     var width: i32 = undefined;

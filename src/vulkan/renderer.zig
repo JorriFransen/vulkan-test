@@ -22,6 +22,8 @@ const is_mac = builtin.target.os.tag == .macos;
 
 const Renderer = @This();
 
+const MAX_FRAMES_IN_FLIGHT = 2;
+
 instance: vk.Instance = null,
 surface: vk.SurfaceKHR = null,
 device: vk.Device = null,
@@ -33,10 +35,11 @@ render_pass: vk.RenderPass = null,
 pipeline_layout: vk.PipelineLayout = null,
 graphics_pipeline: vk.Pipeline = null,
 command_pool: vk.CommandPool = null,
-command_buffer: vk.CommandBuffer = null,
-image_available_semaphore: vk.Semaphore = null,
-render_finished_semaphore: vk.Semaphore = null,
-in_flight_fence: vk.Fence = null,
+command_buffers: [MAX_FRAMES_IN_FLIGHT]vk.CommandBuffer = undefined,
+image_available_semaphores: [MAX_FRAMES_IN_FLIGHT]vk.Semaphore = undefined,
+render_finished_semaphores: [MAX_FRAMES_IN_FLIGHT]vk.Semaphore = undefined,
+in_flight_fences: [MAX_FRAMES_IN_FLIGHT]vk.Fence = undefined,
+current_frame: u32 = 0,
 debug_messenger: vk.DebugUtilsMessengerEXT = null,
 
 const PDevInfo = struct {
@@ -124,7 +127,7 @@ pub fn init(window: *const Window) !Renderer {
     try result.createGraphicsPipeline();
     try result.createFrameBuffers();
     try result.createCommandPool();
-    try result.createCommandBuffer();
+    try result.createCommandBuffers();
     try result.createSyncObjects();
 
     return result;
@@ -134,9 +137,13 @@ pub fn deinit(this: *const @This()) void {
     const dev = this.device;
 
     _ = vk.deviceWaitIdle(dev);
-    vk.destroyFence(dev, this.in_flight_fence, null);
-    vk.destroySemaphore(dev, this.render_finished_semaphore, null);
-    vk.destroySemaphore(dev, this.image_available_semaphore, null);
+
+    for (0..MAX_FRAMES_IN_FLIGHT) |i| {
+        vk.destroyFence(dev, this.in_flight_fences[i], null);
+        vk.destroySemaphore(dev, this.render_finished_semaphores[i], null);
+        vk.destroySemaphore(dev, this.image_available_semaphores[i], null);
+    }
+
     vk.destroyCommandPool(dev, this.command_pool, null);
     vk.destroyPipeline(dev, this.graphics_pipeline, null);
     vk.destroyPipelineLayout(dev, this.pipeline_layout, null);
@@ -851,15 +858,15 @@ fn createCommandPool(this: *@This()) !void {
     }
 }
 
-fn createCommandBuffer(this: *@This()) !void {
+fn createCommandBuffers(this: *@This()) !void {
     const alloc_info = vk.CommandBufferAllocateInfo{
         .sType = .COMMAND_BUFFER_ALLOCATE_INFO,
         .commandPool = this.command_pool,
         .level = .PRIMARY,
-        .commandBufferCount = 1,
+        .commandBufferCount = this.command_buffers.len,
     };
 
-    if (vk.allocateCommandBuffers(this.device, &alloc_info, &this.command_buffer) != .SUCCESS) {
+    if (vk.allocateCommandBuffers(this.device, &alloc_info, &this.command_buffers) != .SUCCESS) {
         return error.AllocateCommandBuffersFailed;
     }
 }
@@ -874,23 +881,27 @@ fn createSyncObjects(this: *@This()) !void {
         .flags = .{ .SIGNALED = 1 },
     };
 
-    if (vk.createSemaphore(this.device, &sem_create_info, null, &this.image_available_semaphore) != .SUCCESS or
-        vk.createSemaphore(this.device, &sem_create_info, null, &this.render_finished_semaphore) != .SUCCESS)
-    {
-        return error.CreateSemaphoreFailed;
-    }
+    for (0..MAX_FRAMES_IN_FLIGHT) |i| {
+        if (vk.createSemaphore(this.device, &sem_create_info, null, &this.image_available_semaphores[i]) != .SUCCESS or
+            vk.createSemaphore(this.device, &sem_create_info, null, &this.render_finished_semaphores[i]) != .SUCCESS)
+        {
+            return error.CreateSemaphoreFailed;
+        }
 
-    if (vk.createFence(this.device, &fence_create_info, null, &this.in_flight_fence) != .SUCCESS) {
-        return error.CreateFenceFailed;
+        if (vk.createFence(this.device, &fence_create_info, null, &this.in_flight_fences[i]) != .SUCCESS) {
+            return error.CreateFenceFailed;
+        }
     }
 }
 
 fn recordCommandBuffer(this: *const @This(), image_index: u32) void {
+    const cmd_buf = this.command_buffers[this.current_frame];
+
     const begin_info = vk.CommandBufferBeginInfo{
         .sType = .COMMAND_BUFFER_BEGIN_INFO,
     };
 
-    if (vk.beginCommandBuffer(this.command_buffer, &begin_info) != .SUCCESS) {
+    if (vk.beginCommandBuffer(cmd_buf, &begin_info) != .SUCCESS) {
         @panic("beginCommandBuffer failed!");
     }
 
@@ -908,8 +919,8 @@ fn recordCommandBuffer(this: *const @This(), image_index: u32) void {
         .pClearValues = &clear_values,
     };
 
-    vk.cmdBeginRenderPass(this.command_buffer, &render_pass_info, .INLINE);
-    vk.cmdBindPipeline(this.command_buffer, .GRAPHICS, this.graphics_pipeline);
+    vk.cmdBeginRenderPass(cmd_buf, &render_pass_info, .INLINE);
+    vk.cmdBindPipeline(cmd_buf, .GRAPHICS, this.graphics_pipeline);
 
     const viewport = vk.Viewport{
         .x = 0,
@@ -919,40 +930,43 @@ fn recordCommandBuffer(this: *const @This(), image_index: u32) void {
         .minDepth = 0,
         .maxDepth = 1,
     };
-    vk.cmdSetViewport(this.command_buffer, 0, 1, &viewport);
+    vk.cmdSetViewport(cmd_buf, 0, 1, &viewport);
 
     const scissor = vk.Rect2D{
         .offset = .{ .x = 0, .y = 0 },
         .extent = this.swapchain.extent,
     };
-    vk.cmdSetScissor(this.command_buffer, 0, 1, &scissor);
+    vk.cmdSetScissor(cmd_buf, 0, 1, &scissor);
 
-    vk.cmdDraw(this.command_buffer, 3, 1, 0, 0);
+    vk.cmdDraw(cmd_buf, 3, 1, 0, 0);
 
-    vk.cmdEndRenderPass(this.command_buffer);
+    vk.cmdEndRenderPass(cmd_buf);
 
-    if (vk.endCommandBuffer(this.command_buffer) != .SUCCESS) {
+    if (vk.endCommandBuffer(cmd_buf) != .SUCCESS) {
         @panic("endCommandBuffer failed!");
     }
 }
 
-pub fn drawFrame(this: *const @This()) void {
-    _ = vk.waitForFences(this.device, 1, @ptrCast(&this.in_flight_fence), vk.TRUE, std.math.maxInt(u64));
-    _ = vk.resetFences(this.device, 1, @ptrCast(&this.in_flight_fence));
+pub fn drawFrame(this: *@This()) void {
+    const cfi = this.current_frame;
+    const cmd_buf = this.command_buffers[cfi];
+
+    _ = vk.waitForFences(this.device, 1, @ptrCast(&this.in_flight_fences[cfi]), vk.TRUE, std.math.maxInt(u64));
+    _ = vk.resetFences(this.device, 1, @ptrCast(&this.in_flight_fences[cfi]));
 
     var image_index: u32 = undefined;
-    if (vk.acquireNextImageKHR(this.device, this.swapchain.handle, std.math.maxInt(u64), this.image_available_semaphore, null, &image_index) != .SUCCESS) {
+    if (vk.acquireNextImageKHR(this.device, this.swapchain.handle, std.math.maxInt(u64), this.image_available_semaphores[cfi], null, &image_index) != .SUCCESS) {
         @panic("acquirenextImageKHR failed!");
     }
 
-    _ = vk.resetCommandBuffer(this.command_buffer, .{});
+    _ = vk.resetCommandBuffer(cmd_buf, .{});
 
     this.recordCommandBuffer(image_index);
 
-    const wait_semaphores = [_]vk.Semaphore{this.image_available_semaphore};
+    const wait_semaphores = [_]vk.Semaphore{this.image_available_semaphores[cfi]};
     const wait_stages = [wait_semaphores.len]vk.PipelineStageFlags{.{ .COLOR_ATTACHMENT_OUTPUT_BIT = 1 }};
-    const command_buffers = [_]vk.CommandBuffer{this.command_buffer};
-    const signal_semaphores = [_]vk.Semaphore{this.render_finished_semaphore};
+    const command_buffers = [_]vk.CommandBuffer{cmd_buf};
+    const signal_semaphores = [_]vk.Semaphore{this.render_finished_semaphores[cfi]};
 
     const submit_infos = [_]vk.SubmitInfo{.{
         .sType = .SUBMIT_INFO,
@@ -965,7 +979,7 @@ pub fn drawFrame(this: *const @This()) void {
         .pSignalSemaphores = &signal_semaphores,
     }};
 
-    if (vk.queueSubmit(this.graphics_que, submit_infos.len, &submit_infos, this.in_flight_fence) != .SUCCESS) {
+    if (vk.queueSubmit(this.graphics_que, submit_infos.len, &submit_infos, this.in_flight_fences[cfi]) != .SUCCESS) {
         @panic("queueSubmit failed!");
     }
 
@@ -983,6 +997,8 @@ pub fn drawFrame(this: *const @This()) void {
     };
 
     _ = vk.queuePresentKHR(this.present_que, &present_info);
+
+    this.current_frame = (this.current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
 fn createShaderModule(this: *const @This(), code: []const u8) !vk.ShaderModule {
