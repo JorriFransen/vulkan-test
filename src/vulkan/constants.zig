@@ -77,10 +77,10 @@ pub const Result = enum(c_int) {
     pub const ERROR_OUT_OF_POOL_MEMORY_KHR: @This() = .ERROR_OUT_OF_POOL_MEMORY;
 };
 
-pub const InstanceCreateFlags = packed struct(c_int) {
+pub const InstanceCreateFlags = packed struct(Flags) {
     ENUMERATE_PORTABILITY_BIT_KHR: u1 = 0, // 1
     __rerved: u31 = 0,
-    pub const MAX_ENUM: c_int = 2147483647;
+    pub const MAX_ENUM: Flags = 2147483647;
 };
 
 pub const SystemAllocationScope = enum(c_int) {
@@ -116,29 +116,18 @@ pub const PresentModeKHR = enum(c_int) {
     pub const MAX_ENUM_KHR: c_int = 2147483647;
 };
 
-pub const DeviceQueueCreateFlags = packed struct(c_int) {
+pub const DeviceQueueCreateFlags = packed struct(Flags) {
     PROTECTED_BIT: u1 = 0, // 1
     __reserved: u31 = 0,
-    pub const MAX_ENUM: c_int = 2147483647;
+    pub const MAX_ENUM: Flags = 2147483647;
 };
 
-pub const DeviceCreateFlags = packed struct(c_int) {
-    __reserved: u32 = 0,
-};
+pub const DeviceCreateFlags = Flags;
+pub const XcbSurfaceCreateFlagsKHR = Flags;
+pub const XlibSurfaceCreateFlagsKHR = Flags;
+pub const Win32SurfaceCreateFlagsKHR = Flags;
 
-pub const XcbSurfaceCreateFlagsKHR = packed struct(c_int) {
-    __reserved: u32 = 0,
-};
-
-pub const XlibSurfaceCreateFlagsKHR = packed struct(c_int) {
-    __reserved: u32 = 0,
-};
-
-pub const Win32SurfaceCreateFlagsKHR = packed struct(c_int) {
-    __reserved: u32 = 0,
-};
-
-pub const SurfaceTransformFlagsKHR = packed struct(c_int) {
+pub const SurfaceTransformFlagsKHR = packed struct(Flags) {
     IDENTITY_BIT_KHR: u1 = 0, // 1
     ROTATE_90_BIT_KHR: u1 = 0, // 2
     ROTATE_180_BIT_KHR: u1 = 0, // 4
@@ -149,19 +138,19 @@ pub const SurfaceTransformFlagsKHR = packed struct(c_int) {
     HORIZONTAL_MIRROR_ROTATE_270_BIT_KHR: u1 = 0, // 128
     INHERIT_BIT_KHR: u1 = 0, // 256
     __reserved: u23 = 0,
-    pub const MAX_ENUM_KHR: c_int = 2147483647;
+    pub const MAX_ENUM_KHR: Flags = 2147483647;
 };
 
-pub const CompositeAlphaFlagsKHR = packed struct(c_int) {
+pub const CompositeAlphaFlagsKHR = packed struct(Flags) {
     OPAQUE_BIT_KHR: u1 = 0, // 1
     PRE_MULTIPLIED_BIT_KHR: u1 = 0, // 2
     POST_MULTIPLIED_BIT_KHR: u1 = 0, // 4
     INHERIT_BIT_KHR: u1 = 0, // 8
     __reserved: u28 = 0,
-    pub const MAX_ENUM_KHR: c_int = 2147483647;
+    pub const MAX_ENUM_KHR: Flags = 2147483647;
 };
 
-pub const ImageUsageFlags = packed struct(c_int) {
+pub const ImageUsageFlags = packed struct(Flags) {
     TRANSFER_SRC_BIT: u1 = 0, // 1
     TRANSFER_DST_BIT: u1 = 0, // 2
     SAMPLED_BIT: u1 = 0, // 4
@@ -186,15 +175,15 @@ pub const ImageUsageFlags = packed struct(c_int) {
     HOST_TRANSFER_BIT_EXT: u1 = 0, // 4194304
     __reserved_2: u8 = 0,
     pub const SHADING_RATE_IMAGE_BIT_NV: @This() = .{ .FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR = 1 };
-    pub const MAX_ENUM: c_int = 2147483647;
+    pub const MAX_ENUM: Flags = 2147483647;
 };
 
-pub const ImageViewCreateFlags = packed struct(c_int) {
+pub const ImageViewCreateFlags = packed struct(Flags) {
     FRAGMENT_DENSITY_MAP_DYNAMIC_BIT_EXT: u1 = 0, // 1
     FRAGMENT_DENSITY_MAP_DEFERRED_BIT_EXT: u1 = 0, // 2
     DESCRIPTOR_BUFFER_CAPTURE_REPLAY_BIT_EXT: u1 = 0, // 4
     __reserved: u29 = 0,
-    pub const MAX_ENUM: c_int = 2147483647;
+    pub const MAX_ENUM: Flags = 2147483647;
 };
 
 pub const ImageViewType = enum(c_int) {
@@ -208,7 +197,7 @@ pub const ImageViewType = enum(c_int) {
     pub const MAX_ENUM: c_int = 2147483647;
 };
 
-pub const ImageAspectFlags = packed struct(c_int) {
+pub const ImageAspectFlags = packed struct(Flags) {
     COLOR_BIT: u1 = 0, //  1
     DEPTH_BIT: u1 = 0, //  2
     STENCIL_BIT: u1 = 0, //  4
@@ -221,17 +210,17 @@ pub const ImageAspectFlags = packed struct(c_int) {
     MEMORY_PLANE_2_BIT_EXT: u1 = 0, //  512
     MEMORY_PLANE_3_BIT_EXT: u1 = 0, //  1024
     __reserved: u21 = 0,
-    pub const NONE: @This() = @as(c_int, @bitCast(0));
+    pub const NONE: @This() = @as(Flags, @bitCast(0));
     pub const PLANE_0_BIT_KHR: @This() = .{ .PLANE_0_BIT = 0 };
     pub const PLANE_1_BIT_KHR: @This() = .{ .PLANE_1_BIT = 0 };
     pub const PLANE_2_BIT_KHR: @This() = .{ .PLANE_2_BIT = 0 };
     pub const NONE_KHR: @This() = NONE;
-    pub const MAX_ENUM: c_int = 2147483647;
+    pub const MAX_ENUM: Flags = 2147483647;
 };
 
-pub const ShaderModuleCreateFlags = packed struct(c_int) {
+pub const ShaderModuleCreateFlags = packed struct(Flags) {
     __reserved: u32 = 0,
-    pub const MAX_ENUM: c_int = 2147483647;
+    pub const MAX_ENUM: Flags = 2147483647;
 };
 
 pub const QueueFlags = packed struct(u32) {
@@ -584,7 +573,7 @@ pub const SharingMode = enum(c_int) {
     pub const MAX_ENUM: c_int = 2147483647;
 };
 
-pub const ShaderStageFlags = packed struct(c_int) {
+pub const ShaderStageFlags = packed struct(Flags) {
     VERTEX_BIT: u1 = 0, // 1
     TESSELLATION_CONTROL_BIT: u1 = 0, // 2
     TESSELLATION_EVALUATION_BIT: u1 = 0, // 4
@@ -610,7 +599,7 @@ pub const ShaderStageFlags = packed struct(c_int) {
         .GEOMETRY_BIT = 1,
         .FRAGMENT_BIT = 1,
     }; // 31
-    pub const ALL: @This() = @bitCast(@as(c_int, 2147483647));
+    pub const ALL: @This() = @bitCast(@as(Flags, 2147483647));
     pub const RAYGEN_BIT_NV: @This() = .{ .RAYGEN_BIT_KHR = 1 }; // 256
     pub const ANY_HIT_BIT_NV: @This() = .{ .ANY_HIT_BIT_KHR = 1 }; // 512
     pub const CLOSEST_HIT_BIT_NV: @This() = .{ .CLOSEST_HIT_BIT_KHR = 1 }; // 1024
@@ -619,7 +608,7 @@ pub const ShaderStageFlags = packed struct(c_int) {
     pub const CALLABLE_BIT_NV: @This() = .{ .CALLABLE_BIT_KHR = 1 }; // 8192
     pub const TASK_BIT_NV: @This() = .{ .TASK_BIT_EXT = 1 }; // 64
     pub const MESH_BIT_NV: @This() = .{ .MESH_BIT_EXT = 1 }; // 128
-    pub const MAX_ENUM: c_int = 2147483647;
+    pub const MAX_ENUM: Flags = 2147483647;
 };
 
 pub const PipelineVertexInputStateCreateFlags = Flags;
@@ -741,13 +730,13 @@ pub const PolygonMode = enum(c_int) {
     pub const MAX_ENUM: c_int = 2147483647;
 };
 
-pub const CullModeFlags = packed struct(c_int) {
+pub const CullModeFlags = packed struct(Flags) {
     FRONT_BIT: u1 = 0,
     BACK_BIT: u1 = 0,
     _reserved: u30 = 0,
     pub const NONE: @This() = {};
     pub const FRONT_AND_BACK: @This() = .{ .FRONT_BIT = 1, .BACK_BIT = 1 };
-    pub const MAX_ENUM: c_int = 2147483647;
+    pub const MAX_ENUM: Flags = 2147483647;
 };
 
 pub const FrontFace = enum(c_int) {
@@ -756,7 +745,7 @@ pub const FrontFace = enum(c_int) {
     pub const MAX_ENUM: c_int = 2147483647;
 };
 
-pub const SampleCountFlags = packed struct(c_int) {
+pub const SampleCountFlags = packed struct(Flags) {
     @"1_BIT": u1 = 0, // 1
     @"2_BIT": u1 = 0, // 2
     @"4_BIT": u1 = 0, // 4
@@ -765,16 +754,16 @@ pub const SampleCountFlags = packed struct(c_int) {
     @"32_BIT": u1 = 0, // 32
     @"64_BIT": u1 = 0, // 64
     _reserved: u25 = 0,
-    pub const MAX_ENUM: c_int = 2147483647;
+    pub const MAX_ENUM: Flags = 2147483647;
 };
 
-pub const ColorComponentFlags = packed struct(u32) {
+pub const ColorComponentFlags = packed struct(Flags) {
     R_BIT: u1 = 0, // 1
     G_BIT: u1 = 0, // 2
     B_BIT: u1 = 0, // 4
     A_BIT: u1 = 0, // 8
     _reserved: u28 = 0,
-    pub const MAX_ENUM: c_int = 2147483647;
+    pub const MAX_ENUM: Flags = 2147483647;
 };
 
 pub const ComponentSwizzle = enum(c_int) {
@@ -956,12 +945,12 @@ pub const PipelineBindPoint = enum(c_int) {
     pub const MAX_ENUM: c_int = 2147483647;
 };
 
-pub const CommandPoolCreateFlags = packed struct(c_int) {
+pub const CommandPoolCreateFlags = packed struct(Flags) {
     TRANSIENT: u1 = 0, // 1
     RESET_COMMAND_BUFFER: u1 = 0, // 2
     PROTECTED: u1 = 0, // 4
     __reserved: u29 = 0,
-    pub const MAX_ENUM: c_int = 2147483647;
+    pub const MAX_ENUM: Flags = 2147483647;
 };
 
 pub const CommandBufferLevel = enum(c_int) {
@@ -978,58 +967,58 @@ pub const SubpassContents = enum(c_int) {
     pub const MAX_ENUM: c_int = 2147483647;
 };
 
-pub const FenceCreateFlags = packed struct(c_int) {
+pub const FenceCreateFlags = packed struct(Flags) {
     SIGNALED: u1 = 0,
     __reserved: u31 = 0,
-    pub const MAX_ENUM = 2147483647;
+    pub const MAX_ENUM: Flags = 2147483647;
 };
 
-pub const CommandBufferResetFlags = packed struct(c_int) {
+pub const CommandBufferResetFlags = packed struct(Flags) {
     RELEASE_RESOURCES_BIT: u1 = 0, // 1
     __reserved: u31 = 0,
-    pub const MAX_ENUM: c_int = 2147483647;
+    pub const MAX_ENUM: Flags = 2147483647;
 };
 
-pub const PipelineStageFlags = packed struct(c_int) {
-    TOP_OF_PIPE: u1 = 0,
-    DRAW_INDIRECT: u1 = 0,
-    VERTEX_INPUT: u1 = 0,
-    VERTEX_SHADER: u1 = 0,
-    TESSELLATION_CONTROL_SHADER: u1 = 0,
-    TESSELLATION_EVALUATION_SHADER: u1 = 0,
-    GEOMETRY_SHADER: u1 = 0,
-    FRAGMENT_SHADER: u1 = 0,
-    EARLY_FRAGMENT_TESTS: u1 = 0,
-    LATE_FRAGMENT_TESTS: u1 = 0,
-    COLOR_ATTACHMENT_OUTPUT: u1 = 0,
-    COMPUTE_SHADER: u1 = 0,
-    TRANSFER: u1 = 0,
-    BOTTOM_OF_PIPE: u1 = 0,
-    HOST: u1 = 0,
-    ALL_GRAPHICS: u1 = 0,
-    ALL_COMMANDS: u1 = 0,
-    COMMAND_PREPROCESS_NV: u1 = 0,
-    CONDITIONAL_RENDERING_EXT: u1 = 0,
-    TASK_SHADER_EXT: u1 = 0,
-    MESH_SHADER_EXT: u1 = 0,
-    RAY_TRACING_SHADER_KHR: u1 = 0,
-    FRAGMENT_SHADING_RATE_ATTACHMENT_KHR: u1 = 0,
-    FRAGMENT_DENSITY_PROCESS_EXT: u1 = 0,
-    TRANSFORM_FEEDBACK_EXT: u1 = 0,
-    ACCELERATION_STRUCTURE_BUILD_KHR: u1 = 0,
+pub const PipelineStageFlags = packed struct(Flags) {
+    TOP_OF_PIPE_BIT: u1 = 0, // 1
+    DRAW_INDIRECT_BIT: u1 = 0, // 2
+    VERTEX_INPUT_BIT: u1 = 0, // 4
+    VERTEX_SHADER_BIT: u1 = 0, // 8
+    TESSELLATION_CONTROL_SHADER_BIT: u1 = 0, // 16
+    TESSELLATION_EVALUATION_SHADER_BIT: u1 = 0, // 32
+    GEOMETRY_SHADER_BIT: u1 = 0, // 64
+    FRAGMENT_SHADER_BIT: u1 = 0, // 128
+    EARLY_FRAGMENT_TESTS_BIT: u1 = 0, // 256
+    LATE_FRAGMENT_TESTS_BIT: u1 = 0, // 512
+    COLOR_ATTACHMENT_OUTPUT_BIT: u1 = 0, // 1024
+    COMPUTE_SHADER_BIT: u1 = 0, // 2048
+    TRANSFER_BIT: u1 = 0, // 4096
+    BOTTOM_OF_PIPE_BIT: u1 = 0, // 8192
+    HOST_BIT: u1 = 0, // 16384
+    ALL_GRAPHICS_BIT: u1 = 0, // 32768
+    ALL_COMMANDS_BIT: u1 = 0, // 65536
+    COMMAND_PREPROCESS_BIT_EXT: u1 = 0, // 131072
+    CONDITIONAL_RENDERING_BIT_EXT: u1 = 0, // 262144
+    TASK_SHADER_BIT_EXT: u1 = 0, // 524288
+    MESH_SHADER_BIT_EXT: u1 = 0, // 1048576
+    RAY_TRACING_SHADER_BIT_KHR: u1 = 0, // 2097152
+    FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR: u1 = 0, // 4194304
+    FRAGMENT_DENSITY_PROCESS_BIT_EXT: u1 = 0, // 8388608
+    TRANSFORM_FEEDBACK_BIT_EXT: u1 = 0, // 16777216
+    ACCELERATION_STRUCTURE_BUILD_BIT_KHR: u1 = 0, // 33554432
     __reserved: u6 = 0,
-    pub const NONE: @This() = @intCast(0);
-    pub const SHADING_RATE_IMAGE_BIT_NV: @This() = @intCast(4194304);
-    pub const RAY_TRACING_SHADER_BIT_NV: @This() = @intCast(2097152);
-    pub const ACCELERATION_STRUCTURE_BUILD_BIT_NV: @This() = @intCast(33554432);
-    pub const TASK_SHADER_BIT_NV: @This() = @intCast(524288);
-    pub const MESH_SHADER_BIT_NV: @This() = @intCast(1048576);
-    pub const NONE_KHR: @This() = @intCast(0);
-    pub const COMMAND_PREPROCESS_BIT_EXT: @This() = @intCast(131072);
-    pub const MAX_ENUM: c_int = 2147483647;
+    pub const NONE: @This() = @bitCast(@as(Flags, 0));
+    pub const SHADING_RATE_IMAGE_BIT_NV: @This() = .{ .FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR = 1 };
+    pub const RAY_TRACING_SHADER_BIT_NV: @This() = .{ .RAY_TRACING_SHADER_BIT_KHR = 1 };
+    pub const ACCELERATION_STRUCTURE_BUILD_BIT_NV: @This() = .{ .ACCELERATION_STRUCTURE_BUILD_BIT_KHR = 1 };
+    pub const TASK_SHADER_BIT_NV: @This() = .{ .TASK_SHADER_BIT_EXT = 1 };
+    pub const MESH_SHADER_BIT_NV: @This() = .{ .MESH_SHADER_BIT_EXT = 1 };
+    pub const NONE_KHR: @This() = NONE;
+    pub const COMMAND_PREPROCESS_BIT_NV: @This() = .{ .COMMAND_PREPROCESS_BIT_EXT = 1 };
+    pub const MAX_ENUM: Flags = 2147483647;
 };
 
-pub const AccessFlags = packed struct(c_int) {
+pub const AccessFlags = packed struct(Flags) {
     INDIRECT_COMMAND_READ_BIT: u1 = 0, // 1
     INDEX_READ_BIT: u1 = 0, // 2
     VERTEX_ATTRIBUTE_READ_BIT: u1 = 0, // 4
@@ -1059,17 +1048,17 @@ pub const AccessFlags = packed struct(c_int) {
     TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT: u1 = 0, // 67108864
     TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT: u1 = 0, // 134217728;
     __reserved: u4 = 0,
-    pub const NONE: @This() = @bitCast(@as(c_int, 0));
+    pub const NONE: @This() = @bitCast(@as(Flags, 0));
     pub const SHADING_RATE_IMAGE_READ_BIT_NV: @This() = .{ .FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR = 1 };
     pub const ACCELERATION_STRUCTURE_READ_BIT_NV: @This() = .{ .ACCELERATION_STRUCTURE_READ_BIT_KHR = 1 };
     pub const ACCELERATION_STRUCTURE_WRITE_BIT_NV: @This() = .{ .ACCELERATION_STRUCTURE_WRITE_BIT_KHR = 1 };
     pub const NONE_KHR: @This() = NONE;
     pub const COMMAND_PREPROCESS_READ_BIT_EXT: @This() = .{ .COMMAND_PREPROCESS_READ_BIT_NV = 1 };
     pub const COMMAND_PREPROCESS_WRITE_BIT_EXT: @This() = .{ .COMMAND_PREPROCESS_WRITE_BIT_NV = 1 };
-    pub const MAX_ENUM: c_int = 2147483647;
+    pub const MAX_ENUM: Flags = 2147483647;
 };
 
-pub const DebugUtilsMessageSeverityFlagsEXT = packed struct(c_int) {
+pub const DebugUtilsMessageSeverityFlagsEXT = packed struct(Flags) {
     VERBOSE_BIT_EXT: u1 = 0, // 1
     __reserved_1: u3 = 0,
     INFO_BIT_EXT: u1 = 0, // 16
@@ -1078,34 +1067,29 @@ pub const DebugUtilsMessageSeverityFlagsEXT = packed struct(c_int) {
     __reserved_3: u3 = 0,
     ERROR_BIT_EXT: u1 = 0, // 4096
     __reserved: u19 = 0,
-    pub const MAX_ENUM_EXT: c_int = 2147483647;
+    pub const MAX_ENUM_EXT: Flags = 2147483647;
 };
 
-pub const DebugUtilsMessageTypeFlagsEXT = packed struct(c_int) {
+pub const DebugUtilsMessageTypeFlagsEXT = packed struct(Flags) {
     GENERAL: u1 = 0, // 1
     VALIDATION: u1 = 0, // 2
     PERFORMANCE: u1 = 0, // 4
     DEVICE_ADDRESS_BINDING: u1 = 0, // 8
     __reserved__: u28 = 0,
-    pub const MAX_ENUM_EXT: c_int = 2147483647;
+    pub const MAX_ENUM_EXT: Flags = 2147483647;
 };
 
-pub const SwapchainCreateFlagsKHR = packed struct(c_int) {
+pub const SwapchainCreateFlagsKHR = packed struct(Flags) {
     SPLIT_INSTANCE_BIND_REGIONS_BIT_KHR: u1 = 0, // 1
     PROTECTED_BIT_KHR: u1 = 0, // 2
     MUTABLE_FORMAT_BIT_KHR: u1 = 0, // 4
     DEFERRED_MEMORY_ALLOCATION_BIT_EXT: u1 = 0, // 8
     __reserved: u28 = 0,
-    pub const MAX_ENUM_KHR: c_int = 2147483647;
+    pub const MAX_ENUM_KHR: Flags = 2147483647;
 };
 
-pub const PipelineShaderStageCreateFlags = packed struct(c_int) {
-    __reserved: u32 = 0,
-};
-
-pub const PipelineDynamicStateCreateFlags = packed struct(c_int) {
-    __reserved: u32 = 0,
-};
+pub const PipelineShaderStageCreateFlags = Flags;
+pub const PipelineDynamicStateCreateFlags = Flags;
 
 pub const StructureType = enum(c_int) {
     APPLICATION_INFO = 0,

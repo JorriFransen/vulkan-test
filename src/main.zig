@@ -70,7 +70,7 @@ pub fn vMain() !u8 {
     }
 
     fixenum(@import("vulkan").ImageLayout);
-    dlog("{}", .{@import("vulkan").AccessFlags.NONE});
+    dlog("{}", .{@import("vulkan").PipelineStageFlags.SHADING_RATE_IMAGE_BIT_NV});
     return 0;
 }
 

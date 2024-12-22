@@ -664,9 +664,9 @@ fn createRenderPass(this: *@This()) !void {
     const dependencies = [_]vk.SubpassDependency{.{
         .srcSubpass = vk.SUBPASS_EXTERNAL,
         .dstSubpass = 0,
-        .srcStageMask = .{ .COLOR_ATTACHMENT_OUTPUT = 1 },
+        .srcStageMask = .{ .COLOR_ATTACHMENT_OUTPUT_BIT = 1 },
         .srcAccessMask = vk.AccessFlags.NONE,
-        .dstStageMask = .{ .COLOR_ATTACHMENT_OUTPUT = 1 },
+        .dstStageMask = .{ .COLOR_ATTACHMENT_OUTPUT_BIT = 1 },
         .dstAccessMask = .{ .COLOR_ATTACHMENT_WRITE_BIT = 1 },
     }};
     const render_pass_create_info = vk.RenderPassCreateInfo{
@@ -950,7 +950,7 @@ pub fn drawFrame(this: *const @This()) void {
     this.recordCommandBuffer(image_index);
 
     const wait_semaphores = [_]vk.Semaphore{this.image_available_semaphore};
-    const wait_stages = [wait_semaphores.len]vk.PipelineStageFlags{.{ .COLOR_ATTACHMENT_OUTPUT = 1 }};
+    const wait_stages = [wait_semaphores.len]vk.PipelineStageFlags{.{ .COLOR_ATTACHMENT_OUTPUT_BIT = 1 }};
     const command_buffers = [_]vk.CommandBuffer{this.command_buffer};
     const signal_semaphores = [_]vk.Semaphore{this.render_finished_semaphore};
 
