@@ -130,33 +130,33 @@ pub fn requiredVulkanInstanceExtensions(_: *const @This()) ![]const [*:0]const u
 }
 
 pub fn createVulkanSurface(this: *const @This(), instance: vk.Instance) !vk.SurfaceKHR {
-    // var surface: vk.SurfaceKHR = undefined;
-    // if (glfw.glfwCreateWindowSurface(instance, this.handle, null, &surface) != .SUCCESS) {
-    //     elog("glfwCreateWindowSurface failed!", .{});
-    //     return error.Vulkan_Surface_Creation_Failed;
-    // }
-    // return surface;
-
     var surface: vk.SurfaceKHR = undefined;
-    dlog("createVulkanSurface()", .{});
-
-    const display = glfw.glfwGetX11Display();
-    dlog("Got x11 display!", .{});
-    const connection = x.getXCBConnection(display);
-    dlog("Got xcb connection!", .{});
-
-    const create_info = vk.XcbSurfaceCreateInfoKHR{
-        .sType = .XCB_SURFACE_CREATE_INFO_KHR,
-        .connection = connection,
-        .window = @intCast(glfw.glfwGetX11Window(this.handle)),
-    };
-
-    if (vk.createXcbSurfaceKHR(instance, &create_info, null, &surface) != .SUCCESS) {
+    if (glfw.glfwCreateWindowSurface(instance, this.handle, null, &surface) != .SUCCESS) {
         elog("glfwCreateWindowSurface failed!", .{});
         return error.Vulkan_Surface_Creation_Failed;
     }
-
     return surface;
+
+    // var surface: vk.SurfaceKHR = undefined;
+    // dlog("createVulkanSurface()", .{});
+    //
+    // const display = glfw.glfwGetX11Display();
+    // dlog("Got x11 display!", .{});
+    // const connection = x.getXCBConnection(display);
+    // dlog("Got xcb connection!", .{});
+    //
+    // const create_info = vk.XcbSurfaceCreateInfoKHR{
+    //     .sType = .XCB_SURFACE_CREATE_INFO_KHR,
+    //     .connection = connection,
+    //     .window = @intCast(glfw.glfwGetX11Window(this.handle)),
+    // };
+    //
+    // if (vk.createXcbSurfaceKHR(instance, &create_info, null, &surface) != .SUCCESS) {
+    //     elog("glfwCreateWindowSurface failed!", .{});
+    //     return error.Vulkan_Surface_Creation_Failed;
+    // }
+    //
+    // return surface;
 
     // var surface: vk.SurfaceKHR = undefined;
     // const create_info = vk.XlibSurfaceCreateInfoKHR{
