@@ -66,7 +66,8 @@ pub fn deinitSystem() void {
 
 handle: *glfw.GLFWwindow,
 
-framebuffer_resize_callback: ?platform.window.PFN_FramebufferResize,
+// framebuffer_resize_callback: ?platform.window.PFN_FramebufferResize,
+framebuffer_resize_callback: ?platform.window.FrameBufferResizeCallback,
 new_fb_size: ?struct { c_int, c_int } = null,
 
 pub fn create(allocator: std.mem.Allocator, title: [:0]const u8) !*@This() {
@@ -138,7 +139,7 @@ pub fn waitEvents(this: *@This()) void {
 
 fn handleEvents(this: *@This()) void {
     if (this.new_fb_size) |s| {
-        if (this.framebuffer_resize_callback) |cb| cb(this, s[0], s[1]);
+        if (this.framebuffer_resize_callback) |cb| cb.fun(this, s[0], s[1], cb.user_data);
         this.new_fb_size = null;
     }
 }

@@ -39,8 +39,6 @@ pub const std_options = std.Options{
     },
 };
 
-var renderer: Renderer = undefined;
-
 pub fn vMain() !u8 {
     var args = try std.process.argsWithAllocator(alloc.gpa);
     defer args.deinit();
@@ -54,10 +52,9 @@ pub fn vMain() !u8 {
     try window.init("Vulkan Test");
     defer window.deinit();
 
-    renderer = try Renderer.init(&window);
+    var renderer: Renderer = undefined;
+    try renderer.init(&window);
     defer renderer.deinit();
-
-    window.framebuffer_resize_callback = framebufferResizeCallback;
 
     while (!window.shouldClose()) {
         renderer.drawFrame();
@@ -65,10 +62,6 @@ pub fn vMain() !u8 {
     }
 
     return 0;
-}
-
-fn framebufferResizeCallback(_: *const Window, width: c_int, height: c_int) void {
-    renderer.handleFramebufferResize(width, height);
 }
 
 pub fn main() !u8 {

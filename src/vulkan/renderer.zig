@@ -87,13 +87,13 @@ const required_device_extensions: []const [*:0]const u8 = &.{
     vk.KHR_SWAPCHAIN_EXTENSION_NAME,
 };
 
-pub fn init(window: *Window) !Renderer {
+pub fn init(this: *@This(), window: *Window) !void {
     const instance = try createInstance(window);
     const debug_messenger = createDebugMessenger(instance);
     const surface = try window.createVulkanSurface(instance);
     const device_info = try choosePhysicalDevice(instance, surface);
 
-    var result: Renderer = .{
+    this.* = .{
         .window = window,
         .instance = instance,
         .surface = surface,
@@ -101,19 +101,19 @@ pub fn init(window: *Window) !Renderer {
         .debug_messenger = debug_messenger,
     };
 
-    try result.createLogicalDevice();
+    window.framebuffer_resize_callback = .{ .fun = framebufferResizeCallback, .user_data = this };
 
-    try result.createSwapchain();
-    try result.createImageViews();
+    try this.createLogicalDevice();
 
-    try result.createRenderPass();
-    try result.createGraphicsPipeline();
-    try result.createFrameBuffers();
-    try result.createCommandPool();
-    try result.createCommandBuffers();
-    try result.createSyncObjects();
+    try this.createSwapchain();
+    try this.createImageViews();
 
-    return result;
+    try this.createRenderPass();
+    try this.createGraphicsPipeline();
+    try this.createFrameBuffers();
+    try this.createCommandPool();
+    try this.createCommandBuffers();
+    try this.createSyncObjects();
 }
 
 pub fn deinit(this: *const @This()) void {
@@ -1073,6 +1073,7 @@ fn vk_debug_callback(message_severity: vk.DebugUtilsMessageSeverityFlagsEXT, mes
     return vk.FALSE;
 }
 
-pub fn handleFramebufferResize(this: *@This(), _: c_int, _: c_int) void {
-    this.framebuffer_resized = true;
+pub fn framebufferResizeCallback(_: *const Window, _: c_int, _: c_int, user_data: *anyopaque) void {
+    const r: *Renderer = @alignCast(@ptrCast(user_data));
+    r.framebuffer_resized = true;
 }
