@@ -69,6 +69,7 @@ handle: *glfw.GLFWwindow,
 input: platform.InputState = .{},
 last_input: platform.InputState = .{},
 framebuffer_resize_callback: ?platform.window.PFN_FramebufferResize,
+new_fb_size: ?struct { c_int, c_int } = null,
 
 pub fn create(this: *@This(), title: [:0]const u8) !void {
     glfw.glfwWindowHint(glfw.CLIENT_API, glfw.NO_API);
@@ -116,6 +117,11 @@ pub fn update(this: *@This()) void {
     this.input = .{};
 
     glfw.glfwPollEvents();
+
+    if (this.new_fb_size) |s| {
+        if (this.framebuffer_resize_callback) |cb| cb(this, s[0], s[1]);
+        this.new_fb_size = null;
+    }
 }
 
 pub fn close(this: *@This()) void {
@@ -191,5 +197,5 @@ fn keyCallback(window: *glfw.GLFWwindow, key: glfw.Key, scancode: c_int, action:
 
 fn framebufferResizeCallback(window: *glfw.GLFWwindow, width: c_int, height: c_int) callconv(.C) void {
     const this: *@This() = @alignCast(@ptrCast(glfw.glfwGetWindowUserPointer(window)));
-    if (this.framebuffer_resize_callback) |cb| cb(this, width, height);
+    this.new_fb_size = .{ width, height };
 }
