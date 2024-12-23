@@ -4,6 +4,7 @@ const builtin = @import("builtin");
 
 const f = @import("externFn").externFn;
 const platform = @import("platform");
+const window = platform.window;
 const x = platform.x;
 const glfw = platform.glfw;
 const vk = @import("vulkan");
@@ -66,8 +67,10 @@ pub fn deinitSystem() void {
 
 handle: *glfw.GLFWwindow,
 
-framebuffer_resize_callback: ?platform.window.FrameBufferResizeCallback,
+framebuffer_resize_callback: ?window.FrameBufferResizeCallback = null,
 new_fb_size: ?struct { c_int, c_int } = null,
+
+key_callback: ?window.KeyCallback = null,
 
 pub fn create(allocator: std.mem.Allocator, title: [:0]const u8) !*@This() {
     const result = try allocator.create(@This());
@@ -200,21 +203,25 @@ pub fn createVulkanSurface(this: *const @This(), instance: vk.Instance) !vk.Surf
     // return surface;
 }
 
-fn keyCallback(window: *glfw.GLFWwindow, key: glfw.Key, scancode: c_int, action: glfw.Action, mods: c_int) callconv(.C) void {
+fn keyCallback(gwindow: *glfw.GLFWwindow, gkey: glfw.Key, scancode: c_int, gaction: glfw.Action, mods: c_int) callconv(.C) void {
     _ = scancode;
     _ = mods;
-    _ = action;
-    _ = key;
 
-    const this: *@This() = @alignCast(@ptrCast(glfw.glfwGetWindowUserPointer(window)));
-    assert(window == this.handle);
+    const this: *@This() = @alignCast(@ptrCast(glfw.glfwGetWindowUserPointer(gwindow)));
+    assert(gwindow == this.handle);
 
-    // if (key == .escape) {
-    //     this.input.escape_pressed = action == .press;
-    // }
+    const action: window.KeyAction = switch (gaction) {
+        .release => .release,
+        .press => .press,
+        .repeat => .repeat,
+    };
+
+    if (this.key_callback) |cb| cb.fun(this, gkey, action, cb.user_data);
 }
 
-fn framebufferResizeCallback(window: *glfw.GLFWwindow, width: c_int, height: c_int) callconv(.C) void {
-    const this: *@This() = @alignCast(@ptrCast(glfw.glfwGetWindowUserPointer(window)));
+fn framebufferResizeCallback(gwindow: *glfw.GLFWwindow, width: c_int, height: c_int) callconv(.C) void {
+    const this: *@This() = @alignCast(@ptrCast(glfw.glfwGetWindowUserPointer(gwindow)));
+    assert(gwindow == this.handle);
+
     this.new_fb_size = .{ width, height };
 }

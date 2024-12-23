@@ -3,7 +3,6 @@ pub const glfw = @import("platform/glfw.zig");
 pub const x = @import("platform/x.zig");
 
 pub const window = @import("platform/window/window.zig");
-pub const Window = window.Window;
 
 pub const WindowApi = enum {
     default,
