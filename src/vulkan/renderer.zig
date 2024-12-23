@@ -17,7 +17,6 @@ const elog = vlog.err;
 const ilog = vlog.info;
 
 const debug = builtin.mode == .Debug;
-const debug_verbose = debug and options.vulkan_verbose;
 const is_mac = builtin.target.os.tag == .macos;
 
 const Renderer = @This();
@@ -1061,7 +1060,7 @@ fn vk_debug_callback(message_severity: vk.DebugUtilsMessageSeverityFlagsEXT, mes
     const args = .{callback_data.pMessage};
 
     if (message_severity.VERBOSE_BIT_EXT == 1) {
-        if (debug_verbose) log.debug(fmt, args);
+        if (@intFromEnum(options.vulkan_log_level) >= @intFromEnum(options.@"log.Level".debug)) log.debug(fmt, args);
     } else if (message_severity.WARNING_BIT_EXT == 1) {
         log.warn(fmt, args);
     } else if (message_severity.ERROR_BIT_EXT == 1) {

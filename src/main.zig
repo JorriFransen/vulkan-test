@@ -25,16 +25,17 @@ const CmdLineOptions = struct {
     pub const descriptions = .{ .glfw_window_api = "Specify the underlying api glfw should use" };
 };
 
-const debug_log: bool = true;
-const log_level = if (builtin.mode == .Debug and debug_log) .debug else .info;
-
+inline fn ll(t: options.@"log.Level") std.log.Level {
+    assert(@typeInfo(std.log.Level).@"enum".fields.len == @typeInfo(options.@"log.Level").@"enum".fields.len);
+    return @enumFromInt(@intFromEnum(t));
+}
 pub const std_options = std.Options{
-    .log_level = log_level,
+    .log_level = ll(options.log_level),
     .log_scope_levels = &.{
-        .{ .scope = .default, .level = log_level },
-        .{ .scope = .window, .level = if (options.window_verbose) log_level else .info },
-        .{ .scope = .vulkan, .level = if (options.vulkan_verbose) log_level else .info },
-        .{ .scope = .VK_EXT_Debug_utils, .level = if (options.vulkan_verbose) log_level else .info },
+        .{ .scope = .default, .level = ll(options.log_level) },
+        .{ .scope = .window, .level = ll(options.window_log_level) },
+        .{ .scope = .vulkan, .level = ll(options.vulkan_log_level) },
+        .{ .scope = .VK_EXT_Debug_utils, .level = ll(options.vulkan_log_level) },
     },
 };
 
@@ -50,8 +51,8 @@ pub fn vMain() !u8 {
     defer Window.deinitSystem();
 
     var window: Window = undefined;
-    try window.create("Vulkan Test");
-    defer window.close();
+    try window.init("Vulkan Test");
+    defer window.deinit();
 
     renderer = try Renderer.init(&window);
     defer renderer.deinit();
@@ -77,6 +78,6 @@ fn framebufferResizeCallback(_: *const Window, width: c_int, height: c_int) void
 
 pub fn main() !u8 {
     const result = try vMain();
-    alloc.deinit();
+    try alloc.deinit();
     return result;
 }

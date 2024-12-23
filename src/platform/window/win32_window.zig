@@ -34,13 +34,19 @@ const MAX_TITLE = 1024;
 handle: win32.HWND,
 close_requested: bool = false,
 title: [MAX_TITLE]u16 = std.mem.zeroes([MAX_TITLE]u16),
-new_fb_size: ?win32.POINT,
+new_fb_size: ?win32.POINT = null,
 
 input: platform.InputState = .{},
 last_input: platform.InputState = .{},
-framebuffer_resize_callback: ?platform.window.PFN_FramebufferResize,
+framebuffer_resize_callback: ?platform.window.PFN_FramebufferResize = null,
 
-pub fn create(this: *@This(), title: [:0]const u8) !void {
+pub fn create(allocator: std.mem.Allocator, title_utf8: [:0]const u8) !*@This() {
+    const result = try allocator.create(@This());
+    try result.init(title_utf8);
+    return result;
+}
+
+pub fn init(this: *@This(), title_utf8: []const u8) !void {
     var instance: win32.HINSTANCE = undefined;
     if (win32.GetModuleHandleW(null)) |i_handle| {
         instance = @ptrCast(i_handle);
@@ -63,31 +69,40 @@ pub fn create(this: *@This(), title: [:0]const u8) !void {
         try win32.report_error();
     }
 
-    if (try std.unicode.checkUtf8ToUtf16LeOverflow(title, &this.title)) {
+    var title: [MAX_TITLE]u16 = std.mem.zeroes([MAX_TITLE]u16);
+    if (try std.unicode.checkUtf8ToUtf16LeOverflow(title_utf8, &title)) {
         elog("Title too long!", .{});
         return error.Title_Too_Long;
     }
 
-    const title_len = try std.unicode.utf8ToUtf16Le(&this.title, title);
+    const title_len = try std.unicode.utf8ToUtf16Le(&title, title_utf8);
     if (title_len >= MAX_TITLE) {
         elog("Title too long!", .{});
         return error.Title_Too_Long;
     }
-    this.title[title_len] = 0;
+    title[title_len] = 0;
 
     const style = win32.WINDOW_STYLE.OVERLAPPED_WINDOW();
 
-    if (win32.CreateWindowExW(.{}, window_class.lpszClassName, @ptrCast(&this.title), style, win32.CW_USEDEFAULT, win32.CW_USEDEFAULT, win32.CW_USEDEFAULT, win32.CW_USEDEFAULT, null, null, instance, null)) |handle| {
-        this.handle = handle;
-    } else {
-        try win32.report_error();
-    }
+    var handle: win32.HWND = undefined;
+    const handle_opt = win32.CreateWindowExW(.{}, window_class.lpszClassName, @ptrCast(&title), style, win32.CW_USEDEFAULT, win32.CW_USEDEFAULT, win32.CW_USEDEFAULT, win32.CW_USEDEFAULT, null, null, instance, null);
+    if (handle_opt) |h| {
+        handle = h;
+    } else try win32.report_error();
+
+    this.* = .{
+        .handle = handle,
+        .title = title,
+        .new_fb_size = null,
+    };
 
     const setval = @intFromPtr(this);
     _ = win32.SetWindowLongPtrW(this.handle, 0, setval);
 
     // _ = win32.ShowWindow(window_handle, @bitCast(cmd_show));
-    _ = win32.ShowWindow(this.handle, .{ .SHOWNORMAL = 1 });
+    _ = win32.ShowWindow(handle, .{ .SHOWNORMAL = 1 });
+
+    this.pollEvents();
 }
 
 pub fn shouldClose(this: *const @This()) bool {
@@ -126,7 +141,12 @@ pub fn waitEvents(this: *@This()) void {
     this.pollEvents();
 }
 
-pub fn close(this: *@This()) void {
+pub fn destroy(this: *@This(), allocator: std.mem.Allocator) void {
+    this.deinit();
+    allocator.destroy(this);
+}
+
+pub fn deinit(this: *@This()) void {
     _ = win32.DestroyWindow(this.handle);
 }
 

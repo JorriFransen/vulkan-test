@@ -4,11 +4,8 @@ const builtin = @import("builtin");
 var gpa_data = heap.GeneralPurposeAllocator(.{}).init;
 pub const gpa = gpa_data.allocator();
 
-pub fn detectLeaks() bool {
-    return gpa_data.detectLeaks();
-}
-
-pub fn deinit() void {
-    if (builtin.mode == .Debug and gpa_data.detectLeaks()) unreachable;
-    _ = gpa_data.deinit();
+pub fn deinit() !void {
+    if (gpa_data.deinit() == .leak) {
+        return error.GPALeak;
+    }
 }

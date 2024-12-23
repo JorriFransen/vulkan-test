@@ -17,12 +17,14 @@ pub fn build(b: *std.Build) !void {
     target = b.standardTargetOptions(.{});
     optimize = b.standardOptimizeOption(.{});
 
-    const window_verbose = b.option(bool, "window-verbose", "Enable verbose window logging") orelse false;
-    const vulkan_verbose = b.option(bool, "vulkan-verbose", "Enable verbose vulkan logging") orelse false;
+    const log_level = b.option(std.log.Level, "log", "Set global log level") orelse .info;
+    const window_verbose = b.option(std.log.Level, "window-log", "Set window log level") orelse .info;
+    const vulkan_verbose = b.option(std.log.Level, "vulkan-log", "Set vulkan log level") orelse .info;
 
     const options = b.addOptions();
-    options.addOption(bool, "window_verbose", window_verbose);
-    options.addOption(bool, "vulkan_verbose", vulkan_verbose);
+    options.addOption(std.log.Level, "log_level", log_level);
+    options.addOption(std.log.Level, "window_log_level", window_verbose);
+    options.addOption(std.log.Level, "vulkan_log_level", vulkan_verbose);
     const options_mod = options.createModule();
 
     const flags_dep = b.dependency("flags", .{ .target = target, .optimize = optimize });
