@@ -34,10 +34,8 @@ const MAX_TITLE = 1024;
 handle: win32.HWND,
 close_requested: bool = false,
 title: [MAX_TITLE]u16 = std.mem.zeroes([MAX_TITLE]u16),
-new_fb_size: ?win32.POINT = null,
 
-input: platform.InputState = .{},
-last_input: platform.InputState = .{},
+new_fb_size: ?win32.POINT = null,
 framebuffer_resize_callback: ?platform.window.PFN_FramebufferResize = null,
 
 pub fn create(allocator: std.mem.Allocator, title_utf8: [:0]const u8) !*@This() {
@@ -46,7 +44,7 @@ pub fn create(allocator: std.mem.Allocator, title_utf8: [:0]const u8) !*@This() 
     return result;
 }
 
-pub fn init(this: *@This(), title_utf8: []const u8) !void {
+pub fn init(this: *@This(), title_utf8: [:0]const u8) !void {
     var instance: win32.HINSTANCE = undefined;
     if (win32.GetModuleHandleW(null)) |i_handle| {
         instance = @ptrCast(i_handle);
@@ -116,9 +114,6 @@ pub fn requestClose(this: *@This()) void {
 
 pub fn pollEvents(this: *@This()) void {
     var msg: win32.MSG = undefined;
-
-    this.last_input = this.input;
-    this.input = .{};
 
     while (win32.PeekMessageW(&msg, this.handle, 0, 0, .{ .REMOVE = 1 }) == win32.TRUE) {
         _ = win32.TranslateMessage(&msg);
@@ -245,13 +240,13 @@ fn windowProc(_hwnd: ?win32.HWND, uMsg: u32, wParam: win32.WPARAM, lParam: win32
         },
 
         win32.WM_KEYDOWN => {
-            const flags: KeyLParam = @bitCast(@as(u32, @intCast(lParam)));
-            this.input.escape_pressed = wParam == win32.VK_ESCAPE and flags.previous_state == 0;
+            // const flags: KeyLParam = @bitCast(@as(u32, @intCast(lParam)));
+            // this.input.escape_pressed = wParam == win32.VK_ESCAPE and flags.previous_state == 0;
             return 0;
         },
 
         win32.WM_KEYUP => {
-            if (wParam == win32.VK_ESCAPE) this.input.escape_pressed = false;
+            // if (wParam == win32.VK_ESCAPE) this.input.escape_pressed = false;
             return 0;
         },
 

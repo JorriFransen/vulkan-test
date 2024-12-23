@@ -66,12 +66,16 @@ pub fn deinitSystem() void {
 
 handle: *glfw.GLFWwindow,
 
-input: platform.InputState = .{},
-last_input: platform.InputState = .{},
 framebuffer_resize_callback: ?platform.window.PFN_FramebufferResize,
 new_fb_size: ?struct { c_int, c_int } = null,
 
-pub fn create(this: *@This(), title: [:0]const u8) !void {
+pub fn create(allocator: std.mem.Allocator, title: [:0]const u8) !*@This() {
+    const result = try allocator.create(@This());
+    try result.init(title);
+    return result;
+}
+
+pub fn init(this: *@This(), title: [:0]const u8) !void {
     glfw.glfwWindowHint(glfw.CLIENT_API, glfw.NO_API);
 
     glfw.glfwWindowHintString(glfw.WAYLAND_APP_ID, "my_app_id");
@@ -99,8 +103,18 @@ pub fn create(this: *@This(), title: [:0]const u8) !void {
 
     this.* = .{
         .handle = handle,
+        .new_fb_size = null,
         .framebuffer_resize_callback = null,
     };
+}
+
+pub fn destroy(this: *@This(), allocator: std.mem.Allocator) void {
+    this.deinit();
+    allocator.destroy(this);
+}
+
+pub fn deinit(this: *@This()) void {
+    glfw.glfwDestroyWindow(this.handle);
 }
 
 pub fn shouldClose(this: *const @This()) bool {
@@ -113,17 +127,11 @@ pub fn requestClose(this: *@This()) void {
 }
 
 pub fn pollEvents(this: *@This()) void {
-    this.last_input = this.input;
-    this.input = .{};
-
     glfw.glfwPollEvents();
     this.handleEvents();
 }
 
 pub fn waitEvents(this: *@This()) void {
-    this.last_input = this.input;
-    this.input = .{};
-
     glfw.glfwWaitEvents();
     this.handleEvents();
 }
@@ -133,10 +141,6 @@ fn handleEvents(this: *@This()) void {
         if (this.framebuffer_resize_callback) |cb| cb(this, s[0], s[1]);
         this.new_fb_size = null;
     }
-}
-
-pub fn close(this: *@This()) void {
-    glfw.glfwDestroyWindow(this.handle);
 }
 
 pub fn frameBufferSize(this: *const @This(), width: *i32, height: *i32) void {
@@ -197,13 +201,15 @@ pub fn createVulkanSurface(this: *const @This(), instance: vk.Instance) !vk.Surf
 fn keyCallback(window: *glfw.GLFWwindow, key: glfw.Key, scancode: c_int, action: glfw.Action, mods: c_int) callconv(.C) void {
     _ = scancode;
     _ = mods;
+    _ = action;
+    _ = key;
 
     const this: *@This() = @alignCast(@ptrCast(glfw.glfwGetWindowUserPointer(window)));
     assert(window == this.handle);
 
-    if (key == .escape) {
-        this.input.escape_pressed = action == .press;
-    }
+    // if (key == .escape) {
+    //     this.input.escape_pressed = action == .press;
+    // }
 }
 
 fn framebufferResizeCallback(window: *glfw.GLFWwindow, width: c_int, height: c_int) callconv(.C) void {

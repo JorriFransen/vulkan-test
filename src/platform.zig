@@ -5,10 +5,6 @@ pub const x = @import("platform/x.zig");
 pub const window = @import("platform/window/window.zig");
 pub const Window = window.Window;
 
-pub const InputState = struct {
-    escape_pressed: bool = false,
-};
-
 pub const WindowApi = enum {
     default,
     win32,
