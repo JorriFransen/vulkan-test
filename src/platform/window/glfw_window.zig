@@ -112,12 +112,23 @@ pub fn requestClose(this: *@This()) void {
     glfw.glfwSetWindowShouldClose(this.handle, 1);
 }
 
-pub fn update(this: *@This()) void {
+pub fn pollEvents(this: *@This()) void {
     this.last_input = this.input;
     this.input = .{};
 
     glfw.glfwPollEvents();
+    this.handleEvents();
+}
 
+pub fn waitEvents(this: *@This()) void {
+    this.last_input = this.input;
+    this.input = .{};
+
+    glfw.glfwWaitEvents();
+    this.handleEvents();
+}
+
+fn handleEvents(this: *@This()) void {
     if (this.new_fb_size) |s| {
         if (this.framebuffer_resize_callback) |cb| cb(this, s[0], s[1]);
         this.new_fb_size = null;

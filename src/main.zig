@@ -59,13 +59,13 @@ pub fn vMain() !u8 {
     window.framebuffer_resize_callback = framebufferResizeCallback;
 
     while (!window.shouldClose()) {
-        window.update();
-
         if (window.input.escape_pressed) {
             window.requestClose();
         }
 
         renderer.drawFrame();
+
+        window.pollEvents();
     }
 
     return 0;

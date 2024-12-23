@@ -24,7 +24,7 @@ const Renderer = @This();
 
 const MAX_FRAMES_IN_FLIGHT = 2;
 
-window: *const Window = undefined,
+window: *Window = undefined,
 instance: vk.Instance = null,
 surface: vk.SurfaceKHR = null,
 device: vk.Device = null,
@@ -88,7 +88,7 @@ const required_device_extensions: []const [*:0]const u8 = &.{
     vk.KHR_SWAPCHAIN_EXTENSION_NAME,
 };
 
-pub fn init(window: *const Window) !Renderer {
+pub fn init(window: *Window) !Renderer {
     const instance = try createInstance(window);
     const debug_messenger = createDebugMessenger(instance);
     const surface = try window.createVulkanSurface(instance);
@@ -119,6 +119,8 @@ pub fn init(window: *const Window) !Renderer {
 
 pub fn deinit(this: *const @This()) void {
     const dev = this.device;
+
+    _ = vk.deviceWaitIdle(this.device);
 
     this.cleanupSwapchain();
 
@@ -542,6 +544,15 @@ fn createLogicalDevice(this: *@This()) !void {
 }
 
 pub fn recreateSwapchain(this: *@This()) !void {
+    var width: c_int = undefined;
+    var height: c_int = undefined;
+    this.window.frameBufferSize(&width, &height);
+    while (width == 0 or height == 0) {
+        this.window.frameBufferSize(&width, &height);
+        this.window.waitEvents();
+    }
+
+    _ = vk.deviceWaitIdle(this.device);
     this.cleanupSwapchain();
 
     try this.createSwapchain();
@@ -550,8 +561,6 @@ pub fn recreateSwapchain(this: *@This()) !void {
 }
 
 pub fn cleanupSwapchain(this: *const @This()) void {
-    _ = vk.deviceWaitIdle(this.device);
-
     for (this.framebuffers) |fb| vk.destroyFramebuffer(this.device, fb, null);
     alloc.gpa.free(this.framebuffers);
 

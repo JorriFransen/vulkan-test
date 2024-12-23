@@ -99,7 +99,7 @@ pub fn requestClose(this: *@This()) void {
     win32.PostQuitMessage(0);
 }
 
-pub fn update(this: *@This()) void {
+pub fn pollEvents(this: *@This()) void {
     var msg: win32.MSG = undefined;
 
     this.last_input = this.input;
@@ -119,6 +119,11 @@ pub fn update(this: *@This()) void {
         if (this.framebuffer_resize_callback) |cb| cb(this, s.x, s.y);
         this.new_fb_size = null;
     }
+}
+
+pub fn waitEvents(this: *@This()) void {
+    win32.WaitMessage();
+    this.pollEvents();
 }
 
 pub fn close(this: *@This()) void {

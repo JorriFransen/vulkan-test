@@ -20,6 +20,7 @@ pub extern fn glfwCreateWindow(width: c_int, height: c_int, title: [*:0]const u8
 pub extern fn glfwWindowShouldClose(window: *GLFWwindow) callconv(.C) c_int;
 pub extern fn glfwSetWindowShouldClose(window: *GLFWwindow, value: c_int) callconv(.C) void;
 pub extern fn glfwPollEvents() callconv(.C) void;
+pub extern fn glfwWaitEvents() callconv(.C) void;
 pub extern fn glfwSetKeyCallback(window: *GLFWwindow, callback: GLFWkeyfun) callconv(.C) GLFWkeyfun;
 pub extern fn glfwSetFramebufferSizeCallback(window: *GLFWwindow, callback: GLFWframebuffersizefun) callconv(.C) GLFWframebuffersizefun;
 pub extern fn glfwDestroyWindow(window: *GLFWwindow) callconv(.C) void;
