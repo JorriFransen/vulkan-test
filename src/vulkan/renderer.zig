@@ -101,8 +101,6 @@ pub fn init(this: *@This(), window: *Window) !void {
         .debug_messenger = debug_messenger,
     };
 
-    window.framebuffer_resize_callback = .{ .fun = framebufferResizeCallback, .user_data = this };
-
     try this.createLogicalDevice();
 
     try this.createSwapchain();
@@ -540,6 +538,10 @@ fn createLogicalDevice(this: *@This()) !void {
 
     vk.getDeviceQueue(this.device, dev_info.queue_info.graphics_index, 0, &this.graphics_que);
     vk.getDeviceQueue(this.device, dev_info.queue_info.present_index, 0, &this.present_que);
+}
+
+pub fn handleFramebufferResize(this: *@This(), _: c_int, _: c_int) void {
+    this.framebuffer_resized = true;
 }
 
 pub fn recreateSwapchain(this: *@This()) !void {
@@ -1071,9 +1073,4 @@ fn vk_debug_callback(message_severity: vk.DebugUtilsMessageSeverityFlagsEXT, mes
     }
 
     return vk.FALSE;
-}
-
-pub fn framebufferResizeCallback(_: *const Window, _: c_int, _: c_int, user_data: *anyopaque) void {
-    const r: *Renderer = @alignCast(@ptrCast(user_data));
-    r.framebuffer_resized = true;
 }

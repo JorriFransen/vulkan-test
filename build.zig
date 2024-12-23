@@ -50,6 +50,7 @@ pub fn build(b: *std.Build) !void {
     }
 
     const alloc_mod = addPrivateModule(b, "src/alloc.zig", "alloc");
+    const callback_mod = addPrivateModule(b, "src/callback.zig", "callback");
     const extern_fn_mod = addPrivateModule(b, "src/externFn.zig", "externFn");
     const platform_mod = addPrivateModule(b, "src/platform.zig", "platform");
     const vulkan_info = try useVulkan(b);
@@ -59,20 +60,21 @@ pub fn build(b: *std.Build) !void {
     const shaders_mod = try shaders.emitShadersModule();
 
     exe.root_module.addImport("alloc", alloc_mod);
-    exe.root_module.addImport("platform", platform_mod);
-    exe.root_module.addImport("vulkan", vulkan_mod);
     exe.root_module.addImport("flags", flags_mod);
     exe.root_module.addImport("options", options_mod);
+    exe.root_module.addImport("platform", platform_mod);
+    exe.root_module.addImport("vulkan", vulkan_mod);
 
     vulkan_mod.addImport("alloc", alloc_mod);
     vulkan_mod.addImport("externFn", extern_fn_mod);
-    vulkan_mod.addImport("platform", platform_mod);
     vulkan_mod.addImport("options", options_mod);
+    vulkan_mod.addImport("platform", platform_mod);
     vulkan_mod.addImport("shaders", shaders_mod);
 
     platform_mod.addIncludePath(vulkan_info.include_path);
     platform_mod.addImport("vulkan", vulkan_mod);
     platform_mod.addImport("externFn", extern_fn_mod);
+    platform_mod.addImport("callback", callback_mod);
 
     const run_cmd = b.addRunArtifact(exe);
     run_cmd.step.dependOn(b.getInstallStep());

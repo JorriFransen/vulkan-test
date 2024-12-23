@@ -1,4 +1,6 @@
+const std = @import("std");
 const builtin = @import("builtin");
+const Callback = @import("callback").Callback;
 
 pub const Window = if (builtin.os.tag == .windows)
     @import("win32_window.zig")
@@ -7,9 +9,4 @@ else if (builtin.os.tag == .linux)
 else
     @compileError("Unsupported platform");
 
-pub const FrameBufferResizeCallback = struct {
-    pub const Function = *const fn (window: *const Window, width: c_int, height: c_int, user_data: *anyopaque) void;
-
-    fun: Function,
-    user_data: *anyopaque,
-};
+pub const FrameBufferResizeCallback = Callback(&.{ *const Window, c_int, c_int });

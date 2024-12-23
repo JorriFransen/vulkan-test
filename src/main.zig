@@ -30,9 +30,8 @@ inline fn ll(t: options.@"log.Level") std.log.Level {
     return @enumFromInt(@intFromEnum(t));
 }
 pub const std_options = std.Options{
-    .log_level = ll(options.log_level),
+    .log_level = if (builtin.mode == .Debug) .debug else ll(options.log_level),
     .log_scope_levels = &.{
-        .{ .scope = .default, .level = ll(options.log_level) },
         .{ .scope = .window, .level = ll(options.window_log_level) },
         .{ .scope = .vulkan, .level = ll(options.vulkan_log_level) },
         .{ .scope = .VK_EXT_Debug_utils, .level = ll(options.vulkan_log_level) },
@@ -56,12 +55,20 @@ pub fn vMain() !u8 {
     try renderer.init(&window);
     defer renderer.deinit();
 
+    window.framebuffer_resize_callback = .{ .fun = framebufferResizeCallback, .user_data = &renderer };
+
     while (!window.shouldClose()) {
         renderer.drawFrame();
         window.pollEvents();
     }
 
     return 0;
+}
+
+pub fn framebufferResizeCallback(_: *const Window, width: c_int, height: c_int, user_data: ?*anyopaque) void {
+    if (user_data) |ud| {
+        @as(*Renderer, @alignCast(@ptrCast(ud))).handleFramebufferResize(width, height);
+    }
 }
 
 pub fn main() !u8 {
