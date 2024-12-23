@@ -122,7 +122,7 @@ pub fn pollEvents(this: *@This()) void {
 }
 
 pub fn waitEvents(this: *@This()) void {
-    win32.WaitMessage();
+    _ = win32.WaitMessage();
     this.pollEvents();
 }
 

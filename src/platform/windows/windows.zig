@@ -352,6 +352,7 @@ pub extern "user32" fn PostMessageW(hWnd: ?HWND, Msg: UINT, wParam: WPARAM, lPar
 pub extern "user32" fn SetCapture(hWnd: HWND) callconv(.C) ?HWND;
 pub extern "user32" fn GetWindowRect(hwnd: HWND, lpRect: *RECT) callconv(.C) BOOL;
 pub extern "user32" fn GetClientRect(hwnd: HWND, lpRect: *RECT) callconv(.C) BOOL;
+pub extern "user32" fn WaitMessage() callconv(.C) BOOL;
 // pub extern "dwmapi" fn DwmIsCompositionEnabled(pfEnabled: ?*BOOL) callconv(.C) HRESULT;
 // pub extern "dwmapi" fn DwmGetColorizationColor(pcrColorization: *DWORD, pfOpaqueBlend: *BOOL) callconv(.C) HRESULT;
 // pub extern "dwmapi" fn DwmEnableBlurBehindWindow(hWnd: HWND, pBlurBehind: *const DWM_BLURBEHIND) callconv(.C) HRESULT;
