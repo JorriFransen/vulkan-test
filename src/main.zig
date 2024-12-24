@@ -9,7 +9,7 @@ const builtin = @import("builtin");
 const alloc = @import("alloc");
 
 const platform = @import("platform");
-const Window = platform.Window;
+pub const Window = platform.Window;
 
 const Renderer = @import("vulkan").Renderer;
 
@@ -20,7 +20,8 @@ pub var cmd_line_options: CmdLineOptions = undefined;
 const CmdLineOptions = struct {
     pub const description = "Testing vulkan api";
 
-    glfw_window_api: platform.WindowApi = .default,
+    window_api: platform.WindowApi = .default,
+    glfw_window_api: platform.GlfwWindowApi = .default,
 
     pub const descriptions = .{ .glfw_window_api = "Specify the underlying api glfw should use" };
 };

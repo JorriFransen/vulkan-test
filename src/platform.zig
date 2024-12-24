@@ -7,8 +7,14 @@ pub const Window = @import("platform/window/window.zig");
 pub const WindowApi = enum {
     default,
     win32,
-    wayland,
+    glfw,
+};
+
+pub const GlfwWindowApi = enum {
+    default,
+    win32,
     x11,
+    wayland,
 };
 
 pub const KeyAction = enum {

@@ -6,7 +6,6 @@ const alloc = @import("alloc");
 const builtin_shaders = @import("shaders");
 const options = @import("options");
 const platform = @import("platform");
-const Window = platform.Window;
 const vk = @import("vulkan");
 const vke = vk.extensions;
 const vkl = vk.loader;
@@ -22,6 +21,8 @@ const is_mac = builtin.target.os.tag == .macos;
 const Renderer = @This();
 
 const MAX_FRAMES_IN_FLIGHT = 2;
+
+const Window = @import("root").Window;
 
 window: *Window = undefined,
 instance: vk.Instance = null,

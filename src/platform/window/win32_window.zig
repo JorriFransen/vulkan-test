@@ -11,6 +11,7 @@ const vk = @import("vulkan");
 
 const root = @import("root");
 const platform = @import("platform");
+const Window = platform.Window;
 const win32 = platform.windows;
 
 pub fn initSystem() !void {

@@ -3,6 +3,7 @@ const builtin = @import("builtin");
 const vk = @import("vulkan");
 
 const platform = @import("platform");
+const Api = platform.WindowApi;
 const Key = platform.Key;
 const KeyAction = platform.KeyAction;
 

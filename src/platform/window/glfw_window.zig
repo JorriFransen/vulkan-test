@@ -23,22 +23,22 @@ pub fn initSystem() !void {
     dlog("glfw wayland support: {}", .{wayland_support});
     dlog("glfw x11 support: {}", .{x11_support});
 
-    var api = root.cmd_line_options.glfw_window_api;
-    switch (api) {
+    var glfw_api = root.cmd_line_options.glfw_window_api;
+    switch (glfw_api) {
         .default => {
             if (wayland_support) {
-                api = .wayland;
-            } else api = .x11;
+                glfw_api = .wayland;
+            } else glfw_api = .x11;
         },
         .win32 => {
-            elog("Invalid glfw window api: {s}", .{@tagName(api)});
+            elog("Invalid glfw window api: {s}", .{@tagName(glfw_api)});
             return error.InvalidGLFWWindowApi;
         },
         .wayland => assert(wayland_support),
         .x11 => assert(x11_support),
     }
 
-    const window_platform = switch (api) {
+    const glfw_platform = switch (glfw_api) {
         else => {
             @panic("Expected .wayland or .x11 at this point!");
         },
@@ -48,7 +48,7 @@ pub fn initSystem() !void {
         .x11 => glfw.Platform.X11,
     };
 
-    glfw.glfwInitHint(glfw.PLATFORM, @intFromEnum(window_platform));
+    glfw.glfwInitHint(glfw.PLATFORM, @intFromEnum(glfw_platform));
 
     if (glfw.glfwInit() == 0) {
         elog("glfwInit() failed...", .{});
