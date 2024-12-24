@@ -65,7 +65,7 @@ pub fn deinitSystem() void {
     glfw.glfwTerminate();
 }
 
-handle: *glfw.GLFWwindow,
+handle: ?*glfw.GLFWwindow = null,
 new_fb_size: ?struct { c_int, c_int } = null,
 
 pub fn init(this: *@This(), title: [:0]const u8) !void {
@@ -189,7 +189,7 @@ pub fn createVulkanSurface(this: *const @This(), instance: vk.Instance) !vk.Surf
     // return surface;
 }
 
-fn keyCallback(gwindow: *glfw.GLFWwindow, gkey: glfw.Key, scancode: c_int, gaction: glfw.Action, mods: c_int) callconv(.C) void {
+fn keyCallback(gwindow: ?*glfw.GLFWwindow, gkey: glfw.Key, scancode: c_int, gaction: glfw.Action, mods: c_int) callconv(.C) void {
     _ = mods;
 
     const action: platform.KeyAction = switch (gaction) {
@@ -205,7 +205,7 @@ fn keyCallback(gwindow: *glfw.GLFWwindow, gkey: glfw.Key, scancode: c_int, gacti
     if (window.key_callback) |cb| cb.fun(window, gkey, action, scancode, cb.user_data);
 }
 
-fn framebufferResizeCallback(gwindow: *glfw.GLFWwindow, width: c_int, height: c_int) callconv(.C) void {
+fn framebufferResizeCallback(gwindow: ?*glfw.GLFWwindow, width: c_int, height: c_int) callconv(.C) void {
     const this: *@This() = @alignCast(@ptrCast(glfw.glfwGetWindowUserPointer(gwindow)));
     assert(gwindow == this.handle);
 
