@@ -58,4 +58,4 @@ pub const Action = enum(c_int) {
     repeat = 2,
 };
 
-pub const Key = platform.window.Key;
+pub const Key = platform.Key;

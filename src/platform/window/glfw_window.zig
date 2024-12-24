@@ -4,7 +4,7 @@ const builtin = @import("builtin");
 
 const f = @import("externFn").externFn;
 const platform = @import("platform");
-const window = platform.window;
+const Window = platform.Window;
 const x = platform.x;
 const glfw = platform.glfw;
 const vk = @import("vulkan");
@@ -66,17 +66,7 @@ pub fn deinitSystem() void {
 }
 
 handle: *glfw.GLFWwindow,
-
-framebuffer_resize_callback: ?window.FrameBufferResizeCallback = null,
 new_fb_size: ?struct { c_int, c_int } = null,
-
-key_callback: ?window.KeyCallback = null,
-
-pub fn create(allocator: std.mem.Allocator, title: [:0]const u8) !*@This() {
-    const result = try allocator.create(@This());
-    try result.init(title);
-    return result;
-}
 
 pub fn init(this: *@This(), title: [:0]const u8) !void {
     glfw.glfwWindowHint(glfw.CLIENT_API, glfw.NO_API);
@@ -107,13 +97,7 @@ pub fn init(this: *@This(), title: [:0]const u8) !void {
     this.* = .{
         .handle = handle,
         .new_fb_size = null,
-        .framebuffer_resize_callback = null,
     };
-}
-
-pub fn destroy(this: *@This(), allocator: std.mem.Allocator) void {
-    this.deinit();
-    allocator.destroy(this);
 }
 
 pub fn deinit(this: *@This()) void {
@@ -141,8 +125,10 @@ pub fn waitEvents(this: *@This()) void {
 
 fn handleEvents(this: *@This()) void {
     if (this.new_fb_size) |s| {
-        if (this.framebuffer_resize_callback) |cb| {
-            cb.fun(this, s[0], s[1], cb.user_data);
+        const window: *Window = @fieldParentPtr("impl", this);
+
+        if (window.framebuffer_resize_callback) |cb| {
+            cb.fun(window, s[0], s[1], cb.user_data);
         }
         this.new_fb_size = null;
     }
@@ -206,16 +192,17 @@ pub fn createVulkanSurface(this: *const @This(), instance: vk.Instance) !vk.Surf
 fn keyCallback(gwindow: *glfw.GLFWwindow, gkey: glfw.Key, scancode: c_int, gaction: glfw.Action, mods: c_int) callconv(.C) void {
     _ = mods;
 
-    const this: *@This() = @alignCast(@ptrCast(glfw.glfwGetWindowUserPointer(gwindow)));
-    assert(gwindow == this.handle);
-
-    const action: window.KeyAction = switch (gaction) {
+    const action: platform.KeyAction = switch (gaction) {
         .release => .release,
         .press => .press,
         .repeat => .repeat,
     };
 
-    if (this.key_callback) |cb| cb.fun(this, gkey, action, scancode, cb.user_data);
+    const impl: *@This() = @alignCast(@ptrCast(glfw.glfwGetWindowUserPointer(gwindow)));
+    assert(gwindow == impl.handle);
+    const window: *Window = @fieldParentPtr("impl", impl);
+
+    if (window.key_callback) |cb| cb.fun(window, gkey, action, scancode, cb.user_data);
 }
 
 fn framebufferResizeCallback(gwindow: *glfw.GLFWwindow, width: c_int, height: c_int) callconv(.C) void {

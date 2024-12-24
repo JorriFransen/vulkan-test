@@ -1,145 +1,84 @@
 const std = @import("std");
 const builtin = @import("builtin");
+const vk = @import("vulkan");
+
+const platform = @import("platform");
+const Key = platform.Key;
+const KeyAction = platform.KeyAction;
+
 const Callback = @import("callback").Callback;
 
-pub const Window = if (builtin.os.tag == .windows)
-    @import("win32_window.zig")
+const Win32Window = @import("win32_window.zig");
+const GlfwWindow = @import("glfw_window.zig");
+
+pub const WindowImpl = if (builtin.os.tag == .windows)
+    Win32Window
 else if (builtin.os.tag == .linux)
-    @import("glfw_window.zig")
+    GlfwWindow
 else
     @compileError("Unsupported platform");
 
-pub const FrameBufferResizeCallback = Callback(&.{ *Window, c_int, c_int });
-pub const KeyCallback = Callback(&.{ *Window, Key, KeyAction, c_int });
+pub const FrameBufferResizeCallback = Callback(&.{ *@This(), c_int, c_int });
+pub const KeyCallback = Callback(&.{ *@This(), Key, KeyAction, c_int });
 
-pub const KeyAction = enum {
-    press,
-    repeat,
-    release,
-};
+pub fn initSystem() !void {
+    try WindowImpl.initSystem();
+}
 
-pub const Key = enum(c_int) {
-    // This must stay binary compatible with glfw keys!
-    unknown = 0,
-    space = 32,
-    apostrophe = 39, //  '
-    comma = 44, //  ,
-    minus = 45, //  -
-    period = 46, //  .
-    slash = 47, //  /
-    @"0" = 48,
-    @"1" = 49,
-    @"2" = 50,
-    @"3" = 51,
-    @"4" = 52,
-    @"5" = 53,
-    @"6" = 54,
-    @"7" = 55,
-    @"8" = 56,
-    @"9" = 57,
-    semicolon = 59, //  ,
-    equal = 61, //  =
-    a = 65,
-    b = 66,
-    c = 67,
-    d = 68,
-    e = 69,
-    f = 70,
-    g = 71,
-    h = 72,
-    i = 73,
-    j = 74,
-    k = 75,
-    l = 76,
-    m = 77,
-    n = 78,
-    o = 79,
-    p = 80,
-    q = 81,
-    r = 82,
-    s = 83,
-    t = 84,
-    u = 85,
-    v = 86,
-    w = 87,
-    x = 88,
-    y = 89,
-    z = 90,
-    left_bracket = 91, //  [
-    backslash = 92, //  \
-    right_bracket = 93, //  ]
-    grave_accent = 96, //  `
-    world_1 = 161, //  NON-us #1
-    world_2 = 162, //  NON-us #2
-    escape = 256,
-    enter = 257,
-    tab = 258,
-    backspace = 259,
-    insert = 260,
-    delete = 261,
-    right = 262,
-    left = 263,
-    down = 264,
-    up = 265,
-    page_up = 266,
-    page_down = 267,
-    home = 268,
-    end = 269,
-    caps_lock = 280,
-    scroll_lock = 281,
-    num_lock = 282,
-    print_screen = 283,
-    pause = 284,
-    f1 = 290,
-    f2 = 291,
-    f3 = 292,
-    f4 = 293,
-    f5 = 294,
-    f6 = 295,
-    f7 = 296,
-    f8 = 297,
-    f9 = 298,
-    f10 = 299,
-    f11 = 300,
-    f12 = 301,
-    f13 = 302,
-    f14 = 303,
-    f15 = 304,
-    f16 = 305,
-    f17 = 306,
-    f18 = 307,
-    f19 = 308,
-    f20 = 309,
-    f21 = 310,
-    f22 = 311,
-    f23 = 312,
-    f24 = 313,
-    f25 = 314,
-    kp_0 = 320,
-    kp_1 = 321,
-    kp_2 = 322,
-    kp_3 = 323,
-    kp_4 = 324,
-    kp_5 = 325,
-    kp_6 = 326,
-    kp_7 = 327,
-    kp_8 = 328,
-    kp_9 = 329,
-    kp_decimal = 330,
-    kp_divide = 331,
-    kp_multiply = 332,
-    kp_subtract = 333,
-    kp_add = 334,
-    kp_enter = 335,
-    kp_equal = 336,
-    left_shift = 340,
-    left_control = 341,
-    left_alt = 342,
-    left_super = 343,
-    right_shift = 344,
-    right_control = 345,
-    right_alt = 346,
-    right_super = 347,
-    menu = 348,
-    // last = .menu,
-};
+pub fn deinitSystem() void {
+    WindowImpl.deinitSystem();
+}
+
+impl: WindowImpl,
+framebuffer_resize_callback: ?FrameBufferResizeCallback = null,
+key_callback: ?KeyCallback = null,
+
+pub fn create(allocator: std.mem.Allocator, title: [:0]const u8) !*@This() {
+    const result = try allocator.create(@This());
+    errdefer allocator.destroy(result);
+
+    try result.init(title);
+
+    return result;
+}
+
+pub fn destroy(this: *@This(), allocator: std.mem.Allocator) void {
+    this.deinit();
+    allocator.destroy(this);
+}
+
+pub fn init(this: *@This(), title: [:0]const u8) !void {
+    try this.impl.init(title);
+}
+
+pub fn deinit(this: *@This()) void {
+    this.impl.deinit();
+}
+
+pub fn shouldClose(this: *const @This()) bool {
+    return this.impl.shouldClose();
+}
+
+pub fn requestClose(this: *@This()) void {
+    this.impl.requestClose();
+}
+
+pub fn pollEvents(this: *@This()) void {
+    this.impl.pollEvents();
+}
+
+pub fn waitEvents(this: *@This()) void {
+    this.impl.waitEvents();
+}
+
+pub fn frameBufferSize(this: *const @This(), width: *i32, height: *i32) void {
+    this.impl.frameBufferSize(width, height);
+}
+
+pub fn requiredVulkanInstanceExtensions(this: *const @This()) ![]const [*:0]const u8 {
+    return this.impl.requiredVulkanInstanceExtensions();
+}
+
+pub fn createVulkanSurface(this: *const @This(), instance: vk.Instance) !vk.SurfaceKHR {
+    return this.impl.createVulkanSurface(instance);
+}

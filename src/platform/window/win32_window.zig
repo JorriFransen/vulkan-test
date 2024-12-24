@@ -11,7 +11,6 @@ const vk = @import("vulkan");
 
 const root = @import("root");
 const platform = @import("platform");
-const window = platform.window;
 const win32 = platform.windows;
 
 pub fn initSystem() !void {
@@ -35,17 +34,7 @@ const MAX_TITLE = 1024;
 handle: win32.HWND,
 close_requested: bool = false,
 title: [MAX_TITLE]u16 = std.mem.zeroes([MAX_TITLE]u16),
-
-framebuffer_resize_callback: ?window.FrameBufferResizeCallback = null,
 new_fb_size: ?win32.POINT = null,
-
-key_callback: ?window.KeyCallback = null,
-
-pub fn create(allocator: std.mem.Allocator, title_utf8: [:0]const u8) !*@This() {
-    const result = try allocator.create(@This());
-    try result.init(title_utf8);
-    return result;
-}
 
 pub fn init(this: *@This(), title_utf8: [:0]const u8) !void {
     var instance: win32.HINSTANCE = undefined;
@@ -129,7 +118,8 @@ pub fn pollEvents(this: *@This()) void {
     }
 
     if (this.new_fb_size) |s| {
-        if (this.framebuffer_resize_callback) |cb| cb.fun(this, s.x, s.y, cb.user_data);
+        const window: *Window = @fieldParentPtr("impl", this);
+        if (window.framebuffer_resize_callback) |cb| cb.fun(window, s.x, s.y, cb.user_data);
         this.new_fb_size = null;
     }
 }
@@ -137,11 +127,6 @@ pub fn pollEvents(this: *@This()) void {
 pub fn waitEvents(this: *@This()) void {
     _ = win32.WaitMessage();
     this.pollEvents();
-}
-
-pub fn destroy(this: *@This(), allocator: std.mem.Allocator) void {
-    this.deinit();
-    allocator.destroy(this);
 }
 
 pub fn deinit(this: *@This()) void {
@@ -229,37 +214,38 @@ fn windowProc(_hwnd: ?win32.HWND, uMsg: u32, wParam: win32.WPARAM, lParam: win32
         return win32.DefWindowProcW(hwnd, uMsg, wParam, lParam);
     }
 
-    const this: *@This() = @ptrFromInt(data_int);
+    const impl: *@This() = @ptrFromInt(data_int);
+    const window: *Window = @fieldParentPtr("impl", impl);
 
     switch (uMsg) {
         win32.WM_SIZE => {
-            this.new_fb_size = .{ .x = win32.LOWORD(lParam), .y = win32.HIWORD(lParam) };
+            impl.new_fb_size = .{ .x = win32.LOWORD(lParam), .y = win32.HIWORD(lParam) };
             return 0;
         },
         win32.WM_DESTROY => {
             win32.PostQuitMessage(0);
-            this.close_requested = true;
+            impl.close_requested = true;
             return 0;
         },
 
         win32.WM_KEYDOWN => {
-            if (this.key_callback) |cb| {
+            if (window.key_callback) |cb| {
                 const flags: KeyLParam = @bitCast(@as(u32, @intCast(lParam)));
 
-                const action: window.KeyAction = if (flags.previous_state == 0) .press else .repeat;
+                const action: platform.KeyAction = if (flags.previous_state == 0) .press else .repeat;
                 const key = if (wParam < 255) virtualKeyToPlatformKey(@enumFromInt(wParam), flags) else .unknown;
 
-                cb.fun(this, key, action, flags.scan_code, cb.user_data);
+                cb.fun(window, key, action, flags.scan_code, cb.user_data);
             }
             return 0;
         },
 
         win32.WM_KEYUP => {
-            if (this.key_callback) |cb| {
+            if (impl.key_callback) |cb| {
                 const flags: KeyLParam = @bitCast(@as(u32, @intCast(lParam)));
                 const key = if (wParam < 255) virtualKeyToPlatformKey(@enumFromInt(wParam), flags) else .unknown;
 
-                cb.fun(this, key, .release, flags.scan_code, cb.user_data);
+                cb.fun(window, key, .release, flags.scan_code, cb.user_data);
             }
             return 0;
         },
@@ -268,7 +254,7 @@ fn windowProc(_hwnd: ?win32.HWND, uMsg: u32, wParam: win32.WPARAM, lParam: win32
     }
 }
 
-fn virtualKeyToPlatformKey(vkey: win32.VIRTUAL_KEY, flags: KeyLParam) platform.window.Key {
+fn virtualKeyToPlatformKey(vkey: win32.VIRTUAL_KEY, flags: KeyLParam) platform.Key {
     return switch (vkey) {
         .@"0" => .@"0",
         .@"1" => .@"1",

@@ -9,7 +9,7 @@ const builtin = @import("builtin");
 const alloc = @import("alloc");
 
 const platform = @import("platform");
-const Window = platform.window.Window;
+const Window = platform.Window;
 
 const Renderer = @import("vulkan").Renderer;
 
@@ -71,8 +71,7 @@ pub fn framebufferResizeCallback(_: *const Window, width: c_int, height: c_int, 
     renderer.?.handleFramebufferResize(width, height);
 }
 
-pub fn keyCallback(window: *Window, key: platform.window.Key, action: platform.window.KeyAction, scan_code: c_int, _: ?*anyopaque) void {
-    dlog("keyCallback: {}:{s}:{s}", .{ scan_code, @tagName(action), @tagName(key) });
+pub fn keyCallback(window: *Window, key: platform.Key, action: platform.KeyAction, _: c_int, _: ?*anyopaque) void {
     if (key == .escape and action == .press) {
         window.requestClose();
     }
