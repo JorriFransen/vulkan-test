@@ -36,7 +36,7 @@ pub const ResourceNamePtrW = [*:0]align(1) const WCHAR;
 pub const HMODULE = *align(4) opaque {};
 pub const HANDLE = *align(4) opaque {};
 pub const HINSTANCE = *align(4) opaque {};
-pub const HWND = *align(4) opaque {};
+pub const HWND = ?*align(4) opaque {};
 pub const HDC = *opaque {};
 pub const HGLRC = *opaque {};
 pub const HICON = *opaque {};
@@ -54,7 +54,7 @@ pub const LRESULT = isize;
 
 pub const PROC = *const fn () callconv(.C) isize;
 pub const FARPROC = PROC;
-pub const WNDPROC = *const fn (p0: ?HWND, p1: u32, p2: WPARAM, p3: LPARAM) callconv(.C) LRESULT;
+pub const WNDPROC = *const fn (p0: HWND, p1: u32, p2: WPARAM, p3: LPARAM) callconv(.C) LRESULT;
 
 pub const TRUE: BOOL = 1;
 pub const FALSE: BOOL = 0;
@@ -304,21 +304,21 @@ pub extern "kernel32" fn GetPrivateProfileStringW(lpAppName: LPCWSTR, lpKeyName:
 pub extern "kernel32" fn WritePrivateProfileStringW(lpAppName: LPCWSTR, lpKeyName: LPCWSTR, lpString: LPCWSTR, lpFileName: LPCWSTR) callconv(.C) BOOL;
 pub extern "kernel32" fn GetFullPathNameW(lpFileName: LPCWSTR, nBufferLength: DWORD, lpBuffer: LPWSTR, lpFilePart: ?*LPWSTR) callconv(.C) DWORD;
 pub extern "kernel32" fn GetModuleHandleW(lpModuleName: ?LPCWSTR) callconv(.C) ?HMODULE;
-pub extern "user32" fn DefWindowProcW(hHwnd: ?HWND, Msg: u32, wParam: WPARAM, lParam: LPARAM) callconv(.C) LRESULT;
+pub extern "user32" fn DefWindowProcW(hHwnd: HWND, Msg: u32, wParam: WPARAM, lParam: LPARAM) callconv(.C) LRESULT;
 pub extern "user32" fn GetLastError() callconv(.C) DWORD;
 pub extern "user32" fn SetLastError(dwErrCode: DWORD) callconv(.C) void;
 pub extern "user32" fn RegisterClassW(lpWndClass: ?*const WNDCLASSW) callconv(.C) u16;
 pub extern "user32" fn RegisterClassExW(param0: ?*const WNDCLASSEXW) callconv(.C) u16;
-pub extern "user32" fn CreateWindowExW(dwExStyle: WINDOW_EX_STYLE, lpClassName: ?LPCWSTR, lpWindowName: ?LPCWSTR, dwStyle: WINDOW_STYLE, X: i32, Y: i32, nWidth: i32, nHeight: i32, hWndParent: ?HWND, hMenu: ?HMENU, hInstance: ?HINSTANCE, lpParam: ?*anyopaque) callconv(.C) ?HWND;
-pub extern "user32" fn DestroyWindow(hWnd: ?HWND) callconv(.C) BOOL;
-pub extern "user32" fn ShowWindow(hWnd: ?HWND, nCmdShow: SHOW_WINDOW_CMD) callconv(.C) BOOL;
-pub extern "user32" fn SetWindowPos(hWnd: HWND, hWndInsertAfter: ?HWND, X: c_int, Y: c_int, cx: c_int, cy: c_int, uFlags: SET_WINDOW_POS_FLAGS) callconv(.C) BOOL;
-pub extern "user32" fn PeekMessageW(lpMsg: ?*MSG, hWnd: ?HWND, wMsgFilterMin: u32, wMsgFilterMax: u32, wRemoveMsg: PEEK_MESSAGE_REMOVE_TYPE) callconv(.C) BOOL;
+pub extern "user32" fn CreateWindowExW(dwExStyle: WINDOW_EX_STYLE, lpClassName: ?LPCWSTR, lpWindowName: ?LPCWSTR, dwStyle: WINDOW_STYLE, X: i32, Y: i32, nWidth: i32, nHeight: i32, hWndParent: HWND, hMenu: ?HMENU, hInstance: ?HINSTANCE, lpParam: ?*anyopaque) callconv(.C) HWND;
+pub extern "user32" fn DestroyWindow(hWnd: HWND) callconv(.C) BOOL;
+pub extern "user32" fn ShowWindow(hWnd: HWND, nCmdShow: SHOW_WINDOW_CMD) callconv(.C) BOOL;
+pub extern "user32" fn SetWindowPos(hWnd: HWND, hWndInsertAfter: HWND, X: c_int, Y: c_int, cx: c_int, cy: c_int, uFlags: SET_WINDOW_POS_FLAGS) callconv(.C) BOOL;
+pub extern "user32" fn PeekMessageW(lpMsg: ?*MSG, hWnd: HWND, wMsgFilterMin: u32, wMsgFilterMax: u32, wRemoveMsg: PEEK_MESSAGE_REMOVE_TYPE) callconv(.C) BOOL;
 pub extern "user32" fn TranslateMessage(lpMsg: ?*const MSG) callconv(.C) BOOL;
 pub extern "user32" fn DispatchMessageW(lpMsg: ?*const MSG) callconv(.C) LRESULT;
 pub extern "user32" fn PostQuitMessage(nExitCode: i32) callconv(.C) void;
-pub extern "user32" fn GetDC(hHwnd: ?HWND) callconv(.C) ?HDC;
-pub extern "user32" fn ReleaseDC(hWnd: ?HWND, hDC: ?HDC) callconv(.C) i32;
+pub extern "user32" fn GetDC(hHwnd: HWND) callconv(.C) ?HDC;
+pub extern "user32" fn ReleaseDC(hWnd: HWND, hDC: ?HDC) callconv(.C) i32;
 pub extern "user32" fn GetSystemMetrics(nIndex: SYSTEM_METRICS_INDEX) callconv(.C) i32;
 pub extern "user32" fn LoadCursorW(hInstance: ?HINSTANCE, lpCursorName: LPCWSTR) callconv(.C) ?HCURSOR;
 pub extern "user32" fn GetWindowLongPtrW(hWnd: HWND, nIndex: c_int) callconv(.C) LONG_PTR;
@@ -326,13 +326,13 @@ pub extern "user32" fn SetWindowLongPtrW(hWnd: HWND, nIndex: c_int, dwNewLong: L
 pub extern "user32" fn SetLayeredWindowAttributes(hWnd: HWND, crKey: COLORREF, bAlpha: BYTE, dwFlags: DWORD) callconv(.C) BOOL;
 pub extern "user32" fn LoadIconW(hInstance: ?HINSTANCE, lpIconName: ResourceNamePtrW) callconv(.C) HICON;
 pub extern "user32" fn LoadImageW(hInst: ?HINSTANCE, name: ResourceNamePtrW, @"type": UINT, cx: c_int, cy: c_int, fuLoad: UINT) callconv(.C) ?HANDLE;
-pub extern "user32" fn ValidateRect(hWnd: ?HWND, lpRect: ?*const RECT) callconv(.C) BOOL;
+pub extern "user32" fn ValidateRect(hWnd: HWND, lpRect: ?*const RECT) callconv(.C) BOOL;
 pub extern "user32" fn LoadStringW(hInstance: HINSTANCE, uID: UINT, lpBuffer: LPWSTR, cchBufferMax: c_int) callconv(.C) c_int;
-pub extern "user32" fn SetActiveWindow(hWnd: ?HWND) callconv(.C) ?HWND;
-pub extern "user32" fn SetForegroundWindow(hWnd: ?HWND) callconv(.C) BOOL;
-pub extern "user32" fn SetFocus(hWnd: ?HWND) callconv(.C) ?HWND;
+pub extern "user32" fn SetActiveWindow(hWnd: HWND) callconv(.C) HWND;
+pub extern "user32" fn SetForegroundWindow(hWnd: HWND) callconv(.C) BOOL;
+pub extern "user32" fn SetFocus(hWnd: HWND) callconv(.C) HWND;
 pub extern "user32" fn LoadMenuW(hInstance: ?HINSTANCE, lpMenuName: ResourceNamePtrW) callconv(.C) ?HMENU;
-pub extern "user32" fn SetMenu(hWnd: ?HWND, hMenu: HMENU) callconv(.C) BOOL;
+pub extern "user32" fn SetMenu(hWnd: HWND, hMenu: HMENU) callconv(.C) BOOL;
 pub extern "user32" fn GetMenu(hWnd: HWND) callconv(.C) ?HMENU;
 pub extern "user32" fn DestroyMenu(hMenu: HMENU) callconv(.C) BOOL;
 pub extern "user32" fn GetSubMenu(hMenu: HMENU, nPos: c_int) callconv(.C) ?HMENU;
@@ -342,14 +342,14 @@ pub extern "user32" fn TrackPopupMenuEx(hMenu: HMENU, uFlags: UINT, x: c_int, y:
 pub extern "user32" fn ClientToScreen(hWnd: HWND, lpPoint: *POINT) callconv(.C) BOOL;
 pub extern "user32" fn ScreenToClient(hWnd: HWND, lpPoint: *POINT) callconv(.C) BOOL;
 pub extern "user32" fn GetCursorPos(lpPoint: *POINT) callconv(.C) BOOL;
-pub extern "user32" fn MessageBoxW(hWnd: ?HWND, lpText: ?LPCWSTR, lpCaption: ?LPCWSTR, uType: UINT) callconv(.C) c_int;
-pub extern "user32" fn ShellMessageBoxW(hAppInst: ?HINSTANCE, hWnd: ?HWND, lpText: ?LPCWSTR, lpCaption: ?LPCWSTR, uType: UINT) callconv(.C) c_int;
+pub extern "user32" fn MessageBoxW(hWnd: HWND, lpText: ?LPCWSTR, lpCaption: ?LPCWSTR, uType: UINT) callconv(.C) c_int;
+pub extern "user32" fn ShellMessageBoxW(hAppInst: ?HINSTANCE, hWnd: HWND, lpText: ?LPCWSTR, lpCaption: ?LPCWSTR, uType: UINT) callconv(.C) c_int;
 pub extern "user32" fn GetMouseMovePointsEx(cbSize: UINT, lppt: *MOUSEMOVEPOINT, lpptBuf: [*c]MOUSEMOVEPOINT, nBufPoints: c_int, resolution: DWORD) callconv(.C) c_int;
-pub extern "user32" fn RegisterHotKey(hWnd: ?HWND, id: c_int, fsModifiers: UINT, vk: UINT) callconv(.C) BOOL;
+pub extern "user32" fn RegisterHotKey(hWnd: HWND, id: c_int, fsModifiers: UINT, vk: UINT) callconv(.C) BOOL;
 pub extern "user32" fn SetCursor(hCursor: ?HCURSOR) callconv(.C) HCURSOR;
 pub extern "user32" fn GetCursor() callconv(.C) HCURSOR;
-pub extern "user32" fn PostMessageW(hWnd: ?HWND, Msg: UINT, wParam: WPARAM, lParam: LPARAM) callconv(.C) BOOL;
-pub extern "user32" fn SetCapture(hWnd: HWND) callconv(.C) ?HWND;
+pub extern "user32" fn PostMessageW(hWnd: HWND, Msg: UINT, wParam: WPARAM, lParam: LPARAM) callconv(.C) BOOL;
+pub extern "user32" fn SetCapture(hWnd: HWND) callconv(.C) HWND;
 pub extern "user32" fn GetWindowRect(hwnd: HWND, lpRect: *RECT) callconv(.C) BOOL;
 pub extern "user32" fn GetClientRect(hwnd: HWND, lpRect: *RECT) callconv(.C) BOOL;
 pub extern "user32" fn WaitMessage() callconv(.C) BOOL;
@@ -458,7 +458,7 @@ pub const DWM_BLURBEHIND = extern struct {
 };
 
 pub const MSG = extern struct {
-    hwnd: ?HWND,
+    hwnd: HWND,
     message: u32,
     wParam: WPARAM,
     lParam: LPARAM,
@@ -952,7 +952,7 @@ const NOTIFYICONDATAW_DUMMYUNION = extern union {
 
 pub const NOTIFYICONDATAW = extern struct {
     cbSize: DWORD = @sizeOf(@This()),
-    hWnd: ?HWND = null,
+    hWnd: HWND = null,
     uID: UINT = 0,
     uFlags: UINT = 0,
     uCallbackMessage: UINT = 0,

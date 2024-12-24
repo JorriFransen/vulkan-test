@@ -32,7 +32,7 @@ pub fn deinitSystem() void {}
 
 const MAX_TITLE = 1024;
 
-handle: win32.HWND,
+handle: win32.HWND = null,
 close_requested: bool = false,
 title: [MAX_TITLE]u16 = std.mem.zeroes([MAX_TITLE]u16),
 new_fb_size: ?win32.POINT = null,
@@ -120,7 +120,9 @@ pub fn pollEvents(this: *@This()) void {
 
     if (this.new_fb_size) |s| {
         const window: *Window = @fieldParentPtr("impl", this);
-        if (window.framebuffer_resize_callback) |cb| cb.fun(window, s.x, s.y, cb.user_data);
+        if (window.framebuffer_resize_callback) |cb| {
+            cb.fun(window, s.x, s.y, cb.user_data);
+        }
         this.new_fb_size = null;
     }
 }
@@ -206,7 +208,7 @@ const KeyLParam = packed struct {
     transition_state: u1,
 };
 
-fn windowProc(_hwnd: ?win32.HWND, uMsg: u32, wParam: win32.WPARAM, lParam: win32.LPARAM) callconv(.C) isize {
+fn windowProc(_hwnd: win32.HWND, uMsg: u32, wParam: win32.WPARAM, lParam: win32.LPARAM) callconv(.C) isize {
     const hwnd = _hwnd.?;
 
     const data_int = win32.GetWindowLongPtrW(hwnd, 0);
@@ -242,7 +244,7 @@ fn windowProc(_hwnd: ?win32.HWND, uMsg: u32, wParam: win32.WPARAM, lParam: win32
         },
 
         win32.WM_KEYUP => {
-            if (impl.key_callback) |cb| {
+            if (window.key_callback) |cb| {
                 const flags: KeyLParam = @bitCast(@as(u32, @intCast(lParam)));
                 const key = if (wParam < 255) virtualKeyToPlatformKey(@enumFromInt(wParam), flags) else .unknown;
 

@@ -30,7 +30,7 @@ pub fn deinitSystem() void {
     WindowImpl.deinitSystem();
 }
 
-impl: WindowImpl,
+impl: WindowImpl = .{},
 framebuffer_resize_callback: ?FrameBufferResizeCallback = null,
 key_callback: ?KeyCallback = null,
 

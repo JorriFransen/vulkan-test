@@ -48,7 +48,7 @@ pub fn vMain() !u8 {
     try Window.initSystem();
     defer Window.deinitSystem();
 
-    var window: Window = undefined;
+    var window = Window{};
     try window.init("Vulkan Test");
     defer window.deinit();
 
