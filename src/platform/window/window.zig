@@ -19,7 +19,8 @@ pub const KeyAction = enum {
 };
 
 pub const Key = enum(c_int) {
-    // This must stay in sync with glfw keys!
+    // This must stay binary compatible with glfw keys!
+    unknown = 0,
     space = 32,
     apostrophe = 39, //  '
     comma = 44, //  ,

@@ -72,6 +72,7 @@ pub fn framebufferResizeCallback(_: *const Window, width: c_int, height: c_int, 
 }
 
 pub fn keyCallback(window: *Window, key: platform.window.Key, action: platform.window.KeyAction, _: ?*anyopaque) void {
+    dlog("keyCallback: {s}:{s}", .{ @tagName(action), @tagName(key) });
     if (key == .escape and action == .press) {
         window.requestClose();
     }
