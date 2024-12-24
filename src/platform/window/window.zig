@@ -10,7 +10,7 @@ else
     @compileError("Unsupported platform");
 
 pub const FrameBufferResizeCallback = Callback(&.{ *Window, c_int, c_int });
-pub const KeyCallback = Callback(&.{ *Window, Key, KeyAction });
+pub const KeyCallback = Callback(&.{ *Window, Key, KeyAction, c_int });
 
 pub const KeyAction = enum {
     press,

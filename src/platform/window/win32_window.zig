@@ -249,7 +249,7 @@ fn windowProc(_hwnd: ?win32.HWND, uMsg: u32, wParam: win32.WPARAM, lParam: win32
                 const action: window.KeyAction = if (flags.previous_state == 0) .press else .repeat;
                 const key = if (wParam < 255) virtualKeyToPlatformKey(@enumFromInt(wParam), flags) else .unknown;
 
-                cb.fun(this, key, action, cb.user_data);
+                cb.fun(this, key, action, flags.scan_code, cb.user_data);
             }
             return 0;
         },
@@ -259,7 +259,7 @@ fn windowProc(_hwnd: ?win32.HWND, uMsg: u32, wParam: win32.WPARAM, lParam: win32
                 const flags: KeyLParam = @bitCast(@as(u32, @intCast(lParam)));
                 const key = if (wParam < 255) virtualKeyToPlatformKey(@enumFromInt(wParam), flags) else .unknown;
 
-                cb.fun(this, key, .release, cb.user_data);
+                cb.fun(this, key, .release, flags.scan_code, cb.user_data);
             }
             return 0;
         },

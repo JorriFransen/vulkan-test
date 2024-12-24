@@ -204,7 +204,6 @@ pub fn createVulkanSurface(this: *const @This(), instance: vk.Instance) !vk.Surf
 }
 
 fn keyCallback(gwindow: *glfw.GLFWwindow, gkey: glfw.Key, scancode: c_int, gaction: glfw.Action, mods: c_int) callconv(.C) void {
-    _ = scancode;
     _ = mods;
 
     const this: *@This() = @alignCast(@ptrCast(glfw.glfwGetWindowUserPointer(gwindow)));
@@ -216,7 +215,7 @@ fn keyCallback(gwindow: *glfw.GLFWwindow, gkey: glfw.Key, scancode: c_int, gacti
         .repeat => .repeat,
     };
 
-    if (this.key_callback) |cb| cb.fun(this, gkey, action, cb.user_data);
+    if (this.key_callback) |cb| cb.fun(this, gkey, action, scancode, cb.user_data);
 }
 
 fn framebufferResizeCallback(gwindow: *glfw.GLFWwindow, width: c_int, height: c_int) callconv(.C) void {
