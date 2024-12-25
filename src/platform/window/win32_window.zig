@@ -33,11 +33,7 @@ close_requested: bool = false,
 title: [MAX_TITLE]u16 = std.mem.zeroes([MAX_TITLE]u16),
 new_fb_size: ?win32.POINT = null,
 
-pub fn open(ptr: *anyopaque, title: [:0]const u8) Window.OpenError!void {
-    const impl: *@This() = @ptrCast(@alignCast(ptr));
-    return try impl.init(title);
-}
-pub fn init(this: *@This(), title_utf8: [:0]const u8) !void {
+pub fn open(this: *@This(), title_utf8: [:0]const u8) Window.OpenError!void {
     var instance: win32.HINSTANCE = undefined;
     if (win32.GetModuleHandleW(null)) |i_handle| {
         instance = @ptrCast(i_handle);
@@ -97,66 +93,54 @@ pub fn init(this: *@This(), title_utf8: [:0]const u8) !void {
     // _ = win32.ShowWindow(window_handle, @bitCast(cmd_show));
     _ = win32.ShowWindow(handle, .{ .SHOWNORMAL = 1 });
 
-    // this.pollEvents();
-    pollEvents(this);
+    this.pollEvents();
 }
 
-pub fn shouldClose(ptr: *const anyopaque) bool {
-    const impl: *const @This() = @ptrCast(@alignCast(ptr));
-    return impl.close_requested;
+pub fn close(this: *const @This()) void {
+    _ = win32.DestroyWindow(this.handle);
 }
 
-pub fn requestClose(ptr: *anyopaque) void {
-    const impl: *@This() = @ptrCast(@alignCast(ptr));
-    impl.close_requested = true;
+pub fn shouldClose(this: *const @This()) bool {
+    return this.close_requested;
+}
+
+pub fn requestClose(this: *@This()) void {
+    this.close_requested = true;
     win32.PostQuitMessage(0);
 }
 
-pub fn pollEvents(ptr: *anyopaque) void {
-    const impl: *@This() = @ptrCast(@alignCast(ptr));
-
+pub fn pollEvents(this: *@This()) void {
     var msg: win32.MSG = undefined;
 
-    while (win32.PeekMessageW(&msg, impl.handle, 0, 0, .{ .REMOVE = 1 }) == win32.TRUE) {
+    while (win32.PeekMessageW(&msg, this.handle, 0, 0, .{ .REMOVE = 1 }) == win32.TRUE) {
         _ = win32.TranslateMessage(&msg);
         _ = win32.DispatchMessageW(&msg);
 
         if (msg.message == win32.WM_QUIT) {
-            impl.close_requested = true;
+            this.close_requested = true;
             break;
         }
     }
 
-    if (impl.new_fb_size) |s| {
-        const impl_ptr: *Window.Impl = @fieldParentPtr("win32_window", impl);
-        assert(@as(*@This(), @ptrCast(impl_ptr)) == impl);
-        const this: *Window = @fieldParentPtr("impl", impl_ptr);
-        if (this.framebuffer_resize_callback) |cb| {
-            cb.fun(this, s.x, s.y, cb.user_data);
+    if (this.new_fb_size) |s| {
+        const impl_ptr: *Window.Impl = @fieldParentPtr("win32_window", this);
+        assert(@as(*@This(), @ptrCast(impl_ptr)) == this);
+        const window: *Window = @fieldParentPtr("impl", impl_ptr);
+        if (window.framebuffer_resize_callback) |cb| {
+            cb.fun(window, s.x, s.y, cb.user_data);
         }
-        impl.new_fb_size = null;
+        this.new_fb_size = null;
     }
 }
 
-pub fn waitEvents(ptr: *anyopaque) void {
-    const impl: *@This() = @ptrCast(@alignCast(ptr));
+pub fn waitEvents(this: *@This()) void {
     _ = win32.WaitMessage();
-    pollEvents(impl);
+    this.pollEvents();
 }
 
-pub fn close(ptr: *const anyopaque) void {
-    const impl: *const @This() = @ptrCast(@alignCast(ptr));
-    impl.deinit();
-}
-pub fn deinit(this: *const @This()) void {
-    _ = win32.DestroyWindow(this.handle);
-}
-
-pub fn framebufferSize(ptr: *const anyopaque, width: *i32, height: *i32) void {
-    const impl: *const @This() = @ptrCast(@alignCast(ptr));
-
+pub fn framebufferSize(this: *const @This(), width: *i32, height: *i32) void {
     var rect: win32.RECT = undefined;
-    const res = win32.GetClientRect(impl.handle, &rect);
+    const res = win32.GetClientRect(this.handle, &rect);
     assert(res == win32.TRUE);
 
     assert(rect.left == 0);
@@ -173,14 +157,12 @@ pub fn requiredVulkanInstanceExtensions() ![]const [*:0]const u8 {
     };
 }
 
-pub fn createVulkanSurface(ptr: *const anyopaque, instance: vk.Instance) !vk.SurfaceKHR {
-    const impl: *const @This() = @ptrCast(@alignCast(ptr));
-
+pub fn createVulkanSurface(this: *const @This(), instance: vk.Instance) !vk.SurfaceKHR {
     var surface: vk.SurfaceKHR = undefined;
 
     const create_info = vk.Win32SurfaceCreateInfoKHR{
         .sType = .WIN32_SURFACE_CREATE_INFO_KHR,
-        .hwnd = @ptrCast(impl.handle),
+        .hwnd = @ptrCast(this.handle),
         .hinstance = @ptrCast(win32.GetModuleHandleW(null)),
     };
 
