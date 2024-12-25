@@ -45,12 +45,13 @@ pub fn vMain() !u8 {
 
     cmd_line_options = flags.parseOrExit(&args, "vulkan-test", CmdLineOptions, .{});
 
-    try Window.initSystem();
-    defer Window.deinitSystem();
+    var window = platform.Window.Window2.init(.default);
 
-    var window = Window{};
-    try window.init("Vulkan Test");
-    defer window.deinit();
+    try window.initSystem();
+    defer window.deinitSystem();
+
+    try window.open("Vulkan Test");
+    defer window.close();
 
     var renderer: Renderer = undefined;
     try renderer.init(&window);
@@ -64,15 +65,34 @@ pub fn vMain() !u8 {
         window.pollEvents();
     }
 
+    // try Window.initSystem();
+    // defer Window.deinitSystem();
+    //
+    // var window = Window{};
+    // try window.init("Vulkan Test");
+    // defer window.deinit();
+    //
+    // var renderer: Renderer = undefined;
+    // try renderer.init(&window);
+    // defer renderer.deinit();
+    //
+    // window.framebuffer_resize_callback = .{ .fun = framebufferResizeCallback, .user_data = &renderer };
+    // window.key_callback = .{ .fun = keyCallback, .user_data = null };
+    //
+    // while (!window.shouldClose()) {
+    //     renderer.drawFrame();
+    //     window.pollEvents();
+    // }
+
     return 0;
 }
 
-pub fn framebufferResizeCallback(_: *const Window, width: c_int, height: c_int, user_data: ?*anyopaque) void {
+pub fn framebufferResizeCallback(_: *const Window.Window2, width: c_int, height: c_int, user_data: ?*anyopaque) void {
     const renderer: ?*Renderer = @alignCast(@ptrCast(user_data));
     renderer.?.handleFramebufferResize(width, height);
 }
 
-pub fn keyCallback(window: *Window, key: platform.Key, action: platform.KeyAction, _: c_int, _: ?*anyopaque) void {
+pub fn keyCallback(window: *Window.Window2, key: platform.Key, action: platform.KeyAction, _: c_int, _: ?*anyopaque) void {
     if (key == .escape and action == .press) {
         window.requestClose();
     }

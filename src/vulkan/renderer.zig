@@ -24,7 +24,7 @@ const MAX_FRAMES_IN_FLIGHT = 2;
 
 const Window = @import("root").Window;
 
-window: *Window = undefined,
+window: *Window.Window2 = undefined,
 instance: vk.Instance = null,
 surface: vk.SurfaceKHR = null,
 device: vk.Device = null,
@@ -88,7 +88,7 @@ const required_device_extensions: []const [*:0]const u8 = &.{
     vk.KHR_SWAPCHAIN_EXTENSION_NAME,
 };
 
-pub fn init(this: *@This(), window: *Window) !void {
+pub fn init(this: *@This(), window: *Window.Window2) !void {
     const instance = try createInstance(window);
     const debug_messenger = createDebugMessenger(instance);
     const surface = try window.createVulkanSurface(instance);
@@ -139,7 +139,7 @@ pub fn deinit(this: *const @This()) void {
     vk.destroyInstance(this.instance, null);
 }
 
-fn createInstance(window: *const Window) !vk.Instance {
+fn createInstance(window: *const Window.Window2) !vk.Instance {
     var extension_count: u32 = undefined;
     _ = vk.enumerateInstanceExtensionProperties(null, &extension_count, null);
     dlog("{} Vulkan extensions supported", .{extension_count});
@@ -548,9 +548,9 @@ pub fn handleFramebufferResize(this: *@This(), _: c_int, _: c_int) void {
 pub fn recreateSwapchain(this: *@This()) !void {
     var width: c_int = undefined;
     var height: c_int = undefined;
-    this.window.frameBufferSize(&width, &height);
+    this.window.framebufferSize(&width, &height);
     while (width == 0 or height == 0) {
-        this.window.frameBufferSize(&width, &height);
+        this.window.framebufferSize(&width, &height);
         this.window.waitEvents();
     }
 
@@ -581,7 +581,7 @@ pub fn createSwapchain(this: *@This()) !void {
 
     var fb_width: c_int = undefined;
     var fb_height: c_int = undefined;
-    this.window.frameBufferSize(&fb_width, &fb_height);
+    this.window.framebufferSize(&fb_width, &fb_height);
 
     dlog("cap.currentExtent: {}", .{cap.currentExtent});
     this.swapchain_extent = switch (cap.currentExtent.width) {

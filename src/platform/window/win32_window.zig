@@ -148,7 +148,7 @@ pub fn frameBufferSize(this: *const @This(), width: *i32, height: *i32) void {
     height.* = rect.bottom;
 }
 
-pub fn requiredVulkanInstanceExtensions(_: *const @This()) ![]const [*:0]const u8 {
+pub fn requiredVulkanInstanceExtensions() ![]const [*:0]const u8 {
     return &.{
         "VK_KHR_surface",
         "VK_KHR_win32_surface",
@@ -166,7 +166,7 @@ pub fn createVulkanSurface(this: *const @This(), instance: vk.Instance) !vk.Surf
 
     if (vk.createWin32SurfaceKHR(instance, &create_info, null, &surface) != .SUCCESS) {
         elog("vkCreateWin32SurfaceKHR failed!", .{});
-        return error.Vulkan_Surface_Creation_Failed;
+        return error.NativeCreateSurfaceFailed;
     }
 
     return surface;

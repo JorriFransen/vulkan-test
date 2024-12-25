@@ -16,7 +16,7 @@ const dlog = log.debug;
 const elog = log.err;
 const ilog = log.info;
 
-pub fn initSystem() !void {
+pub fn initSystem() Window.InitSystemError!void {
     const wayland_support = glfw.glfwPlatformSupported(.WAYLAND) == glfw.TRUE;
     const x11_support = glfw.glfwPlatformSupported(.X11) == glfw.TRUE;
 
@@ -57,7 +57,7 @@ pub fn initSystem() !void {
         const code = glfw.glfwGetError(&cstr);
         elog("glfw err: {}: {s}", .{ code, cstr });
 
-        return error.glfwInitFailed;
+        return error.nativeInitFailed;
     }
 }
 
@@ -68,7 +68,12 @@ pub fn deinitSystem() void {
 handle: ?*glfw.GLFWwindow = null,
 new_fb_size: ?struct { c_int, c_int } = null,
 
-pub fn init(this: *@This(), title: [:0]const u8) !void {
+pub fn open(ptr: *anyopaque, title: [*:0]const u8) Window.OpenError!void {
+    const impl: *@This() = @ptrCast(@alignCast(ptr));
+    const impl_ptr: *Window.WindowImpl2 = @fieldParentPtr("glfw_window", impl);
+    assert(@as(*@This(), @ptrCast(impl_ptr)) == impl);
+    const this: *Window.Window2 = @fieldParentPtr("impl", impl_ptr);
+
     glfw.glfwWindowHint(glfw.CLIENT_API, glfw.NO_API);
 
     glfw.glfwWindowHintString(glfw.WAYLAND_APP_ID, "my_app_id");
@@ -81,7 +86,7 @@ pub fn init(this: *@This(), title: [:0]const u8) !void {
         var cstr: [*:0]const u8 = undefined;
         const code = glfw.glfwGetError(&cstr);
         elog("glfw err: {}: {s}", .{ code, cstr });
-        return error.Glfw_Create_Window_Failed;
+        return error.NativeCreateFailed;
     }
 
     dlog("created glfw window", .{});
@@ -94,62 +99,75 @@ pub fn init(this: *@This(), title: [:0]const u8) !void {
 
     glfw.glfwSetWindowUserPointer(handle, this);
 
-    this.* = .{
+    impl.* = .{
         .handle = handle,
         .new_fb_size = null,
     };
 }
 
-pub fn deinit(this: *@This()) void {
-    glfw.glfwDestroyWindow(this.handle);
+pub fn close(ptr: *const anyopaque) void {
+    const impl: *const @This() = @ptrCast(@alignCast(ptr));
+
+    glfw.glfwDestroyWindow(impl.handle);
 }
 
-pub fn shouldClose(this: *const @This()) bool {
-    const res = glfw.glfwWindowShouldClose(this.handle);
+pub fn shouldClose(ptr: *const anyopaque) bool {
+    const impl: *const @This() = @ptrCast(@alignCast(ptr));
+
+    const res = glfw.glfwWindowShouldClose(impl.handle);
     return res != 0;
 }
 
-pub fn requestClose(this: *@This()) void {
-    glfw.glfwSetWindowShouldClose(this.handle, 1);
+pub fn requestClose(ptr: *anyopaque) void {
+    const impl: *const @This() = @ptrCast(@alignCast(ptr));
+    glfw.glfwSetWindowShouldClose(impl.handle, 1);
 }
 
-pub fn pollEvents(this: *@This()) void {
+pub fn pollEvents(ptr: *anyopaque) void {
+    const impl: *@This() = @ptrCast(@alignCast(ptr));
+
     glfw.glfwPollEvents();
-    this.handleEvents();
+    impl.handleEvents();
 }
 
-pub fn waitEvents(this: *@This()) void {
+pub fn waitEvents(ptr: *anyopaque) void {
+    const impl: *@This() = @ptrCast(@alignCast(ptr));
     glfw.glfwWaitEvents();
-    this.handleEvents();
+    impl.handleEvents();
 }
 
-fn handleEvents(this: *@This()) void {
-    if (this.new_fb_size) |s| {
-        const window: *Window = @fieldParentPtr("impl", this);
+fn handleEvents(impl: *@This()) void {
+    if (impl.new_fb_size) |s| {
+        const impl_ptr: *Window.WindowImpl2 = @fieldParentPtr("glfw_window", impl);
+        assert(@as(*@This(), @ptrCast(impl_ptr)) == impl);
+        const this: *Window.Window2 = @fieldParentPtr("impl", impl_ptr);
 
-        if (window.framebuffer_resize_callback) |cb| {
-            cb.fun(window, s[0], s[1], cb.user_data);
+        if (this.framebuffer_resize_callback) |cb| {
+            cb.fun(this, s[0], s[1], cb.user_data);
         }
-        this.new_fb_size = null;
+        impl.new_fb_size = null;
     }
 }
 
-pub fn frameBufferSize(this: *const @This(), width: *i32, height: *i32) void {
-    glfw.glfwGetFramebufferSize(this.handle, width, height);
+pub fn framebufferSize(ptr: *const anyopaque, width: *i32, height: *i32) void {
+    const impl: *const @This() = @ptrCast(@alignCast(ptr));
+    glfw.glfwGetFramebufferSize(impl.handle, width, height);
 }
 
-pub fn requiredVulkanInstanceExtensions(_: *const @This()) ![]const [*:0]const u8 {
+pub fn requiredVulkanInstanceExtensions() error{VulkanApiUnavailable}![]const [*:0]const u8 {
     assert(glfw.glfwVulkanSupported() == 1);
     var count: u32 = undefined;
-    const ext = glfw.glfwGetRequiredInstanceExtensions(&count) orelse return error.API_UNAVAILABLE;
+    const ext = glfw.glfwGetRequiredInstanceExtensions(&count) orelse return error.VulkanApiUnavailable;
     return @as([]const [*:0]const u8, @ptrCast(ext[0..count]));
 }
 
-pub fn createVulkanSurface(this: *const @This(), instance: vk.Instance) !vk.SurfaceKHR {
+pub fn createVulkanSurface(ptr: *const anyopaque, instance: vk.Instance) Window.CreateVulkanSurfaceError!vk.SurfaceKHR {
+    const impl: *const @This() = @ptrCast(@alignCast(ptr));
+
     var surface: vk.SurfaceKHR = undefined;
-    if (glfw.glfwCreateWindowSurface(instance, this.handle, null, &surface) != .SUCCESS) {
+    if (glfw.glfwCreateWindowSurface(instance, impl.handle, null, &surface) != .SUCCESS) {
         elog("glfwCreateWindowSurface failed!", .{});
-        return error.Vulkan_Surface_Creation_Failed;
+        return error.NativeCreateSurfaceFailed;
     }
     return surface;
 
@@ -200,9 +218,11 @@ fn keyCallback(gwindow: ?*glfw.GLFWwindow, gkey: glfw.Key, scancode: c_int, gact
 
     const impl: *@This() = @alignCast(@ptrCast(glfw.glfwGetWindowUserPointer(gwindow)));
     assert(gwindow == impl.handle);
-    const window: *Window = @fieldParentPtr("impl", impl);
+    const impl_ptr: *Window.WindowImpl2 = @fieldParentPtr("glfw_window", impl);
+    assert(@as(*@This(), @ptrCast(impl_ptr)) == impl);
+    const this: *Window.Window2 = @fieldParentPtr("impl", impl_ptr);
 
-    if (window.key_callback) |cb| cb.fun(window, gkey, action, scancode, cb.user_data);
+    if (this.key_callback) |cb| cb.fun(this, gkey, action, scancode, cb.user_data);
 }
 
 fn framebufferResizeCallback(gwindow: ?*glfw.GLFWwindow, width: c_int, height: c_int) callconv(.C) void {
