@@ -24,7 +24,7 @@ const MAX_FRAMES_IN_FLIGHT = 2;
 
 const Window = @import("root").Window;
 
-window: *Window.Window2 = undefined,
+window: *Window = undefined,
 instance: vk.Instance = null,
 surface: vk.SurfaceKHR = null,
 device: vk.Device = null,
@@ -88,7 +88,7 @@ const required_device_extensions: []const [*:0]const u8 = &.{
     vk.KHR_SWAPCHAIN_EXTENSION_NAME,
 };
 
-pub fn init(this: *@This(), window: *Window.Window2) !void {
+pub fn init(this: *@This(), window: *Window) !void {
     const instance = try createInstance(window);
     const debug_messenger = createDebugMessenger(instance);
     const surface = try window.createVulkanSurface(instance);
@@ -139,7 +139,7 @@ pub fn deinit(this: *const @This()) void {
     vk.destroyInstance(this.instance, null);
 }
 
-fn createInstance(window: *const Window.Window2) !vk.Instance {
+fn createInstance(window: *const Window) !vk.Instance {
     var extension_count: u32 = undefined;
     _ = vk.enumerateInstanceExtensionProperties(null, &extension_count, null);
     dlog("{} Vulkan extensions supported", .{extension_count});

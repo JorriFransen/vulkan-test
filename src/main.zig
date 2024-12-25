@@ -45,7 +45,7 @@ pub fn vMain() !u8 {
 
     cmd_line_options = flags.parseOrExit(&args, "vulkan-test", CmdLineOptions, .{});
 
-    var window = platform.Window.Window2.init(.default);
+    var window = platform.Window.init(.default);
 
     try window.initSystem();
     defer window.deinitSystem();
@@ -87,12 +87,12 @@ pub fn vMain() !u8 {
     return 0;
 }
 
-pub fn framebufferResizeCallback(_: *const Window.Window2, width: c_int, height: c_int, user_data: ?*anyopaque) void {
+pub fn framebufferResizeCallback(_: *const Window, width: c_int, height: c_int, user_data: ?*anyopaque) void {
     const renderer: ?*Renderer = @alignCast(@ptrCast(user_data));
     renderer.?.handleFramebufferResize(width, height);
 }
 
-pub fn keyCallback(window: *Window.Window2, key: platform.Key, action: platform.KeyAction, _: c_int, _: ?*anyopaque) void {
+pub fn keyCallback(window: *Window, key: platform.Key, action: platform.KeyAction, _: c_int, _: ?*anyopaque) void {
     if (key == .escape and action == .press) {
         window.requestClose();
     }

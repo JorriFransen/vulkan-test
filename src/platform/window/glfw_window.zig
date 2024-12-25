@@ -70,9 +70,9 @@ new_fb_size: ?struct { c_int, c_int } = null,
 
 pub fn open(ptr: *anyopaque, title: [*:0]const u8) Window.OpenError!void {
     const impl: *@This() = @ptrCast(@alignCast(ptr));
-    const impl_ptr: *Window.WindowImpl2 = @fieldParentPtr("glfw_window", impl);
+    const impl_ptr: *Window.Impl = @fieldParentPtr("glfw_window", impl);
     assert(@as(*@This(), @ptrCast(impl_ptr)) == impl);
-    const this: *Window.Window2 = @fieldParentPtr("impl", impl_ptr);
+    const this: *Window = @fieldParentPtr("impl", impl_ptr);
 
     glfw.glfwWindowHint(glfw.CLIENT_API, glfw.NO_API);
 
@@ -138,9 +138,9 @@ pub fn waitEvents(ptr: *anyopaque) void {
 
 fn handleEvents(impl: *@This()) void {
     if (impl.new_fb_size) |s| {
-        const impl_ptr: *Window.WindowImpl2 = @fieldParentPtr("glfw_window", impl);
+        const impl_ptr: *Window.Impl = @fieldParentPtr("glfw_window", impl);
         assert(@as(*@This(), @ptrCast(impl_ptr)) == impl);
-        const this: *Window.Window2 = @fieldParentPtr("impl", impl_ptr);
+        const this: *Window = @fieldParentPtr("impl", impl_ptr);
 
         if (this.framebuffer_resize_callback) |cb| {
             cb.fun(this, s[0], s[1], cb.user_data);
@@ -218,9 +218,9 @@ fn keyCallback(gwindow: ?*glfw.GLFWwindow, gkey: glfw.Key, scancode: c_int, gact
 
     const impl: *@This() = @alignCast(@ptrCast(glfw.glfwGetWindowUserPointer(gwindow)));
     assert(gwindow == impl.handle);
-    const impl_ptr: *Window.WindowImpl2 = @fieldParentPtr("glfw_window", impl);
+    const impl_ptr: *Window.Impl = @fieldParentPtr("glfw_window", impl);
     assert(@as(*@This(), @ptrCast(impl_ptr)) == impl);
-    const this: *Window.Window2 = @fieldParentPtr("impl", impl_ptr);
+    const this: *Window = @fieldParentPtr("impl", impl_ptr);
 
     if (this.key_callback) |cb| cb.fun(this, gkey, action, scancode, cb.user_data);
 }
