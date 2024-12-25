@@ -1,6 +1,7 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const vk = @import("vulkan");
+const options = @import("options");
 
 const platform = @import("platform");
 const Api = platform.WindowApi;
@@ -9,8 +10,13 @@ const KeyAction = platform.KeyAction;
 
 const Callback = @import("callback").Callback;
 
+const log = std.log.scoped(.window);
+pub const dlog = log.debug;
+pub const elog = log.err;
+pub const ilog = log.info;
+
 pub const Win32Window = @import("win32_window.zig");
-pub const GlfwWindow = @import("glfw_window.zig");
+pub const GlfwWindow = if (options.glfw_support) @import("glfw_window.zig") else Stub;
 
 pub const FrameBufferResizeCallback = Callback(&.{ *@This(), c_int, c_int });
 pub const KeyCallback = Callback(&.{ *@This(), Key, KeyAction, c_int });
@@ -48,11 +54,21 @@ pub fn init(api_or_default: Api) InitError!@This() {
     else
         api_or_default;
 
+    const api_supported = switch (api) {
+        .default => unreachable,
+        .win32 => builtin.os.tag == .windows,
+        .glfw => options.glfw_support,
+    };
+
+    if (!api_supported) {
+        elog("Window api not supported: {s}", .{@tagName(api)});
+        return error.ApiUnavailable;
+    }
+
     return switch (api) {
         .default => unreachable,
         .win32 => initT(Win32Window, .{ .win32_window = .{} }),
-        // .glfw => initT(GlfwWindow, .{ .glfw_window = .{} }),
-        .glfw => unreachable,
+        .glfw => initT(GlfwWindow, .{ .glfw_window = .{} }),
     };
 }
 
@@ -116,3 +132,23 @@ pub fn createVulkanSurface(this: *const @This(), instance: vk.Instance) CreateVu
 pub fn framebufferSize(this: *const @This(), width: *i32, height: *i32) void {
     return this.framebufferSizeFn(&this.impl, width, height);
 }
+
+const Stub = struct {
+    pub fn initSystem() InitSystemError!void {}
+    pub fn deinitSystem() void {}
+    pub fn open(_: *anyopaque, _: [:0]const u8) OpenError!void {}
+    pub fn close(_: *const anyopaque) void {}
+    pub fn shouldClose(_: *const anyopaque) bool {
+        return false;
+    }
+    pub fn requestClose(_: *anyopaque) void {}
+    pub fn pollEvents(_: *anyopaque) void {}
+    pub fn waitEvents(_: *anyopaque) void {}
+    pub fn framebufferSize(_: *const anyopaque, _: *i32, _: *i32) void {}
+    pub fn requiredVulkanInstanceExtensions() error{VulkanApiUnavailable}![]const [*:0]const u8 {
+        return &.{};
+    }
+    pub fn createVulkanSurface(_: *const anyopaque, _: vk.Instance) CreateVulkanSurfaceError!vk.SurfaceKHR {
+        return null;
+    }
+};

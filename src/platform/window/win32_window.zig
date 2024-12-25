@@ -1,21 +1,17 @@
 const std = @import("std");
+const vk = @import("vulkan");
+const root = @import("root");
+const platform = @import("platform");
+
 const assert = std.debug.assert;
 const W = std.unicode.utf8ToUtf16LeStringLiteral;
 
-const log = std.log.scoped(.window);
-const dlog = log.debug;
-const elog = log.err;
-const ilog = log.info;
-
-const vk = @import("vulkan");
-
-const root = @import("root");
-const platform = @import("platform");
-const Window = platform.Window;
 const win32 = platform.windows;
+const Window = platform.Window;
+const elog = Window.elog;
 
 pub fn initSystem() !void {
-    assert(root.cmd_line_options.glfw_window_api == .win32 or root.cmd_line_options.glfw_window_api == .default);
+    // assert(root.cmd_line_options.glfw_window_api == .win32 or root.cmd_line_options.glfw_window_api == .default);
     // if (win32.AttachConsole(win32.ATTACH_PARENT_PROCESS) == 0) {
     //     if (win32.CreateFileW(W("nul"), win32.GENERIC_READ | win32.GENERIC_WRITE, 0, null, win32.OPEN_EXISTING, win32.FILE_ATTRIBUTE_NORMAL, null)) |nul_handle| {
     //         _ = win32.SetStdHandle(win32.STD_INPUT_HANDLE, nul_handle);

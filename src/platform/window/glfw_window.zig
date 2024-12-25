@@ -1,20 +1,18 @@
 const std = @import("std");
-const assert = std.debug.assert;
 const builtin = @import("builtin");
-
-const f = @import("externFn").externFn;
 const platform = @import("platform");
+const vk = @import("vulkan");
+const root = @import("root");
+const f = @import("externFn").externFn;
+
+const assert = std.debug.assert;
+
 const Window = platform.Window;
 const x = platform.x;
 const glfw = platform.glfw;
-const vk = @import("vulkan");
 
-const root = @import("root");
-
-const log = std.log.scoped(.window);
-const dlog = log.debug;
-const elog = log.err;
-const ilog = log.info;
+const dlog = Window.dlog;
+const elog = Window.elog;
 
 pub fn initSystem() Window.InitSystemError!void {
     const wayland_support = glfw.glfwPlatformSupported(.WAYLAND) == glfw.TRUE;

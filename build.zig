@@ -20,11 +20,13 @@ pub fn build(b: *std.Build) !void {
     const log_level = b.option(std.log.Level, "log", "Set global log level") orelse .info;
     const window_verbose = b.option(std.log.Level, "window-log", "Set window log level") orelse .info;
     const vulkan_verbose = b.option(std.log.Level, "vulkan-log", "Set vulkan log level") orelse .info;
+    const glfw_support = target.result.os.tag != .windows;
 
     const options = b.addOptions();
     options.addOption(std.log.Level, "log_level", log_level);
     options.addOption(std.log.Level, "window_log_level", window_verbose);
     options.addOption(std.log.Level, "vulkan_log_level", vulkan_verbose);
+    options.addOption(bool, "glfw_support", glfw_support);
     const options_mod = options.createModule();
 
     const flags_dep = b.dependency("flags", .{ .target = target, .optimize = optimize });
@@ -43,8 +45,8 @@ pub fn build(b: *std.Build) !void {
     const exe_install_artifact = b.addInstallArtifact(exe, .{});
     b.getInstallStep().dependOn(&exe_install_artifact.step);
 
+    if (glfw_support) exe.linkSystemLibrary2("glfw", .{ .preferred_link_mode = .static });
     if (target.result.os.tag == .linux) {
-        exe.linkSystemLibrary2("glfw", .{ .preferred_link_mode = .static });
         exe.linkSystemLibrary("X11");
         exe.linkSystemLibrary("X11-xcb");
     }
@@ -72,9 +74,10 @@ pub fn build(b: *std.Build) !void {
     vulkan_mod.addImport("shaders", shaders_mod);
 
     platform_mod.addIncludePath(vulkan_info.include_path);
-    platform_mod.addImport("vulkan", vulkan_mod);
-    platform_mod.addImport("externFn", extern_fn_mod);
     platform_mod.addImport("callback", callback_mod);
+    platform_mod.addImport("externFn", extern_fn_mod);
+    platform_mod.addImport("options", options_mod);
+    platform_mod.addImport("vulkan", vulkan_mod);
 
     const run_cmd = b.addRunArtifact(exe);
     run_cmd.step.dependOn(b.getInstallStep());
