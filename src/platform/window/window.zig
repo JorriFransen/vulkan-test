@@ -73,19 +73,60 @@ pub fn init(api_or_default: Api) InitError!@This() {
 }
 
 fn initT(comptime T: type, impl: Impl) @This() {
+    const gen = struct {
+        pub fn open(ptr: *anyopaque, title: [:0]const u8) OpenError!void {
+            const this: *T = @ptrCast(@alignCast(ptr));
+            try this.open(title);
+        }
+
+        pub fn close(ptr: *const anyopaque) void {
+            const this: *const T = @ptrCast(@alignCast(ptr));
+            this.close();
+        }
+
+        pub fn shouldClose(ptr: *const anyopaque) bool {
+            const this: *const T = @ptrCast(@alignCast(ptr));
+            return this.shouldClose();
+        }
+
+        pub fn requestClose(ptr: *anyopaque) void {
+            const this: *T = @ptrCast(@alignCast(ptr));
+            this.requestClose();
+        }
+
+        pub fn pollEvents(ptr: *anyopaque) void {
+            const this: *T = @ptrCast(@alignCast(ptr));
+            this.pollEvents();
+        }
+
+        pub fn waitEvents(ptr: *anyopaque) void {
+            const this: *T = @ptrCast(@alignCast(ptr));
+            this.waitEvents();
+        }
+
+        pub fn createVulkanSurface(ptr: *const anyopaque, instance: vk.Instance) CreateVulkanSurfaceError!vk.SurfaceKHR {
+            const this: *const T = @ptrCast(@alignCast(ptr));
+            return try this.createVulkanSurface(instance);
+        }
+        pub fn framebufferSize(ptr: *const anyopaque, width: *i32, height: *i32) void {
+            const this: *const T = @ptrCast(@alignCast(ptr));
+            this.framebufferSize(width, height);
+        }
+    };
+
     return .{
         .impl = impl,
         .initSystemFn = T.initSystem,
         .deinitSystemFn = T.deinitSystem,
-        .openFn = T.open,
-        .closeFn = T.close,
-        .shouldCloseFn = T.shouldClose,
-        .requestCloseFn = T.requestClose,
-        .pollEventsFn = T.pollEvents,
-        .waitEventsFn = T.waitEvents,
+        .openFn = gen.open,
+        .closeFn = gen.close,
+        .shouldCloseFn = gen.shouldClose,
+        .requestCloseFn = gen.requestClose,
+        .pollEventsFn = gen.pollEvents,
+        .waitEventsFn = gen.waitEvents,
         .requiredVulkanInstanceExtensionsFn = T.requiredVulkanInstanceExtensions,
-        .createVulkanSurfaceFn = T.createVulkanSurface,
-        .framebufferSizeFn = T.framebufferSize,
+        .createVulkanSurfaceFn = gen.createVulkanSurface,
+        .framebufferSizeFn = gen.framebufferSize,
     };
 }
 
@@ -136,19 +177,19 @@ pub fn framebufferSize(this: *const @This(), width: *i32, height: *i32) void {
 const Stub = struct {
     pub fn initSystem() InitSystemError!void {}
     pub fn deinitSystem() void {}
-    pub fn open(_: *anyopaque, _: [:0]const u8) OpenError!void {}
-    pub fn close(_: *const anyopaque) void {}
-    pub fn shouldClose(_: *const anyopaque) bool {
+    pub fn open(_: *@This(), _: [:0]const u8) OpenError!void {}
+    pub fn close(_: *const @This()) void {}
+    pub fn shouldClose(_: *const @This()) bool {
         return false;
     }
-    pub fn requestClose(_: *anyopaque) void {}
-    pub fn pollEvents(_: *anyopaque) void {}
-    pub fn waitEvents(_: *anyopaque) void {}
-    pub fn framebufferSize(_: *const anyopaque, _: *i32, _: *i32) void {}
+    pub fn requestClose(_: *@This()) void {}
+    pub fn pollEvents(_: *@This()) void {}
+    pub fn waitEvents(_: *@This()) void {}
     pub fn requiredVulkanInstanceExtensions() error{VulkanApiUnavailable}![]const [*:0]const u8 {
         return &.{};
     }
-    pub fn createVulkanSurface(_: *const anyopaque, _: vk.Instance) CreateVulkanSurfaceError!vk.SurfaceKHR {
+    pub fn createVulkanSurface(_: *const @This(), _: vk.Instance) CreateVulkanSurfaceError!vk.SurfaceKHR {
         return null;
     }
+    pub fn framebufferSize(_: *const @This(), _: *i32, _: *i32) void {}
 };
