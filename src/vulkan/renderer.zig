@@ -10,6 +10,8 @@ const vk = @import("vulkan");
 const vke = vk.extensions;
 const vkl = vk.loader;
 
+const DTimer = @import("debug_timer").Timer;
+
 const vlog = std.log.scoped(.vulkan);
 const dlog = vlog.debug;
 const elog = vlog.err;
@@ -140,23 +142,20 @@ pub fn deinit(this: *const @This()) void {
 }
 
 fn createInstance(window: *const Window) !vk.Instance {
+    var create_instance_timer = DTimer.start("create_instance");
+
+    var enumerate_extension_props_timer = DTimer.start("enumerate_extension_props");
+    enumerate_extension_props_timer.reset();
     var extension_count: u32 = undefined;
     _ = vk.enumerateInstanceExtensionProperties(null, &extension_count, null);
     dlog("{} Vulkan extensions supported", .{extension_count});
+    enumerate_extension_props_timer.lap();
 
     const extension_props = try alloc.gpa.alloc(vk.ExtensionProperties, extension_count);
     defer alloc.gpa.free(extension_props);
     _ = vk.enumerateInstanceExtensionProperties(null, &extension_count, extension_props.ptr);
     // for (extension_props) |p| dlog("supported extension: '{s}'", .{@as([*:0]const u8, @ptrCast(&p.extensionName))});
-
-    const app_info = vk.ApplicationInfo{
-        .sType = .APPLICATION_INFO,
-        .pApplicationName = "Vulkan app",
-        .applicationVersion = vk.MAKE_VERSION(1, 0, 0),
-        .pEngineName = "Vulkan engine",
-        .engineVersion = vk.MAKE_VERSION(1, 0, 0),
-        .apiVersion = vk.API_VERSION_1_0,
-    };
+    enumerate_extension_props_timer.lap();
 
     const window_required_extensions = try window.requiredVulkanInstanceExtensions();
 
@@ -166,6 +165,8 @@ fn createInstance(window: *const Window) !vk.Instance {
     defer required_instance_extensions.deinit();
     required_instance_extensions.appendSliceAssumeCapacity(window_required_extensions);
     required_instance_extensions.appendSliceAssumeCapacity(instance_extensions);
+
+    var req_inst_ext_timer = DTimer.start("req_inst_ext");
 
     for (required_instance_extensions.items) |required| {
         var found = false;
@@ -187,6 +188,8 @@ fn createInstance(window: *const Window) !vk.Instance {
         }
     }
 
+    req_inst_ext_timer.lap();
+
     var available_layers: []const vk.LayerProperties = undefined;
 
     if (debug) {
@@ -201,6 +204,8 @@ fn createInstance(window: *const Window) !vk.Instance {
         // for (available_layers) |l| dlog("available layer '{s}'", .{@as([*:0]const u8, @ptrCast(&l.layerName))});
     }
     defer if (debug) alloc.gpa.free(available_layers);
+
+    var validation_layers_timer = DTimer.start("Validation_layers");
 
     for (validation_layers) |rl| {
         var found = false;
@@ -221,6 +226,17 @@ fn createInstance(window: *const Window) !vk.Instance {
             return error.Missing_Required_Layer;
         }
     }
+
+    validation_layers_timer.lap();
+
+    const app_info = vk.ApplicationInfo{
+        .sType = .APPLICATION_INFO,
+        .pApplicationName = "Vulkan app",
+        .applicationVersion = vk.MAKE_VERSION(1, 0, 0),
+        .pEngineName = "Vulkan engine",
+        .engineVersion = vk.MAKE_VERSION(1, 0, 0),
+        .apiVersion = vk.API_VERSION_1_0,
+    };
 
     const debug_messenger_create_info = vk.DebugUtilsMessengerCreateInfoEXT{
         .sType = .DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
@@ -254,6 +270,7 @@ fn createInstance(window: *const Window) !vk.Instance {
 
     vk.loader.load(instance, required_instance_extensions.items);
 
+    create_instance_timer.lap();
     return instance;
 }
 
