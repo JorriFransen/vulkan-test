@@ -162,8 +162,8 @@ pub fn framebufferSize(ptr: *const anyopaque, width: *i32, height: *i32) void {
     assert(rect.left == 0);
     assert(rect.top == 0);
 
-    width.* = rect.right;
-    height.* = rect.bottom;
+    width.* = @intCast(rect.right);
+    height.* = @intCast(rect.bottom);
 }
 
 pub fn requiredVulkanInstanceExtensions() ![]const [*:0]const u8 {

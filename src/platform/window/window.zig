@@ -15,7 +15,7 @@ pub const dlog = log.debug;
 pub const elog = log.err;
 pub const ilog = log.info;
 
-pub const Win32Window = @import("win32_window.zig");
+pub const Win32Window = if (builtin.os.tag == .windows) @import("win32_window.zig") else Stub;
 pub const GlfwWindow = if (options.glfw_support) @import("glfw_window.zig") else Stub;
 
 pub const FrameBufferResizeCallback = Callback(&.{ *@This(), c_int, c_int });
