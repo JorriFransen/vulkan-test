@@ -45,7 +45,7 @@ pub fn vMain() !u8 {
 
     cmd_line_options = flags.parseOrExit(&args, "vulkan-test", CmdLineOptions, .{});
 
-    var window = platform.Window.init(.default);
+    var window = try Window.init(.default);
 
     try window.initSystem();
     defer window.deinitSystem();

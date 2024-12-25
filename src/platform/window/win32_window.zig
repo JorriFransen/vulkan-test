@@ -37,12 +37,17 @@ close_requested: bool = false,
 title: [MAX_TITLE]u16 = std.mem.zeroes([MAX_TITLE]u16),
 new_fb_size: ?win32.POINT = null,
 
+pub fn open(ptr: *anyopaque, title: [:0]const u8) Window.OpenError!void {
+    const impl: *@This() = @ptrCast(@alignCast(ptr));
+    return try impl.init(title);
+}
 pub fn init(this: *@This(), title_utf8: [:0]const u8) !void {
     var instance: win32.HINSTANCE = undefined;
     if (win32.GetModuleHandleW(null)) |i_handle| {
         instance = @ptrCast(i_handle);
     } else {
-        return error.GetModuleHandle_Failed;
+        elog("GetModuleHandleW failed!", .{});
+        return error.NativeCreateFailed;
     }
 
     const window_class = win32.WNDCLASSEXW{
@@ -57,19 +62,19 @@ pub fn init(this: *@This(), title_utf8: [:0]const u8) !void {
     };
 
     if (win32.RegisterClassExW(&window_class) == 0) {
-        try win32.report_error();
+        win32.report_error() catch return error.NativeCreateFailed;
     }
 
     var title: [MAX_TITLE]u16 = std.mem.zeroes([MAX_TITLE]u16);
     if (try std.unicode.checkUtf8ToUtf16LeOverflow(title_utf8, &title)) {
         elog("Title too long!", .{});
-        return error.Title_Too_Long;
+        return error.TitleTooLong;
     }
 
     const title_len = try std.unicode.utf8ToUtf16Le(&title, title_utf8);
     if (title_len >= MAX_TITLE) {
         elog("Title too long!", .{});
-        return error.Title_Too_Long;
+        return error.TitleTooLong;
     }
     title[title_len] = 0;
 
@@ -77,9 +82,12 @@ pub fn init(this: *@This(), title_utf8: [:0]const u8) !void {
 
     var handle: win32.HWND = undefined;
     const handle_opt = win32.CreateWindowExW(.{}, window_class.lpszClassName, @ptrCast(&title), style, win32.CW_USEDEFAULT, win32.CW_USEDEFAULT, win32.CW_USEDEFAULT, win32.CW_USEDEFAULT, null, null, instance, null);
+
     if (handle_opt) |h| {
         handle = h;
-    } else try win32.report_error();
+    } else {
+        win32.report_error() catch return error.NativeCreateFailed;
+    }
 
     this.* = .{
         .handle = handle,
@@ -93,52 +101,66 @@ pub fn init(this: *@This(), title_utf8: [:0]const u8) !void {
     // _ = win32.ShowWindow(window_handle, @bitCast(cmd_show));
     _ = win32.ShowWindow(handle, .{ .SHOWNORMAL = 1 });
 
-    this.pollEvents();
+    // this.pollEvents();
+    pollEvents(this);
 }
 
-pub fn shouldClose(this: *const @This()) bool {
-    return this.close_requested;
+pub fn shouldClose(ptr: *const anyopaque) bool {
+    const impl: *const @This() = @ptrCast(@alignCast(ptr));
+    return impl.close_requested;
 }
 
-pub fn requestClose(this: *@This()) void {
-    this.close_requested = true;
+pub fn requestClose(ptr: *anyopaque) void {
+    const impl: *@This() = @ptrCast(@alignCast(ptr));
+    impl.close_requested = true;
     win32.PostQuitMessage(0);
 }
 
-pub fn pollEvents(this: *@This()) void {
+pub fn pollEvents(ptr: *anyopaque) void {
+    const impl: *@This() = @ptrCast(@alignCast(ptr));
+
     var msg: win32.MSG = undefined;
 
-    while (win32.PeekMessageW(&msg, this.handle, 0, 0, .{ .REMOVE = 1 }) == win32.TRUE) {
+    while (win32.PeekMessageW(&msg, impl.handle, 0, 0, .{ .REMOVE = 1 }) == win32.TRUE) {
         _ = win32.TranslateMessage(&msg);
         _ = win32.DispatchMessageW(&msg);
 
         if (msg.message == win32.WM_QUIT) {
-            this.close_requested = true;
+            impl.close_requested = true;
             break;
         }
     }
 
-    if (this.new_fb_size) |s| {
-        const window: *Window = @fieldParentPtr("impl", this);
-        if (window.framebuffer_resize_callback) |cb| {
-            cb.fun(window, s.x, s.y, cb.user_data);
+    if (impl.new_fb_size) |s| {
+        const impl_ptr: *Window.Impl = @fieldParentPtr("win32_window", impl);
+        assert(@as(*@This(), @ptrCast(impl_ptr)) == impl);
+        const this: *Window = @fieldParentPtr("impl", impl_ptr);
+        if (this.framebuffer_resize_callback) |cb| {
+            cb.fun(this, s.x, s.y, cb.user_data);
         }
-        this.new_fb_size = null;
+        impl.new_fb_size = null;
     }
 }
 
-pub fn waitEvents(this: *@This()) void {
+pub fn waitEvents(ptr: *anyopaque) void {
+    const impl: *@This() = @ptrCast(@alignCast(ptr));
     _ = win32.WaitMessage();
-    this.pollEvents();
+    pollEvents(impl);
 }
 
-pub fn deinit(this: *@This()) void {
+pub fn close(ptr: *const anyopaque) void {
+    const impl: *const @This() = @ptrCast(@alignCast(ptr));
+    impl.deinit();
+}
+pub fn deinit(this: *const @This()) void {
     _ = win32.DestroyWindow(this.handle);
 }
 
-pub fn frameBufferSize(this: *const @This(), width: *i32, height: *i32) void {
+pub fn framebufferSize(ptr: *const anyopaque, width: *i32, height: *i32) void {
+    const impl: *const @This() = @ptrCast(@alignCast(ptr));
+
     var rect: win32.RECT = undefined;
-    const res = win32.GetClientRect(this.handle, &rect);
+    const res = win32.GetClientRect(impl.handle, &rect);
     assert(res == win32.TRUE);
 
     assert(rect.left == 0);
@@ -155,12 +177,14 @@ pub fn requiredVulkanInstanceExtensions() ![]const [*:0]const u8 {
     };
 }
 
-pub fn createVulkanSurface(this: *const @This(), instance: vk.Instance) !vk.SurfaceKHR {
+pub fn createVulkanSurface(ptr: *const anyopaque, instance: vk.Instance) !vk.SurfaceKHR {
+    const impl: *const @This() = @ptrCast(@alignCast(ptr));
+
     var surface: vk.SurfaceKHR = undefined;
 
     const create_info = vk.Win32SurfaceCreateInfoKHR{
         .sType = .WIN32_SURFACE_CREATE_INFO_KHR,
-        .hwnd = @ptrCast(this.handle),
+        .hwnd = @ptrCast(impl.handle),
         .hinstance = @ptrCast(win32.GetModuleHandleW(null)),
     };
 
@@ -218,7 +242,9 @@ fn windowProc(_hwnd: win32.HWND, uMsg: u32, wParam: win32.WPARAM, lParam: win32.
     }
 
     const impl: *@This() = @ptrFromInt(data_int);
-    const window: *Window = @fieldParentPtr("impl", impl);
+    const impl_ptr: *Window.Impl = @fieldParentPtr("win32_window", impl);
+    assert(@as(*@This(), @ptrCast(impl_ptr)) == impl);
+    const this: *Window = @fieldParentPtr("impl", impl_ptr);
 
     switch (uMsg) {
         win32.WM_SIZE => {
@@ -232,23 +258,23 @@ fn windowProc(_hwnd: win32.HWND, uMsg: u32, wParam: win32.WPARAM, lParam: win32.
         },
 
         win32.WM_KEYDOWN => {
-            if (window.key_callback) |cb| {
+            if (this.key_callback) |cb| {
                 const flags: KeyLParam = @bitCast(@as(u32, @intCast(lParam)));
 
                 const action: platform.KeyAction = if (flags.previous_state == 0) .press else .repeat;
                 const key = if (wParam < 255) virtualKeyToPlatformKey(@enumFromInt(wParam), flags) else .unknown;
 
-                cb.fun(window, key, action, flags.scan_code, cb.user_data);
+                cb.fun(this, key, action, flags.scan_code, cb.user_data);
             }
             return 0;
         },
 
         win32.WM_KEYUP => {
-            if (window.key_callback) |cb| {
+            if (this.key_callback) |cb| {
                 const flags: KeyLParam = @bitCast(@as(u32, @intCast(lParam)));
                 const key = if (wParam < 255) virtualKeyToPlatformKey(@enumFromInt(wParam), flags) else .unknown;
 
-                cb.fun(window, key, .release, flags.scan_code, cb.user_data);
+                cb.fun(this, key, .release, flags.scan_code, cb.user_data);
             }
             return 0;
         },

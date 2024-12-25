@@ -16,7 +16,8 @@ pub const FrameBufferResizeCallback = Callback(&.{ *@This(), c_int, c_int });
 pub const KeyCallback = Callback(&.{ *@This(), Key, KeyAction, c_int });
 
 pub const InitSystemError = error{ InvalidGLFWWindowApi, nativeInitFailed };
-pub const OpenError = error{NativeCreateFailed};
+pub const InitError = error{ApiUnavailable};
+pub const OpenError = error{ NativeCreateFailed, InvalidUtf8, TitleTooLong };
 pub const CreateVulkanSurfaceError = error{NativeCreateSurfaceFailed};
 
 pub const Impl = union {
@@ -31,7 +32,7 @@ key_callback: ?KeyCallback = null,
 
 initSystemFn: *const fn () InitSystemError!void,
 deinitSystemFn: *const fn () void,
-openFn: *const fn (*anyopaque, [*:0]const u8) OpenError!void,
+openFn: *const fn (*anyopaque, [:0]const u8) OpenError!void,
 closeFn: *const fn (*const anyopaque) void,
 shouldCloseFn: *const fn (*const anyopaque) bool,
 requestCloseFn: *const fn (*anyopaque) void,
@@ -41,7 +42,7 @@ requiredVulkanInstanceExtensionsFn: *const fn () error{VulkanApiUnavailable}![]c
 createVulkanSurfaceFn: *const fn (*const anyopaque, vk.Instance) CreateVulkanSurfaceError!vk.SurfaceKHR,
 framebufferSizeFn: *const fn (*const anyopaque, *i32, *i32) void,
 
-pub fn init(api_or_default: Api) @This() {
+pub fn init(api_or_default: Api) InitError!@This() {
     const api = if (api_or_default == .default)
         if (builtin.os.tag == .windows) .win32 else .glfw
     else
@@ -49,8 +50,9 @@ pub fn init(api_or_default: Api) @This() {
 
     return switch (api) {
         .default => unreachable,
-        .win32 => unreachable,
-        .glfw => initT(GlfwWindow, .{ .glfw_window = .{} }),
+        .win32 => initT(Win32Window, .{ .win32_window = .{} }),
+        // .glfw => initT(GlfwWindow, .{ .glfw_window = .{} }),
+        .glfw => unreachable,
     };
 }
 
@@ -79,7 +81,7 @@ pub fn deinitSystem(this: @This()) void {
     this.deinitSystemFn();
 }
 
-pub fn open(this: *@This(), title: [*:0]const u8) OpenError!void {
+pub fn open(this: *@This(), title: [:0]const u8) OpenError!void {
     try this.openFn(&this.impl, title);
 }
 

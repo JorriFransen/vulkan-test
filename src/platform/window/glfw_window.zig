@@ -68,7 +68,7 @@ pub fn deinitSystem() void {
 handle: ?*glfw.GLFWwindow = null,
 new_fb_size: ?struct { c_int, c_int } = null,
 
-pub fn open(ptr: *anyopaque, title: [*:0]const u8) Window.OpenError!void {
+pub fn open(ptr: *anyopaque, title: [:0]const u8) Window.OpenError!void {
     const impl: *@This() = @ptrCast(@alignCast(ptr));
     const impl_ptr: *Window.Impl = @fieldParentPtr("glfw_window", impl);
     assert(@as(*@This(), @ptrCast(impl_ptr)) == impl);
