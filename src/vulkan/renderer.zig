@@ -23,6 +23,7 @@ const is_mac = builtin.target.os.tag == .macos;
 const Renderer = @This();
 
 const MAX_FRAMES_IN_FLIGHT = 2;
+const MAX_SWAPCHAIN_IMAGES = 8;
 
 const Window = @import("root").Window;
 
@@ -35,22 +36,27 @@ graphics_que: vk.Queue = null,
 present_que: vk.Queue = null,
 
 swapchain: vk.SwapchainKHR = null,
-images: []vk.Image = undefined,
-image_views: []vk.ImageView = undefined,
 swapchain_extent: vk.Extent2D = undefined,
-framebuffers: []vk.Framebuffer = undefined,
+image_count: usize = 0,
 framebuffer_resized: bool = false,
 
 render_pass: vk.RenderPass = null,
 pipeline_layout: vk.PipelineLayout = null,
 graphics_pipeline: vk.Pipeline = null,
 command_pool: vk.CommandPool = null,
+current_frame: u32 = 0,
+debug_messenger: vk.DebugUtilsMessengerEXT = null,
+
+// swapchain
+images: [MAX_SWAPCHAIN_IMAGES]vk.Image = undefined,
+image_views: [MAX_SWAPCHAIN_IMAGES]vk.ImageView = undefined,
+framebuffers: [MAX_SWAPCHAIN_IMAGES]vk.Framebuffer = undefined,
+
+// presentation
 command_buffers: [MAX_FRAMES_IN_FLIGHT]vk.CommandBuffer = undefined,
 image_available_semaphores: [MAX_FRAMES_IN_FLIGHT]vk.Semaphore = undefined,
 render_finished_semaphores: [MAX_FRAMES_IN_FLIGHT]vk.Semaphore = undefined,
 in_flight_fences: [MAX_FRAMES_IN_FLIGHT]vk.Fence = undefined,
-current_frame: u32 = 0,
-debug_messenger: vk.DebugUtilsMessengerEXT = null,
 
 const PDevInfo = struct {
     score: u32,
@@ -578,13 +584,8 @@ pub fn recreateSwapchain(this: *@This()) !void {
 }
 
 pub fn cleanupSwapchain(this: *const @This()) void {
-    for (this.framebuffers) |fb| vk.destroyFramebuffer(this.device, fb, null);
-    alloc.gpa.free(this.framebuffers);
-
-    for (this.image_views) |v| vk.destroyImageView(this.device, v, null);
-    alloc.gpa.free(this.image_views);
-
-    alloc.gpa.free(this.images);
+    for (0..this.image_count) |i| vk.destroyFramebuffer(this.device, this.framebuffers[i], null);
+    for (0..this.image_count) |i| vk.destroyImageView(this.device, this.image_views[i], null);
 
     vk.destroySwapchainKHR(this.device, this.swapchain, null);
 }
@@ -640,20 +641,19 @@ pub fn createSwapchain(this: *@This()) !void {
         return error.Get_Swapchain_Images_Failed;
     }
 
-    this.images = try alloc.gpa.alloc(vk.Image, image_count);
-    if (vk.getSwapchainImagesKHR(this.device, this.swapchain, &image_count, this.images.ptr) != .SUCCESS) {
+    assert(image_count <= MAX_SWAPCHAIN_IMAGES);
+    this.image_count = image_count;
+
+    if (vk.getSwapchainImagesKHR(this.device, this.swapchain, &image_count, &this.images) != .SUCCESS) {
         return error.Get_Swapchain_Images_Failed;
     }
-    assert(image_count == this.images.len);
 }
 
 fn createImageViews(this: *@This()) !void {
-    this.image_views = try alloc.gpa.alloc(vk.ImageView, this.images.len);
-
-    for (this.images, this.image_views) |image, *view| {
+    for (0..this.image_count) |i| {
         const view_create_info = vk.ImageViewCreateInfo{
             .sType = .IMAGE_VIEW_CREATE_INFO,
-            .image = image,
+            .image = this.images[i],
             .viewType = .@"2D",
             .format = this.device_info.swapchain_info.surface_format.format,
             .components = .{ .r = .IDENTITY, .g = .IDENTITY, .b = .IDENTITY, .a = .IDENTITY },
@@ -666,7 +666,7 @@ fn createImageViews(this: *@This()) !void {
             },
         };
 
-        if (vk.createImageView(this.device, &view_create_info, null, view) != .SUCCESS) {
+        if (vk.createImageView(this.device, &view_create_info, null, &this.image_views[i]) != .SUCCESS) {
             return error.Create_Image_View_Failed;
         }
     }
@@ -854,10 +854,8 @@ fn createGraphicsPipeline(this: *@This()) !void {
 }
 
 fn createFrameBuffers(this: *@This()) !void {
-    this.framebuffers = try alloc.gpa.alloc(vk.Framebuffer, this.image_views.len);
-
-    for (this.image_views, this.framebuffers) |iv, *fb| {
-        const attachments = [_]vk.ImageView{iv};
+    for (0..this.image_count) |i| {
+        const attachments = [_]vk.ImageView{this.image_views[i]};
         const framebuffer_create_info = vk.FramebufferCreateInfo{
             .sType = .FRAMEBUFFER_CREATE_INFO,
             .renderPass = this.render_pass,
@@ -868,7 +866,7 @@ fn createFrameBuffers(this: *@This()) !void {
             .layers = 1,
         };
 
-        if (vk.createFramebuffer(this.device, &framebuffer_create_info, null, fb) != .SUCCESS) {
+        if (vk.createFramebuffer(this.device, &framebuffer_create_info, null, &this.framebuffers[i]) != .SUCCESS) {
             return error.CreateFramebufferFailed;
         }
     }
