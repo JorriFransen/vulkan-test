@@ -21,7 +21,7 @@ pub fn build(b: *std.Build) !void {
     const window_verbose = b.option(std.log.Level, "window-log", "Set window log level") orelse .info;
     const vulkan_verbose = b.option(std.log.Level, "vulkan-log", "Set vulkan log level") orelse .info;
     const timing = b.option(bool, "timing", "Enable timing reports") orelse false;
-    const glfw_support = target.result.os.tag != .windows;
+    const glfw_support = b.option(bool, "glfw_support", "Compile with glfw support") orelse (target.result.os.tag != .windows);
 
     const options = b.addOptions();
     options.addOption(std.log.Level, "log_level", log_level);
@@ -47,7 +47,6 @@ pub fn build(b: *std.Build) !void {
     const exe_install_artifact = b.addInstallArtifact(exe, .{});
     b.getInstallStep().dependOn(&exe_install_artifact.step);
 
-    if (glfw_support) exe.linkSystemLibrary2("glfw", .{ .preferred_link_mode = .static });
     if (target.result.os.tag == .linux) {
         exe.linkSystemLibrary("X11");
         exe.linkSystemLibrary("X11-xcb");
@@ -76,6 +75,11 @@ pub fn build(b: *std.Build) !void {
     vulkan_mod.addImport("platform", platform_mod);
     vulkan_mod.addImport("shaders", shaders_mod);
     vulkan_mod.addImport("debug_timer", debug_timer_mod);
+
+    if (glfw_support) {
+        const glfw_dep = b.dependency("mach-glfw", .{ .target = target, .optimize = optimize });
+        platform_mod.addImport("mach-glfw", glfw_dep.module("mach-glfw"));
+    }
 
     platform_mod.addIncludePath(vulkan_info.include_path);
     platform_mod.addImport("callback", callback_mod);

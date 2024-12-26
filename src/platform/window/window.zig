@@ -18,7 +18,7 @@ pub const ilog = log.info;
 pub const Win32Window = if (builtin.os.tag == .windows) @import("win32_window.zig") else Stub;
 pub const GlfwWindow = if (options.glfw_support) @import("glfw_window.zig") else Stub;
 
-pub const FrameBufferResizeCallback = Callback(&.{ *@This(), c_int, c_int });
+pub const FrameBufferResizeCallback = Callback(&.{ *@This(), i32, i32 });
 pub const KeyCallback = Callback(&.{ *@This(), Key, KeyAction, c_int });
 
 pub const InitSystemError = error{ InvalidGLFWWindowApi, nativeInitFailed };

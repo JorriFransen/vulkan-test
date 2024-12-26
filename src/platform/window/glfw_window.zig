@@ -15,8 +15,8 @@ const dlog = Window.dlog;
 const elog = Window.elog;
 
 pub fn initSystem() Window.InitSystemError!void {
-    const wayland_support = glfw.glfwPlatformSupported(.WAYLAND) == glfw.TRUE;
-    const x11_support = glfw.glfwPlatformSupported(.X11) == glfw.TRUE;
+    const wayland_support = glfw.platformSupported(.wayland);
+    const x11_support = glfw.platformSupported(.x11);
 
     dlog("glfw wayland support: {}", .{wayland_support});
     dlog("glfw x11 support: {}", .{x11_support});
@@ -36,88 +36,78 @@ pub fn initSystem() Window.InitSystemError!void {
         .x11 => assert(x11_support),
     }
 
-    const glfw_platform = switch (glfw_api) {
+    const glfw_platform: glfw.PlatformType = switch (glfw_api) {
         else => {
             @panic("Expected .wayland or .x11 at this point!");
         },
-        .win32 => glfw.Platform.WIN32,
-        .wayland => glfw.Platform.WAYLAND,
+        .win32 => .win32,
+        .wayland => .wayland,
         // .wayland => glfw.Platform.X11,
-        .x11 => glfw.Platform.X11,
+        .x11 => .x11,
     };
 
-    glfw.glfwInitHint(glfw.PLATFORM, @intFromEnum(glfw_platform));
-
-    if (glfw.glfwInit() == 0) {
+    if (!glfw.init(.{ .platform = glfw_platform })) {
         elog("glfwInit() failed...", .{});
 
-        var cstr: [*:0]const u8 = undefined;
-        const code = glfw.glfwGetError(&cstr);
-        elog("glfw err: {}: {s}", .{ code, cstr });
+        if (glfw.getError()) |err| {
+            elog("glfw err: {}: {s}", .{ err.error_code, err.description });
+        }
 
         return error.nativeInitFailed;
     }
 }
 
 pub fn deinitSystem() void {
-    glfw.glfwTerminate();
+    glfw.terminate();
 }
 
-handle: ?*glfw.GLFWwindow = null,
-new_fb_size: ?struct { c_int, c_int } = null,
+handle: glfw.Window = undefined,
+new_fb_size: ?struct { i32, i32 } = null,
 
 pub fn open(this: *@This(), title: [:0]const u8) Window.OpenError!void {
-    glfw.glfwWindowHint(glfw.CLIENT_API, glfw.NO_API);
-
-    glfw.glfwWindowHintString(glfw.WAYLAND_APP_ID, "my_app_id");
-
-    var handle: *glfw.GLFWwindow = undefined;
-
-    if (glfw.glfwCreateWindow(800, 600, title, null, null)) |h| {
-        handle = h;
+    var w: glfw.Window = undefined;
+    if (glfw.Window.create(800, 600, title, null, null, .{
+        .client_api = .no_api,
+        .wayland_app_id = "my_app_id",
+    })) |window| {
+        w = window;
     } else {
-        var cstr: [*:0]const u8 = undefined;
-        const code = glfw.glfwGetError(&cstr);
-        elog("glfw err: {}: {s}", .{ code, cstr });
+        if (glfw.getError()) |err| {
+            elog("glfw err: {}: {s}", .{ err.error_code, err.description });
+        }
         return error.NativeCreateFailed;
     }
 
-    dlog("created glfw window", .{});
+    w.setKeyCallback(keyCallback);
+    w.setFramebufferSizeCallback(framebufferResizeCallback);
 
-    const glfw_platform = glfw.glfwGetPlatform();
-    dlog("glfw platform: {}", .{glfw_platform});
-
-    _ = glfw.glfwSetKeyCallback(handle, keyCallback);
-    _ = glfw.glfwSetFramebufferSizeCallback(handle, framebufferResizeCallback);
-
-    glfw.glfwSetWindowUserPointer(handle, this);
+    w.setUserPointer(this);
 
     this.* = .{
-        .handle = handle,
+        .handle = w,
         .new_fb_size = null,
     };
 }
 
 pub fn close(this: *const @This()) void {
-    glfw.glfwDestroyWindow(this.handle);
+    this.handle.destroy();
 }
 
 pub fn shouldClose(this: *const @This()) bool {
-    const res = glfw.glfwWindowShouldClose(this.handle);
-    return res != 0;
+    return this.handle.shouldClose();
 }
 
 pub fn requestClose(this: *@This()) void {
-    glfw.glfwSetWindowShouldClose(this.handle, 1);
+    this.handle.setShouldClose(true);
 }
 
 pub fn pollEvents(this: *@This()) void {
-    glfw.glfwPollEvents();
+    glfw.pollEvents();
     this.handleEvents();
 }
 
 pub fn waitEvents(this: *@This()) void {
-    glfw.glfwWaitEvents();
+    glfw.waitEvents();
     this.handleEvents();
 }
 
@@ -135,19 +125,22 @@ fn handleEvents(this: *@This()) void {
 }
 
 pub fn framebufferSize(this: *const @This(), width: *i32, height: *i32) void {
-    glfw.glfwGetFramebufferSize(this.handle, width, height);
+    const size = this.handle.getFramebufferSize();
+    width.* = @intCast(size.width);
+    height.* = @intCast(size.height);
 }
 
 pub fn requiredVulkanInstanceExtensions() error{VulkanApiUnavailable}![]const [*:0]const u8 {
-    assert(glfw.glfwVulkanSupported() == 1);
-    var count: u32 = undefined;
-    const ext = glfw.glfwGetRequiredInstanceExtensions(&count) orelse return error.VulkanApiUnavailable;
-    return @as([]const [*:0]const u8, @ptrCast(ext[0..count]));
+    assert(glfw.vulkanSupported());
+    if (glfw.getRequiredInstanceExtensions()) |ext| return ext;
+    return error.VulkanApiUnavailable;
+    // const ext = glfw.getRequiredInstanceExtensions(&count) orelse return error.VulkanApiUnavailable;
+    // return @as([]const [*:0]const u8, @ptrCast(ext[0..count]));
 }
 
 pub fn createVulkanSurface(this: *const @This(), instance: vk.Instance) Window.CreateVulkanSurfaceError!vk.SurfaceKHR {
     var surface: vk.SurfaceKHR = undefined;
-    if (glfw.glfwCreateWindowSurface(instance, this.handle, null, &surface) != .SUCCESS) {
+    if (glfw.createWindowSurface(instance, this.handle, null, &surface) != @intFromEnum(vk.Result.SUCCESS)) {
         elog("glfwCreateWindowSurface failed!", .{});
         return error.NativeCreateSurfaceFailed;
     }
@@ -189,7 +182,7 @@ pub fn createVulkanSurface(this: *const @This(), instance: vk.Instance) Window.C
     // return surface;
 }
 
-fn keyCallback(gwindow: ?*glfw.GLFWwindow, gkey: glfw.Key, scancode: c_int, gaction: glfw.Action, mods: c_int) callconv(.C) void {
+fn keyCallback(gwindow: glfw.Window, gkey: glfw.Key, scancode: i32, gaction: glfw.Action, mods: glfw.Mods) void {
     _ = mods;
 
     const action: platform.KeyAction = switch (gaction) {
@@ -198,18 +191,18 @@ fn keyCallback(gwindow: ?*glfw.GLFWwindow, gkey: glfw.Key, scancode: c_int, gact
         .repeat => .repeat,
     };
 
-    const impl: *@This() = @alignCast(@ptrCast(glfw.glfwGetWindowUserPointer(gwindow)));
-    assert(gwindow == impl.handle);
+    const impl = gwindow.getUserPointer(@This()).?;
+    assert(gwindow.handle == impl.handle.handle);
     const impl_ptr: *Window.Impl = @fieldParentPtr("glfw_window", impl);
     assert(@as(*@This(), @ptrCast(impl_ptr)) == impl);
     const this: *Window = @fieldParentPtr("impl", impl_ptr);
 
-    if (this.key_callback) |cb| cb.fun(this, gkey, action, scancode, cb.user_data);
+    if (this.key_callback) |cb| cb.fun(this, @enumFromInt(@intFromEnum(gkey)), action, scancode, cb.user_data);
 }
 
-fn framebufferResizeCallback(gwindow: ?*glfw.GLFWwindow, width: c_int, height: c_int) callconv(.C) void {
-    const this: *@This() = @alignCast(@ptrCast(glfw.glfwGetWindowUserPointer(gwindow)));
-    assert(gwindow == this.handle);
+fn framebufferResizeCallback(gwindow: glfw.Window, width: u32, height: u32) void {
+    const this = gwindow.getUserPointer(@This()).?;
+    assert(gwindow.handle == this.handle.handle);
 
-    this.new_fb_size = .{ width, height };
+    this.new_fb_size = .{ @intCast(width), @intCast(height) };
 }

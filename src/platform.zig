@@ -1,5 +1,5 @@
 pub const windows = @import("platform/windows/windows.zig");
-pub const glfw = @import("platform/glfw.zig");
+pub const glfw = @import("mach-glfw");
 pub const x = @import("platform/x.zig");
 
 pub const Window = @import("platform/window/window.zig");
