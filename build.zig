@@ -21,7 +21,8 @@ pub fn build(b: *std.Build) !void {
     const window_verbose = b.option(std.log.Level, "window-log", "Set window log level") orelse .info;
     const vulkan_verbose = b.option(std.log.Level, "vulkan-log", "Set vulkan log level") orelse .info;
     const timing = b.option(bool, "timing", "Enable timing reports") orelse false;
-    const glfw_support = target.result.os.tag != .windows;
+    const glfw_system = target.result.os.tag != .windows;
+    const glfw_support = b.option(bool, "glfw-support", "Build with glfw suport") orelse glfw_system;
 
     const options = b.addOptions();
     options.addOption(std.log.Level, "log_level", log_level);
@@ -47,7 +48,13 @@ pub fn build(b: *std.Build) !void {
     const exe_install_artifact = b.addInstallArtifact(exe, .{});
     b.getInstallStep().dependOn(&exe_install_artifact.step);
 
-    if (glfw_support) exe.linkSystemLibrary2("glfw", .{ .preferred_link_mode = .static });
+    // Can't get wayland to work on nixos when building ourselves
+    if (glfw_support) {
+        if (glfw_system) {
+            exe.linkSystemLibrary2("glfw", .{ .preferred_link_mode = .static });
+        } else unreachable;
+    }
+
     if (target.result.os.tag == .linux) {
         exe.linkSystemLibrary("X11");
         exe.linkSystemLibrary("X11-xcb");
