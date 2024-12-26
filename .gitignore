@@ -2,3 +2,6 @@
 /.nvim.lua
 /.zig-cache
 /zig-out
+/.vs
+
+/*.sln

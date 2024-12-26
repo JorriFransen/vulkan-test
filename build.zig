@@ -52,7 +52,11 @@ pub fn build(b: *std.Build) !void {
     if (glfw_support) {
         if (glfw_system) {
             exe.linkSystemLibrary2("glfw", .{ .preferred_link_mode = .static });
-        } else unreachable;
+        } else {
+            const glfw_dep = b.dependency("glfw", .{ .target = target, .optimize = optimize });
+            const glfw_lib = glfw_dep.artifact("glfw");
+            exe.linkLibrary(glfw_lib);
+        }
     }
 
     if (target.result.os.tag == .linux) {

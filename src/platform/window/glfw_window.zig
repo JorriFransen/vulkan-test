@@ -17,23 +17,26 @@ const elog = Window.elog;
 pub fn initSystem() Window.InitSystemError!void {
     const wayland_support = glfw.glfwPlatformSupported(.WAYLAND) == glfw.TRUE;
     const x11_support = glfw.glfwPlatformSupported(.X11) == glfw.TRUE;
-
-    dlog("glfw wayland support: {}", .{wayland_support});
-    dlog("glfw x11 support: {}", .{x11_support});
+    const win32_support = glfw.glfwPlatformSupported(.WIN32) == glfw.TRUE;
 
     var glfw_api = root.cmd_line_options.glfw_window_api;
-    switch (glfw_api) {
-        .default => {
-            if (wayland_support) {
-                glfw_api = .wayland;
-            } else glfw_api = .x11;
-        },
-        .win32 => {
-            elog("Invalid glfw window api: {s}", .{@tagName(glfw_api)});
-            return error.InvalidGLFWWindowApi;
-        },
-        .wayland => assert(wayland_support),
-        .x11 => assert(x11_support),
+    if (glfw_api == .default) {
+        if (builtin.os.tag == .windows) {
+            glfw_api = .win32;
+        } else if (wayland_support) {
+            glfw_api = .wayland;
+        } else glfw_api = .x11;
+    }
+    const supported = switch (glfw_api) {
+        .default => unreachable,
+        .win32 => win32_support,
+        .wayland => wayland_support,
+        .x11 => x11_support,
+    };
+
+    if (!supported) {
+        elog("Invalid glfw window api: {s}", .{@tagName(glfw_api)});
+        return error.InvalidGLFWWindowApi;
     }
 
     const glfw_platform = switch (glfw_api) {
@@ -47,6 +50,7 @@ pub fn initSystem() Window.InitSystemError!void {
     };
 
     glfw.glfwInitHint(glfw.PLATFORM, @intFromEnum(glfw_platform));
+    dlog("using glfw platform: {s}", .{@tagName(glfw_platform)});
 
     if (glfw.glfwInit() == 0) {
         elog("glfwInit() failed...", .{});
@@ -81,8 +85,6 @@ pub fn open(this: *@This(), title: [:0]const u8) Window.OpenError!void {
         elog("glfw err: {}: {s}", .{ code, cstr });
         return error.NativeCreateFailed;
     }
-
-    dlog("created glfw window", .{});
 
     const glfw_platform = glfw.glfwGetPlatform();
     dlog("glfw platform: {}", .{glfw_platform});

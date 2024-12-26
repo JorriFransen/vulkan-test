@@ -45,7 +45,7 @@ pub fn vMain() !u8 {
 
     cmd_line_options = flags.parseOrExit(&args, "vulkan-test", CmdLineOptions, .{});
 
-    var window = try Window.init(.default);
+    var window = try Window.init(cmd_line_options.window_api);
 
     try window.initSystem();
     defer window.deinitSystem();
@@ -64,25 +64,6 @@ pub fn vMain() !u8 {
         renderer.drawFrame();
         window.pollEvents();
     }
-
-    // try Window.initSystem();
-    // defer Window.deinitSystem();
-    //
-    // var window = Window{};
-    // try window.init("Vulkan Test");
-    // defer window.deinit();
-    //
-    // var renderer: Renderer = undefined;
-    // try renderer.init(&window);
-    // defer renderer.deinit();
-    //
-    // window.framebuffer_resize_callback = .{ .fun = framebufferResizeCallback, .user_data = &renderer };
-    // window.key_callback = .{ .fun = keyCallback, .user_data = null };
-    //
-    // while (!window.shouldClose()) {
-    //     renderer.drawFrame();
-    //     window.pollEvents();
-    // }
 
     return 0;
 }
