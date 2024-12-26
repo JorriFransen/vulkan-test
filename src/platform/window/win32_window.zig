@@ -33,6 +33,9 @@ close_requested: bool = false,
 title: [MAX_TITLE]u16 = std.mem.zeroes([MAX_TITLE]u16),
 new_fb_size: ?win32.POINT = null,
 
+framebuffer_resize_callback: ?Window.FrameBufferResizeCallback = null,
+key_callback: ?Window.KeyCallback = null,
+
 pub fn open(this: *@This(), title_utf8: [:0]const u8) Window.OpenError!void {
     var instance: win32.HINSTANCE = undefined;
     if (win32.GetModuleHandleW(null)) |i_handle| {
@@ -138,18 +141,6 @@ pub fn waitEvents(this: *@This()) void {
     this.pollEvents();
 }
 
-pub fn framebufferSize(this: *const @This(), width: *i32, height: *i32) void {
-    var rect: win32.RECT = undefined;
-    const res = win32.GetClientRect(this.handle, &rect);
-    assert(res == win32.TRUE);
-
-    assert(rect.left == 0);
-    assert(rect.top == 0);
-
-    width.* = @intCast(rect.right);
-    height.* = @intCast(rect.bottom);
-}
-
 pub fn requiredVulkanInstanceExtensions() ![]const [*:0]const u8 {
     return &.{
         "VK_KHR_surface",
@@ -172,6 +163,26 @@ pub fn createVulkanSurface(this: *const @This(), instance: vk.Instance) !vk.Surf
     }
 
     return surface;
+}
+
+pub fn framebufferSize(this: *const @This(), width: *i32, height: *i32) void {
+    var rect: win32.RECT = undefined;
+    const res = win32.GetClientRect(this.handle, &rect);
+    assert(res == win32.TRUE);
+
+    assert(rect.left == 0);
+    assert(rect.top == 0);
+
+    width.* = @intCast(rect.right);
+    height.* = @intCast(rect.bottom);
+}
+
+pub fn setFramebufferResizeCallback(this: *@This(), callback: Window.FrameBufferResizeCallback) void {
+    this.framebuffer_resize_callback = callback;
+}
+
+pub fn setKeyCallback(this: *@This(), callback: Window.KeyCallback) void {
+    this.key_callback = callback;
 }
 
 // pub export fn wWinMain(instance: win32.HINSTANCE, prev_instance: ?win32.HINSTANCE, cmd_line: win32.PWSTR, cmd_show: win32.INT) callconv(.C) win32.INT {

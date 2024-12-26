@@ -57,8 +57,10 @@ pub fn vMain() !u8 {
     try renderer.init(&window);
     defer renderer.deinit();
 
-    window.framebuffer_resize_callback = .{ .fun = framebufferResizeCallback, .user_data = &renderer };
-    window.key_callback = .{ .fun = keyCallback, .user_data = null };
+    window.setFramebufferResizeCallback(.{ .fun = framebufferResizeCallback, .user_data = &renderer });
+    window.setKeyCallback(.{ .fun = keyCallback, .user_data = null });
+    // window.framebuffer_resize_callback = .{ .fun = framebufferResizeCallback, .user_data = &renderer };
+    // window.key_callback = .{ .fun = keyCallback, .user_data = null };
 
     while (!window.shouldClose()) {
         renderer.drawFrame();

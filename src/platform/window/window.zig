@@ -33,9 +33,6 @@ pub const Impl = union {
 
 impl: Impl,
 
-framebuffer_resize_callback: ?FrameBufferResizeCallback = null,
-key_callback: ?KeyCallback = null,
-
 initSystemFn: *const fn () InitSystemError!void,
 deinitSystemFn: *const fn () void,
 openFn: *const fn (*anyopaque, [:0]const u8) OpenError!void,
@@ -47,6 +44,8 @@ waitEventsFn: *const fn (*anyopaque) void,
 requiredVulkanInstanceExtensionsFn: *const fn () error{VulkanApiUnavailable}![]const [*:0]const u8,
 createVulkanSurfaceFn: *const fn (*const anyopaque, vk.Instance) CreateVulkanSurfaceError!vk.SurfaceKHR,
 framebufferSizeFn: *const fn (*const anyopaque, *i32, *i32) void,
+setFramebufferResizeCallbackFn: *const fn (*anyopaque, callback: FrameBufferResizeCallback) void,
+setKeyCallbackFn: *const fn (*anyopaque, callback: KeyCallback) void,
 
 pub fn init(api_or_default: Api) InitError!@This() {
     const api = if (api_or_default == .default)
@@ -108,9 +107,20 @@ fn initT(comptime T: type, impl: Impl) @This() {
             const this: *const T = @ptrCast(@alignCast(ptr));
             return try this.createVulkanSurface(instance);
         }
+
         pub fn framebufferSize(ptr: *const anyopaque, width: *i32, height: *i32) void {
             const this: *const T = @ptrCast(@alignCast(ptr));
             this.framebufferSize(width, height);
+        }
+
+        pub fn setFramebufferResizeCallback(ptr: *anyopaque, callback: FrameBufferResizeCallback) void {
+            const this: *T = @ptrCast(@alignCast(ptr));
+            this.setFramebufferResizeCallback(callback);
+        }
+
+        pub fn setKeyCallback(ptr: *anyopaque, callback: KeyCallback) void {
+            const this: *T = @ptrCast(@alignCast(ptr));
+            this.setKeyCallback(callback);
         }
     };
 
@@ -127,6 +137,8 @@ fn initT(comptime T: type, impl: Impl) @This() {
         .requiredVulkanInstanceExtensionsFn = T.requiredVulkanInstanceExtensions,
         .createVulkanSurfaceFn = gen.createVulkanSurface,
         .framebufferSizeFn = gen.framebufferSize,
+        .setFramebufferResizeCallbackFn = gen.setFramebufferResizeCallback,
+        .setKeyCallbackFn = gen.setKeyCallback,
     };
 }
 
@@ -174,6 +186,14 @@ pub fn framebufferSize(this: *const @This(), width: *i32, height: *i32) void {
     return this.framebufferSizeFn(&this.impl, width, height);
 }
 
+pub fn setFramebufferResizeCallback(this: *@This(), callback: FrameBufferResizeCallback) void {
+    this.setFramebufferResizeCallbackFn(&this.impl, callback);
+}
+
+pub fn setKeyCallback(this: *@This(), callback: KeyCallback) void {
+    this.setKeyCallbackFn(&this.impl, callback);
+}
+
 const Stub = struct {
     pub fn initSystem() InitSystemError!void {}
     pub fn deinitSystem() void {}
@@ -192,4 +212,6 @@ const Stub = struct {
         return null;
     }
     pub fn framebufferSize(_: *const @This(), _: *i32, _: *i32) void {}
+    pub fn setFramebufferResizeCallback(_: *@This(), _: FrameBufferResizeCallback) void {}
+    pub fn setKeyCallback(_: *@This(), _: KeyCallback) void {}
 };

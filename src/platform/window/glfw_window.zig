@@ -70,6 +70,9 @@ pub fn deinitSystem() void {
 handle: ?*glfw.GLFWwindow = null,
 new_fb_size: ?struct { c_int, c_int } = null,
 
+framebuffer_resize_callback: ?Window.FrameBufferResizeCallback = null,
+key_callback: ?Window.KeyCallback = null,
+
 pub fn open(this: *@This(), title: [:0]const u8) Window.OpenError!void {
     glfw.glfwWindowHint(glfw.CLIENT_API, glfw.NO_API);
 
@@ -125,19 +128,14 @@ pub fn waitEvents(this: *@This()) void {
 
 fn handleEvents(this: *@This()) void {
     if (this.new_fb_size) |s| {
-        const impl_ptr: *Window.Impl = @fieldParentPtr("glfw_window", this);
-        assert(@as(*@This(), @ptrCast(impl_ptr)) == this);
-        const window: *Window = @fieldParentPtr("impl", impl_ptr);
-
-        if (window.framebuffer_resize_callback) |cb| {
+        if (this.framebuffer_resize_callback) |cb| {
+            const impl_ptr: *Window.Impl = @fieldParentPtr("glfw_window", this);
+            assert(@as(*@This(), @ptrCast(impl_ptr)) == this);
+            const window: *Window = @fieldParentPtr("impl", impl_ptr);
             cb.fun(window, s[0], s[1], cb.user_data);
         }
         this.new_fb_size = null;
     }
-}
-
-pub fn framebufferSize(this: *const @This(), width: *i32, height: *i32) void {
-    glfw.glfwGetFramebufferSize(this.handle, width, height);
 }
 
 pub fn requiredVulkanInstanceExtensions() error{VulkanApiUnavailable}![]const [*:0]const u8 {
@@ -191,6 +189,18 @@ pub fn createVulkanSurface(this: *const @This(), instance: vk.Instance) Window.C
     // return surface;
 }
 
+pub fn framebufferSize(this: *const @This(), width: *i32, height: *i32) void {
+    glfw.glfwGetFramebufferSize(this.handle, width, height);
+}
+
+pub fn setFramebufferResizeCallback(this: *@This(), callback: Window.FrameBufferResizeCallback) void {
+    this.framebuffer_resize_callback = callback;
+}
+
+pub fn setKeyCallback(this: *@This(), callback: Window.KeyCallback) void {
+    this.key_callback = callback;
+}
+
 fn keyCallback(gwindow: ?*glfw.GLFWwindow, gkey: glfw.Key, scancode: c_int, gaction: glfw.Action, mods: c_int) callconv(.C) void {
     _ = mods;
 
@@ -202,11 +212,13 @@ fn keyCallback(gwindow: ?*glfw.GLFWwindow, gkey: glfw.Key, scancode: c_int, gact
 
     const impl: *@This() = @alignCast(@ptrCast(glfw.glfwGetWindowUserPointer(gwindow)));
     assert(gwindow == impl.handle);
-    const impl_ptr: *Window.Impl = @fieldParentPtr("glfw_window", impl);
-    assert(@as(*@This(), @ptrCast(impl_ptr)) == impl);
-    const this: *Window = @fieldParentPtr("impl", impl_ptr);
 
-    if (this.key_callback) |cb| cb.fun(this, gkey, action, scancode, cb.user_data);
+    if (impl.key_callback) |cb| {
+        const impl_ptr: *Window.Impl = @fieldParentPtr("glfw_window", impl);
+        assert(@as(*@This(), @ptrCast(impl_ptr)) == impl);
+        const this: *Window = @fieldParentPtr("impl", impl_ptr);
+        cb.fun(this, gkey, action, scancode, cb.user_data);
+    }
 }
 
 fn framebufferResizeCallback(gwindow: ?*glfw.GLFWwindow, width: c_int, height: c_int) callconv(.C) void {
