@@ -563,11 +563,9 @@ pub fn handleFramebufferResize(this: *@This(), _: c_int, _: c_int) void {
 }
 
 pub fn recreateSwapchain(this: *@This()) !void {
-    var width: c_int = undefined;
-    var height: c_int = undefined;
-    this.window.framebufferSize(&width, &height);
-    while (width == 0 or height == 0) {
-        this.window.framebufferSize(&width, &height);
+    var size = this.window.framebufferSize();
+    while (size.width == 0 or size.height == 0) {
+        size = this.window.framebufferSize();
         this.window.waitEvents();
     }
 
@@ -596,14 +594,12 @@ pub fn createSwapchain(this: *@This()) !void {
     const info = (try querySwapchainInfo(dev_info.physical_device, this.surface)).?;
     const cap = &info.surface_capabilities;
 
-    var fb_width: c_int = undefined;
-    var fb_height: c_int = undefined;
-    this.window.framebufferSize(&fb_width, &fb_height);
+    const fb_size = this.window.framebufferSize();
 
     dlog("cap.currentExtent: {}", .{cap.currentExtent});
     this.swapchain_extent = switch (cap.currentExtent.width) {
         std.math.maxInt(u32) => blk: {
-            var actual_extent = vk.Extent2D{ .width = @intCast(fb_width), .height = @intCast(fb_height) };
+            var actual_extent = vk.Extent2D{ .width = @intCast(fb_size.width), .height = @intCast(fb_size.height) };
             actual_extent.width = std.math.clamp(actual_extent.width, cap.minImageExtent.width, cap.maxImageExtent.width);
             actual_extent.height = std.math.clamp(actual_extent.height, cap.minImageExtent.height, cap.maxImageExtent.height);
 

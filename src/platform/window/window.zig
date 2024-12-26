@@ -26,6 +26,11 @@ pub const InitError = error{ApiUnavailable};
 pub const OpenError = error{ NativeCreateFailed, InvalidUtf8, TitleTooLong };
 pub const CreateVulkanSurfaceError = error{NativeCreateSurfaceFailed};
 
+pub const Size = struct {
+    width: i32 = 0,
+    height: i32 = 0,
+};
+
 pub const Impl = union {
     win32_window: Win32Window,
     glfw_window: GlfwWindow,
@@ -43,7 +48,7 @@ pollEventsFn: *const fn (*anyopaque) void,
 waitEventsFn: *const fn (*anyopaque) void,
 requiredVulkanInstanceExtensionsFn: *const fn () error{VulkanApiUnavailable}![]const [*:0]const u8,
 createVulkanSurfaceFn: *const fn (*const anyopaque, vk.Instance) CreateVulkanSurfaceError!vk.SurfaceKHR,
-framebufferSizeFn: *const fn (*const anyopaque, *i32, *i32) void,
+framebufferSizeFn: *const fn (*const anyopaque) Size,
 setFramebufferResizeCallbackFn: *const fn (*anyopaque, callback: FrameBufferResizeCallback) void,
 setKeyCallbackFn: *const fn (*anyopaque, callback: KeyCallback) void,
 
@@ -108,9 +113,9 @@ fn initT(comptime T: type, impl: Impl) @This() {
             return try this.createVulkanSurface(instance);
         }
 
-        pub fn framebufferSize(ptr: *const anyopaque, width: *i32, height: *i32) void {
+        pub fn framebufferSize(ptr: *const anyopaque) Size {
             const this: *const T = @ptrCast(@alignCast(ptr));
-            this.framebufferSize(width, height);
+            return this.framebufferSize();
         }
 
         pub fn setFramebufferResizeCallback(ptr: *anyopaque, callback: FrameBufferResizeCallback) void {
@@ -182,8 +187,8 @@ pub fn createVulkanSurface(this: *const @This(), instance: vk.Instance) CreateVu
     return try this.createVulkanSurfaceFn(&this.impl, instance);
 }
 
-pub fn framebufferSize(this: *const @This(), width: *i32, height: *i32) void {
-    return this.framebufferSizeFn(&this.impl, width, height);
+pub fn framebufferSize(this: *const @This()) Size {
+    return this.framebufferSizeFn(&this.impl);
 }
 
 pub fn setFramebufferResizeCallback(this: *@This(), callback: FrameBufferResizeCallback) void {
@@ -211,7 +216,9 @@ const Stub = struct {
     pub fn createVulkanSurface(_: *const @This(), _: vk.Instance) CreateVulkanSurfaceError!vk.SurfaceKHR {
         return null;
     }
-    pub fn framebufferSize(_: *const @This(), _: *i32, _: *i32) void {}
+    pub fn framebufferSize(_: *const @This()) Size {
+        return .{};
+    }
     pub fn setFramebufferResizeCallback(_: *@This(), _: FrameBufferResizeCallback) void {}
     pub fn setKeyCallback(_: *@This(), _: KeyCallback) void {}
 };

@@ -189,8 +189,11 @@ pub fn createVulkanSurface(this: *const @This(), instance: vk.Instance) Window.C
     // return surface;
 }
 
-pub fn framebufferSize(this: *const @This(), width: *i32, height: *i32) void {
-    glfw.glfwGetFramebufferSize(this.handle, width, height);
+pub fn framebufferSize(this: *const @This()) Window.Size {
+    var width: c_int = undefined;
+    var height: c_int = undefined;
+    glfw.glfwGetFramebufferSize(this.handle, &width, &height);
+    return .{ .width = width, .height = height };
 }
 
 pub fn setFramebufferResizeCallback(this: *@This(), callback: Window.FrameBufferResizeCallback) void {

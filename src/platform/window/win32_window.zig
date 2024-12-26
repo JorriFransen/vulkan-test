@@ -165,7 +165,7 @@ pub fn createVulkanSurface(this: *const @This(), instance: vk.Instance) !vk.Surf
     return surface;
 }
 
-pub fn framebufferSize(this: *const @This(), width: *i32, height: *i32) void {
+pub fn framebufferSize(this: *const @This()) Window.Size {
     var rect: win32.RECT = undefined;
     const res = win32.GetClientRect(this.handle, &rect);
     assert(res == win32.TRUE);
@@ -173,8 +173,7 @@ pub fn framebufferSize(this: *const @This(), width: *i32, height: *i32) void {
     assert(rect.left == 0);
     assert(rect.top == 0);
 
-    width.* = @intCast(rect.right);
-    height.* = @intCast(rect.bottom);
+    return .{ .width = rect.right, .height = rect.bottom };
 }
 
 pub fn setFramebufferResizeCallback(this: *@This(), callback: Window.FrameBufferResizeCallback) void {
