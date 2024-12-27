@@ -4,6 +4,7 @@ const builtin = @import("builtin");
 
 const alloc = @import("alloc");
 const builtin_shaders = @import("shaders");
+const math = @import("math");
 const options = @import("options");
 const platform = @import("platform");
 const vk = @import("vulkan");
@@ -58,6 +59,40 @@ image_available_semaphores: [MAX_FRAMES_IN_FLIGHT]vk.Semaphore = undefined,
 render_finished_semaphores: [MAX_FRAMES_IN_FLIGHT]vk.Semaphore = undefined,
 in_flight_fences: [MAX_FRAMES_IN_FLIGHT]vk.Fence = undefined,
 
+const triangle_vertices = [_]Vertex{
+    .{ .pos = .{ .x = 0.0, .y = -0.5 }, .color = .{ .x = 1, .y = 0, .z = 0 } },
+    .{ .pos = .{ .x = 0.5, .y = 0.5 }, .color = .{ .x = 0, .y = 1, .z = 0 } },
+    .{ .pos = .{ .x = -0.5, .y = 0.5 }, .color = .{ .x = 0, .y = 0, .z = 1 } },
+};
+
+const Vertex = struct {
+    pos: math.Vec2,
+    color: math.Vec3,
+
+    pub const binding_description: vk.VertexInputBindingDescription = .{ .binding = 0, .stride = @sizeOf(@This()), .inputRate = .VERTEX };
+
+    const field_count = @typeInfo(@This()).@"struct".fields.len;
+    pub const attribute_descriptions: [field_count]vk.VertexInputAttributeDescription = blk: {
+        var result: [field_count]vk.VertexInputAttributeDescription = undefined;
+
+        for (&result, 0..) |*desc, i| {
+            const field_info = @typeInfo(@This()).@"struct".fields[i];
+
+            desc.* = .{
+                .binding = 0,
+                .location = i,
+                .format = switch (field_info.type) {
+                    else => @compileError(std.fmt.comptimePrint("Unhandled Vertex member type '{}'", .{field_info.type})),
+                    math.Vec2 => .R32G32_SFLOAT,
+                    math.Vec3 => .R32G32B32_SFLOAT,
+                },
+                .offset = @offsetOf(@This(), field_info.name),
+            };
+        }
+        break :blk result;
+    };
+};
+
 const PDevInfo = struct {
     score: u32,
     name: [256]u8 = std.mem.zeroes([256]u8),
@@ -101,6 +136,8 @@ pub fn init(this: *@This(), window: *Window) !void {
     const debug_messenger = createDebugMessenger(instance);
     const surface = try window.createVulkanSurface(instance);
     const device_info = try choosePhysicalDevice(instance, surface);
+
+    dlog("attribute_descriptions: {}", .{Vertex.attribute_descriptions});
 
     this.* = .{
         .window = window,
@@ -755,10 +792,10 @@ fn createGraphicsPipeline(this: *@This()) !void {
 
     const vertex_input_state_create_info = vk.PipelineVertexInputStateCreateInfo{
         .sType = .PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-        .vertexBindingDescriptionCount = 0,
-        .pVertexBindingDescriptions = null,
-        .vertexAttributeDescriptionCount = 0,
-        .pVertexAttributeDescriptions = null,
+        .vertexBindingDescriptionCount = 1,
+        .pVertexBindingDescriptions = @ptrCast(&Vertex.binding_description),
+        .vertexAttributeDescriptionCount = Vertex.attribute_descriptions.len,
+        .pVertexAttributeDescriptions = &Vertex.attribute_descriptions,
     };
 
     const input_assembly_create_info = vk.PipelineInputAssemblyStateCreateInfo{
@@ -923,11 +960,7 @@ fn createSyncObjects(this: *@This()) !void {
 fn recordCommandBuffer(this: *const @This(), image_index: u32) void {
     const cmd_buf = this.command_buffers[this.current_frame];
 
-    const begin_info = vk.CommandBufferBeginInfo{
-        .sType = .COMMAND_BUFFER_BEGIN_INFO,
-    };
-
-    if (vk.beginCommandBuffer(cmd_buf, &begin_info) != .SUCCESS) {
+    if (vk.beginCommandBuffer(cmd_buf, &.{ .sType = .COMMAND_BUFFER_BEGIN_INFO }) != .SUCCESS) {
         @panic("beginCommandBuffer failed!");
     }
 

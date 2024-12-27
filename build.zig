@@ -66,9 +66,10 @@ pub fn build(b: *std.Build) !void {
 
     const alloc_mod = addPrivateModule(b, "src/alloc.zig", "alloc");
     const callback_mod = addPrivateModule(b, "src/callback.zig", "callback");
-    const extern_fn_mod = addPrivateModule(b, "src/externFn.zig", "externFn");
-    const platform_mod = addPrivateModule(b, "src/platform.zig", "platform");
     const debug_timer_mod = addPrivateModule(b, "src/debug_timer.zig", "debug_timer");
+    const extern_fn_mod = addPrivateModule(b, "src/externFn.zig", "externFn");
+    const math_mod = addPrivateModule(b, "src/math.zig", "math");
+    const platform_mod = addPrivateModule(b, "src/platform.zig", "platform");
     const vulkan_info = try useVulkan(b);
     const vulkan_mod = vulkan_info.module;
 
@@ -87,6 +88,7 @@ pub fn build(b: *std.Build) !void {
     vulkan_mod.addImport("platform", platform_mod);
     vulkan_mod.addImport("shaders", shaders_mod);
     vulkan_mod.addImport("debug_timer", debug_timer_mod);
+    vulkan_mod.addImport("math", math_mod);
 
     platform_mod.addIncludePath(vulkan_info.include_path);
     platform_mod.addImport("callback", callback_mod);
