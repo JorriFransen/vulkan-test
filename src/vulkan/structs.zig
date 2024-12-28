@@ -775,3 +775,44 @@ pub const DebugUtilsMessengerCreateInfoEXT = extern struct {
     pfnUserCallback: s.DebugUtilsMessengerCallback,
     pUserData: ?*anyopaque = null,
 };
+
+pub const BufferCreateInfo = extern struct {
+    sType: s.StructureType,
+    pNext: ?*const anyopaque = null,
+    flags: s.BufferCreateFlags = std.mem.zeroes(s.BufferCreateFlags),
+    size: s.DeviceSize = 0,
+    usage: s.BufferUsageFlags = std.mem.zeroes(s.BufferUsageFlags),
+    sharingMode: s.SharingMode = std.mem.zeroes(s.SharingMode),
+    queueFamilyIndexCount: u32,
+    pQueueFamilyIndices: ?[*]const u32 = null,
+};
+
+pub const MemoryRequirements = extern struct {
+    size: s.DeviceSize = 0,
+    alignment: s.DeviceSize = 0,
+    memoryTypeBits: u32 = 0,
+};
+
+pub const PhysicalDeviceMemoryProperties = extern struct {
+    memoryTypeCount: u32,
+    memoryTypes: [s.MAX_MEMORY_TYPES]MemoryType,
+    memoryHeapCount: u32,
+    memoryHeaps: [s.MAX_MEMORY_HEAPS]MemoryHeap,
+};
+
+pub const MemoryType = extern struct {
+    propertyFlags: s.MemoryPropertyFlags,
+    heapIndex: u32,
+};
+
+pub const MemoryHeap = extern struct {
+    size: s.DeviceSize,
+    flags: s.MemoryHeapFlags,
+};
+
+pub const MemoryAllocateInfo = extern struct {
+    sType: s.StructureType,
+    pNext: ?*const anyopaque = null,
+    allocationSize: s.DeviceSize = std.mem.zeroes(s.DeviceSize),
+    memoryTypeIndex: u32 = 0,
+};

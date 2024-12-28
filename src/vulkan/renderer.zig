@@ -59,6 +59,9 @@ image_available_semaphores: [MAX_FRAMES_IN_FLIGHT]vk.Semaphore = undefined,
 render_finished_semaphores: [MAX_FRAMES_IN_FLIGHT]vk.Semaphore = undefined,
 in_flight_fences: [MAX_FRAMES_IN_FLIGHT]vk.Fence = undefined,
 
+vertex_buffer: vk.Buffer = undefined,
+vertex_buffer_memory: vk.DeviceMemory = undefined,
+
 const triangle_vertices = [_]Vertex{
     .{ .pos = .{ .x = 0.0, .y = -0.5 }, .color = .{ .x = 1, .y = 0, .z = 0 } },
     .{ .pos = .{ .x = 0.5, .y = 0.5 }, .color = .{ .x = 0, .y = 1, .z = 0 } },
@@ -137,8 +140,6 @@ pub fn init(this: *@This(), window: *Window) !void {
     const surface = try window.createVulkanSurface(instance);
     const device_info = try choosePhysicalDevice(instance, surface);
 
-    dlog("attribute_descriptions: {}", .{Vertex.attribute_descriptions});
-
     this.* = .{
         .window = window,
         .instance = instance,
@@ -156,6 +157,7 @@ pub fn init(this: *@This(), window: *Window) !void {
     try this.createGraphicsPipeline();
     try this.createFrameBuffers();
     try this.createCommandPool();
+    try this.createVertexBuffer();
     try this.createCommandBuffers();
     try this.createSyncObjects();
 }
@@ -166,6 +168,9 @@ pub fn deinit(this: *const @This()) void {
     _ = vk.deviceWaitIdle(this.device);
 
     this.cleanupSwapchain();
+
+    vk.destroyBuffer(this.device, this.vertex_buffer, null);
+    vk.freeMemory(this.device, this.vertex_buffer_memory, null);
 
     for (0..MAX_FRAMES_IN_FLIGHT) |i| {
         vk.destroyFence(dev, this.in_flight_fences[i], null);
@@ -921,6 +926,60 @@ fn createCommandPool(this: *@This()) !void {
     }
 }
 
+fn createVertexBuffer(this: *@This()) !void {
+    const request_size = @sizeOf(@TypeOf(triangle_vertices));
+
+    const create_info = vk.BufferCreateInfo{
+        .sType = .BUFFER_CREATE_INFO,
+        .size = request_size,
+        .usage = .{ .VERTEX_BUFFER_BIT = 1 },
+        .sharingMode = .EXCLUSIVE,
+        .queueFamilyIndexCount = 0,
+    };
+
+    if (vk.createBuffer(this.device, &create_info, null, &this.vertex_buffer) != .SUCCESS) {
+        return error.CreateBufferFailed;
+    }
+
+    var requirements: vk.MemoryRequirements = undefined;
+    vk.getBufferMemoryRequirements(this.device, this.vertex_buffer, &requirements);
+
+    const alloc_info: vk.MemoryAllocateInfo = .{
+        .sType = .MEMORY_ALLOCATE_INFO,
+        .allocationSize = requirements.size,
+        .memoryTypeIndex = this.findMemoryType(requirements.memoryTypeBits, .{
+            .HOST_VISIBLE_BIT = 1,
+            .HOST_COHERENT_BIT = 1,
+        }) orelse return error.FindMemoryTypeFailed,
+    };
+
+    if (vk.allocateMemory(this.device, &alloc_info, null, &this.vertex_buffer_memory) != .SUCCESS) {
+        return error.allocateMemoryFailed;
+    }
+
+    if (vk.bindBufferMemory(this.device, this.vertex_buffer, this.vertex_buffer_memory, 0) != .SUCCESS) {
+        return error.BindBufferMemoryFailed;
+    }
+
+    var data: *@TypeOf(triangle_vertices) = undefined;
+    if (vk.mapMemory(this.device, this.vertex_buffer_memory, 0, create_info.size, .{}, @ptrCast(&data)) != .SUCCESS) {
+        return error.mapMemoryFailed;
+    }
+    std.mem.copyForwards(@TypeOf(triangle_vertices[0]), data, &triangle_vertices);
+    vk.unmapMemory(this.device, this.vertex_buffer_memory);
+}
+
+fn findMemoryType(this: *const @This(), type_filter: u32, properties: vk.MemoryPropertyFlags) ?u32 {
+    var props: vk.PhysicalDeviceMemoryProperties = undefined;
+    vk.getPhysicalDeviceMemoryProperties(this.device_info.physical_device, &props);
+
+    for (0..props.memoryTypeCount) |i| {
+        if ((type_filter & (@as(u32, @intCast(1)) << @intCast(i)) != 0) and props.memoryTypes[i].propertyFlags == properties)
+            return @intCast(i);
+    }
+    return null;
+}
+
 fn createCommandBuffers(this: *@This()) !void {
     const alloc_info = vk.CommandBufferAllocateInfo{
         .sType = .COMMAND_BUFFER_ALLOCATE_INFO,
@@ -997,7 +1056,11 @@ fn recordCommandBuffer(this: *const @This(), image_index: u32) void {
     };
     vk.cmdSetScissor(cmd_buf, 0, 1, &scissor);
 
-    vk.cmdDraw(cmd_buf, 3, 1, 0, 0);
+    const vertex_buffers = [_]vk.Buffer{this.vertex_buffer};
+    const offsets = [_]vk.DeviceSize{0};
+    vk.cmdBindVertexBuffers(cmd_buf, 0, 1, &vertex_buffers, &offsets);
+
+    vk.cmdDraw(cmd_buf, triangle_vertices.len, 1, 0, 0);
 
     vk.cmdEndRenderPass(cmd_buf);
 
@@ -1112,10 +1175,11 @@ fn vk_debug_callback(message_severity: vk.DebugUtilsMessageSeverityFlagsEXT, mes
         log.warn(fmt, args);
     } else if (message_severity.ERROR_BIT_EXT == 1) {
         log.err(fmt, args);
+        // if (builtin.mode == .Debug) @panic("Vulkan error");
     } else {
         elog("Invalid message severity '{}'", .{message_severity});
         log.err(fmt, args);
     }
 
-    return vk.FALSE;
+    return vk.TRUE;
 }
