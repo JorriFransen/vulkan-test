@@ -63,9 +63,13 @@ vertex_buffer: vk.Buffer = undefined,
 vertex_buffer_memory: vk.DeviceMemory = undefined,
 
 const triangle_vertices = [_]Vertex{
-    .{ .pos = .{ .x = 0.0, .y = -0.5 }, .color = .{ .x = 1, .y = 0, .z = 0 } },
-    .{ .pos = .{ .x = 0.5, .y = 0.5 }, .color = .{ .x = 0, .y = 1, .z = 0 } },
-    .{ .pos = .{ .x = -0.5, .y = 0.5 }, .color = .{ .x = 0, .y = 0, .z = 1 } },
+    .{ .pos = .{ .x = -0.5, .y = -0.5 }, .color = .{ .x = 1, .y = 0, .z = 0 } },
+    .{ .pos = .{ .x = 0.5, .y = -0.5 }, .color = .{ .x = 0, .y = 1, .z = 0 } },
+    .{ .pos = .{ .x = 0.5, .y = 0.5 }, .color = .{ .x = 0, .y = 0, .z = 1 } },
+
+    .{ .pos = .{ .x = -0.5, .y = -0.5 }, .color = .{ .x = 1, .y = 0, .z = 0 } },
+    .{ .pos = .{ .x = 0.5, .y = 0.5 }, .color = .{ .x = 0, .y = 0, .z = 1 } },
+    .{ .pos = .{ .x = -0.5, .y = 0.5 }, .color = .{ .x = 1, .y = 0, .z = 1 } },
 };
 
 const Vertex = struct {
