@@ -64,15 +64,21 @@ in_flight_fences: [MAX_FRAMES_IN_FLIGHT]vk.Fence = undefined,
 
 vertex_buffer: vk.Buffer = undefined,
 vertex_buffer_memory: vk.DeviceMemory = undefined,
+index_buffer: vk.Buffer = undefined,
+index_buffer_memory: vk.DeviceMemory = undefined,
 
 const triangle_vertices = [_]Vertex{
     .{ .pos = .{ .x = -0.5, .y = -0.5 }, .color = .{ .x = 1, .y = 0, .z = 0 } },
     .{ .pos = .{ .x = 0.5, .y = -0.5 }, .color = .{ .x = 0, .y = 1, .z = 0 } },
     .{ .pos = .{ .x = 0.5, .y = 0.5 }, .color = .{ .x = 0, .y = 0, .z = 1 } },
 
-    .{ .pos = .{ .x = -0.5, .y = -0.5 }, .color = .{ .x = 1, .y = 0, .z = 0 } },
-    .{ .pos = .{ .x = 0.5, .y = 0.5 }, .color = .{ .x = 0, .y = 0, .z = 1 } },
-    .{ .pos = .{ .x = -0.5, .y = 0.5 }, .color = .{ .x = 1, .y = 0, .z = 1 } },
+    // .{ .pos = .{ .x = 0.5, .y = 0.5 }, .color = .{ .x = 0, .y = 0, .z = 1 } },
+    .{ .pos = .{ .x = -0.5, .y = 0.5 }, .color = .{ .x = 1, .y = 1, .z = 1 } },
+    // .{ .pos = .{ .x = -0.5, .y = -0.5 }, .color = .{ .x = 1, .y = 0, .z = 0 } },
+};
+
+const triangle_indices = [_]u16{
+    0, 1, 2, 2, 3, 0,
 };
 
 const Vertex = struct {
@@ -174,6 +180,7 @@ pub fn init(this: *@This(), window: *Window) !void {
     try this.createFrameBuffers();
     try this.createCommandPools();
     try this.createVertexBuffer();
+    try this.createIndexBuffer();
     try this.createCommandBuffers();
     try this.createSyncObjects();
 }
@@ -187,6 +194,8 @@ pub fn deinit(this: *const @This()) void {
 
     vk.destroyBuffer(this.device, this.vertex_buffer, null);
     vk.freeMemory(this.device, this.vertex_buffer_memory, null);
+    vk.destroyBuffer(this.device, this.index_buffer, null);
+    vk.freeMemory(this.device, this.index_buffer_memory, null);
 
     for (0..MAX_FRAMES_IN_FLIGHT) |i| {
         vk.destroyFence(dev, this.in_flight_fences[i], null);
@@ -1083,6 +1092,38 @@ fn createVertexBuffer(this: *@This()) !void {
     try this.copyBuffer(staging_buffer, this.vertex_buffer, size);
 }
 
+fn createIndexBuffer(this: *@This()) !void {
+    const size = @sizeOf(@TypeOf(triangle_indices));
+
+    var staging_buffer_memory: vk.DeviceMemory = null;
+    const staging_buffer = try this.createBuffer(
+        size,
+        .{ .TRANSFER_SRC_BIT = 1 },
+        .{ .HOST_VISIBLE_BIT = 1, .HOST_COHERENT_BIT = 1 },
+        &staging_buffer_memory,
+    );
+    defer {
+        vk.destroyBuffer(this.device, staging_buffer, null);
+        vk.freeMemory(this.device, staging_buffer_memory, null);
+    }
+
+    var data: *@TypeOf(triangle_indices) = undefined;
+    if (vk.mapMemory(this.device, staging_buffer_memory, 0, size, .{}, @ptrCast(&data)) != .SUCCESS) {
+        return error.mapMemoryFailed;
+    }
+    std.mem.copyForwards(@TypeOf(triangle_indices[0]), data, &triangle_indices);
+    vk.unmapMemory(this.device, staging_buffer_memory);
+
+    this.index_buffer = try this.createBuffer(
+        size,
+        .{ .TRANSFER_DST_BIT = 1, .INDEX_BUFFER_BIT = 1 },
+        .{ .DEVICE_LOCAL_BIT = 1 },
+        &this.index_buffer_memory,
+    );
+
+    try this.copyBuffer(staging_buffer, this.index_buffer, size);
+}
+
 fn findMemoryType(this: *const @This(), type_filter: u32, properties: vk.MemoryPropertyFlags) ?u32 {
     var props: vk.PhysicalDeviceMemoryProperties = undefined;
     vk.getPhysicalDeviceMemoryProperties(this.device_info.physical_device, &props);
@@ -1174,7 +1215,11 @@ fn recordCommandBuffer(this: *const @This(), image_index: u32) void {
     const offsets = [_]vk.DeviceSize{0};
     vk.cmdBindVertexBuffers(cmd_buf, 0, 1, &vertex_buffers, &offsets);
 
-    vk.cmdDraw(cmd_buf, triangle_vertices.len, 1, 0, 0);
+    assert(@sizeOf(@TypeOf(triangle_indices[0])) == 2);
+    vk.cmdBindIndexBuffer(cmd_buf, this.index_buffer, 0, .UINT16);
+
+    // vk.cmdDraw(cmd_buf, triangle_vertices.len, 1, 0, 0);
+    vk.cmdDrawIndexed(cmd_buf, triangle_indices.len, 1, 0, 0, 0);
 
     vk.cmdEndRenderPass(cmd_buf);
 

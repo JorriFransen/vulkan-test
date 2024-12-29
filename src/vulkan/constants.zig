@@ -1352,6 +1352,16 @@ pub const MemoryMapFlags = packed struct(Flags) {
     __reserved: u31 = 0,
 };
 
+pub const IndexType = enum(c_int) {
+    UINT16 = 0,
+    UINT32 = 1,
+    NONE_KHR = 1000165000,
+
+    pub const NONE_NV: @This() = .NONE_KHR;
+    pub const UINT8_KHR: @This() = .NONE_KHR;
+    pub const UINT8_EXT: @This() = .NONE_KHR;
+};
+
 pub const StructureType = enum(c_int) {
     APPLICATION_INFO = 0,
     INSTANCE_CREATE_INFO = 1,
