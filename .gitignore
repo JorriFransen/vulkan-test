@@ -5,3 +5,5 @@
 /.vs
 
 /*.sln
+
+/vk_translation.zig

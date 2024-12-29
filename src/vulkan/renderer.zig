@@ -35,6 +35,7 @@ device: vk.Device = null,
 device_info: PDevInfo = undefined,
 graphics_que: vk.Queue = null,
 present_que: vk.Queue = null,
+transfer_que: vk.Queue = null,
 
 swapchain: vk.SwapchainKHR = null,
 swapchain_extent: vk.Extent2D = undefined,
@@ -45,6 +46,7 @@ render_pass: vk.RenderPass = null,
 pipeline_layout: vk.PipelineLayout = null,
 graphics_pipeline: vk.Pipeline = null,
 command_pool: vk.CommandPool = null,
+transfer_command_pool: vk.CommandPool = null,
 current_frame: u32 = 0,
 debug_messenger: vk.DebugUtilsMessengerEXT = null,
 
@@ -111,6 +113,15 @@ const PDevInfo = struct {
 const QueueFamilyInfo = struct {
     graphics_index: u32 = undefined,
     present_index: u32 = undefined,
+    transfer_index: u32 = undefined,
+
+    pub inline fn familyIndices(this: *const @This()) []const u32 {
+        if (this.graphics_index == this.present_index) {
+            return &.{ this.graphics_index, this.transfer_index };
+        } else {
+            return &.{ this.graphics_index, this.present_index, this.transfer_index };
+        }
+    }
 };
 
 const SwapchainInfo = struct {
@@ -160,7 +171,7 @@ pub fn init(this: *@This(), window: *Window) !void {
     try this.createRenderPass();
     try this.createGraphicsPipeline();
     try this.createFrameBuffers();
-    try this.createCommandPool();
+    try this.createCommandPools();
     try this.createVertexBuffer();
     try this.createCommandBuffers();
     try this.createSyncObjects();
@@ -183,6 +194,7 @@ pub fn deinit(this: *const @This()) void {
     }
 
     vk.destroyCommandPool(dev, this.command_pool, null);
+    vk.destroyCommandPool(dev, this.transfer_command_pool, null);
     vk.destroyPipeline(dev, this.graphics_pipeline, null);
     vk.destroyPipelineLayout(dev, this.pipeline_layout, null);
     vk.destroyRenderPass(dev, this.render_pass, null);
@@ -444,11 +456,15 @@ fn queryQueueFamiliesInfo(pdev: vk.PhysicalDevice, surface: vk.SurfaceKHR) !?Que
 
     var graphics_que_found = false;
     var present_que_found = false;
+    var transfer_que_found = false;
 
     for (queue_families, 0..) |qf, qi| {
         if (qf.queueFlags.GRAPHICS_BIT == 1) {
             result.graphics_index = @intCast(qi);
             graphics_que_found = true;
+        } else if (qf.queueFlags.TRANSFER_BIT == 1) {
+            result.transfer_index = @intCast(qi);
+            transfer_que_found = true;
         }
 
         if (!present_que_found) {
@@ -459,9 +475,11 @@ fn queryQueueFamiliesInfo(pdev: vk.PhysicalDevice, surface: vk.SurfaceKHR) !?Que
                 present_que_found = true;
             }
         }
+
+        if (graphics_que_found and present_que_found and transfer_que_found) return result;
     }
 
-    return if (graphics_que_found and present_que_found) result else null;
+    return null;
 }
 
 fn queryDeviceExtensionsSuitable(pdev: vk.PhysicalDevice) !bool {
@@ -554,7 +572,12 @@ fn querySwapchainInfo(pdev: vk.PhysicalDevice, surface: vk.SurfaceKHR) !?Swapcha
 fn createLogicalDevice(this: *@This()) !void {
     const dev_info = this.device_info;
 
-    var fin_array = [_]u32{ dev_info.queue_info.graphics_index, dev_info.queue_info.present_index };
+    var fin_array = [_]u32{
+        dev_info.queue_info.graphics_index,
+        dev_info.queue_info.present_index,
+        dev_info.queue_info.transfer_index,
+    };
+
     var fin: []u32 = &fin_array;
     std.mem.sort(u32, fin, .{}, struct {
         fn f(_: @TypeOf(.{}), l: u32, r: u32) bool {
@@ -574,7 +597,7 @@ fn createLogicalDevice(this: *@This()) !void {
             fi_write_index += 1;
         }
         fin = fin[0..fi_write_index];
-        // dlog("fin: {any}", .{fin});
+        dlog("fin: {any}", .{fin});
     }
 
     var qci_array: [fin_array.len]vk.DeviceQueueCreateInfo = undefined;
@@ -608,6 +631,7 @@ fn createLogicalDevice(this: *@This()) !void {
 
     vk.getDeviceQueue(this.device, dev_info.queue_info.graphics_index, 0, &this.graphics_que);
     vk.getDeviceQueue(this.device, dev_info.queue_info.present_index, 0, &this.present_que);
+    vk.getDeviceQueue(this.device, dev_info.queue_info.transfer_index, 0, &this.transfer_que);
 }
 
 pub fn handleFramebufferResize(this: *@This(), _: c_int, _: c_int) void {
@@ -638,7 +662,7 @@ pub fn cleanupSwapchain(this: *const @This()) void {
 
 pub fn createSwapchain(this: *@This()) !void {
     const dev_info = &this.device_info;
-    const info = (try querySwapchainInfo(dev_info.physical_device, this.surface)).?;
+    const info = dev_info.swapchain_info;
     const cap = &info.surface_capabilities;
 
     const fb_size = this.window.framebufferSize();
@@ -657,7 +681,8 @@ pub fn createSwapchain(this: *@This()) !void {
 
     dlog("swapchain extent: {}", .{this.swapchain_extent});
 
-    const same_family = dev_info.queue_info.graphics_index == dev_info.queue_info.present_index;
+    // const same_family = dev_info.queue_info.graphics_index == dev_info.queue_info.present_index;
+    const queue_indices = dev_info.queue_info.familyIndices();
 
     const create_info = vk.SwapchainCreateInfoKHR{
         .sType = .SWAPCHAIN_CREATE_INFO_KHR,
@@ -668,9 +693,9 @@ pub fn createSwapchain(this: *@This()) !void {
         .imageExtent = this.swapchain_extent,
         .imageArrayLayers = 1,
         .imageUsage = .{ .COLOR_ATTACHMENT_BIT = 1 },
-        .imageSharingMode = if (same_family) .EXCLUSIVE else .CONCURRENT,
-        .queueFamilyIndexCount = if (same_family) 0 else 2,
-        .pQueueFamilyIndices = if (same_family) null else @ptrCast(&.{ dev_info.queue_info.graphics_index, dev_info.queue_info.present_index }),
+        .imageSharingMode = .CONCURRENT,
+        .queueFamilyIndexCount = @intCast(queue_indices.len),
+        .pQueueFamilyIndices = queue_indices.ptr,
         .preTransform = cap.currentTransform,
         .compositeAlpha = .{ .OPAQUE_BIT_KHR = 1 },
         .presentMode = dev_info.swapchain_info.present_mode,
@@ -918,7 +943,9 @@ fn createFrameBuffers(this: *@This()) !void {
     }
 }
 
-fn createCommandPool(this: *@This()) !void {
+fn createCommandPools(this: *@This()) !void {
+    assert(this.device_info.queue_info.graphics_index == this.device_info.queue_info.present_index);
+
     const create_info = vk.CommandPoolCreateInfo{
         .sType = .COMMAND_POOL_CREATE_INFO,
         .flags = .{ .RESET_COMMAND_BUFFER = 1 },
@@ -928,17 +955,30 @@ fn createCommandPool(this: *@This()) !void {
     if (vk.createCommandPool(this.device, &create_info, null, &this.command_pool) != .SUCCESS) {
         return error.CreateCommandPoolFailed;
     }
+
+    const transfer_create_info = vk.CommandPoolCreateInfo{
+        .sType = .COMMAND_POOL_CREATE_INFO,
+        .flags = .{ .RESET_COMMAND_BUFFER = 1 },
+        .queueFamilyIndex = this.device_info.queue_info.transfer_index,
+    };
+
+    if (vk.createCommandPool(this.device, &transfer_create_info, null, &this.transfer_command_pool) != .SUCCESS) {
+        return error.CreateCommandPoolFailed;
+    }
 }
 
 fn createVertexBuffer(this: *@This()) !void {
     const request_size = @sizeOf(@TypeOf(triangle_vertices));
 
+    const qfis = this.device_info.queue_info.familyIndices();
+
     const create_info = vk.BufferCreateInfo{
         .sType = .BUFFER_CREATE_INFO,
         .size = request_size,
         .usage = .{ .VERTEX_BUFFER_BIT = 1 },
-        .sharingMode = .EXCLUSIVE,
-        .queueFamilyIndexCount = 0,
+        .sharingMode = .CONCURRENT,
+        .queueFamilyIndexCount = @intCast(qfis.len),
+        .pQueueFamilyIndices = qfis.ptr,
     };
 
     if (vk.createBuffer(this.device, &create_info, null, &this.vertex_buffer) != .SUCCESS) {
