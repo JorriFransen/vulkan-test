@@ -62,10 +62,12 @@ image_available_semaphores: [MAX_FRAMES_IN_FLIGHT]vk.Semaphore = undefined,
 render_finished_semaphores: [MAX_FRAMES_IN_FLIGHT]vk.Semaphore = undefined,
 in_flight_fences: [MAX_FRAMES_IN_FLIGHT]vk.Fence = undefined,
 
-vertex_buffer: vk.Buffer = undefined,
-vertex_buffer_memory: vk.DeviceMemory = undefined,
-index_buffer: vk.Buffer = undefined,
-index_buffer_memory: vk.DeviceMemory = undefined,
+index_buffer: vk.Buffer = null,
+vertex_buffer: vk.Buffer = null,
+
+index_buffer_memory: vk.DeviceMemory = null,
+vertex_buffer_memory: vk.DeviceMemory = null,
+combined_buffer_memory: vk.DeviceMemory = null,
 
 const triangle_vertices = [_]Vertex{
     .{ .pos = .{ .x = -0.5, .y = -0.5 }, .color = .{ .x = 1, .y = 0, .z = 0 } },
@@ -179,8 +181,9 @@ pub fn init(this: *@This(), window: *Window) !void {
     try this.createGraphicsPipeline();
     try this.createFrameBuffers();
     try this.createCommandPools();
-    try this.createVertexBuffer();
-    try this.createIndexBuffer();
+    // try this.createVertexBuffer();
+    // try this.createIndexBuffer();
+    try this.createCombinedBuffer();
     try this.createCommandBuffers();
     try this.createSyncObjects();
 }
@@ -194,8 +197,11 @@ pub fn deinit(this: *const @This()) void {
 
     vk.destroyBuffer(this.device, this.vertex_buffer, null);
     vk.freeMemory(this.device, this.vertex_buffer_memory, null);
+
     vk.destroyBuffer(this.device, this.index_buffer, null);
     vk.freeMemory(this.device, this.index_buffer_memory, null);
+
+    vk.freeMemory(this.device, this.combined_buffer_memory, null);
 
     for (0..MAX_FRAMES_IN_FLIGHT) |i| {
         vk.destroyFence(dev, this.in_flight_fences[i], null);
@@ -994,6 +1000,7 @@ pub fn createBuffer(this: *const @This(), size: vk.DeviceSize, usage: vk.BufferU
     if (vk.createBuffer(this.device, &create_info, null, &buffer) != .SUCCESS) {
         return error.CreateBufferFailed;
     }
+    errdefer vk.destroyBuffer(this.device, buffer, null);
 
     var requirements: vk.MemoryRequirements = undefined;
     vk.getBufferMemoryRequirements(this.device, buffer, &requirements);
@@ -1008,6 +1015,7 @@ pub fn createBuffer(this: *const @This(), size: vk.DeviceSize, usage: vk.BufferU
     if (vk.allocateMemory(this.device, &alloc_info, null, memory) != .SUCCESS) {
         return error.AllocateMemoryFailed;
     }
+    errdefer vk.freeMemory(this.device, memory.*, null);
 
     if (vk.bindBufferMemory(this.device, buffer, memory.*, 0) != .SUCCESS) {
         return error.BindBufferMemoryFailed;
@@ -1016,7 +1024,8 @@ pub fn createBuffer(this: *const @This(), size: vk.DeviceSize, usage: vk.BufferU
     return buffer;
 }
 
-pub fn copyBuffer(this: *const @This(), src: vk.Buffer, dst: vk.Buffer, size: vk.DeviceSize) !void {
+pub fn copyBuffer(this: *const @This(), src: vk.Buffer, src_offset: usize, dst: vk.Buffer, size: vk.DeviceSize) !void {
+    dlog("copybuffer: size: {}, src_offset: {}", .{ size, src_offset });
     var cmd_bufs = [_]vk.CommandBuffer{null};
     const alloc_info = vk.CommandBufferAllocateInfo{
         .sType = .COMMAND_BUFFER_ALLOCATE_INFO,
@@ -1040,7 +1049,7 @@ pub fn copyBuffer(this: *const @This(), src: vk.Buffer, dst: vk.Buffer, size: vk
         return error.BeginCommandBufferFailed;
     }
 
-    const copy_regions = [_]vk.BufferCopy{.{ .size = size }};
+    const copy_regions = [_]vk.BufferCopy{.{ .srcOffset = src_offset, .size = size }};
     vk.cmdCopyBuffer(cmd_buf, src, dst, copy_regions.len, &copy_regions);
 
     if (vk.endCommandBuffer(cmd_buf) != .SUCCESS) {
@@ -1089,7 +1098,7 @@ fn createVertexBuffer(this: *@This()) !void {
         &this.vertex_buffer_memory,
     );
 
-    try this.copyBuffer(staging_buffer, this.vertex_buffer, size);
+    try this.copyBuffer(staging_buffer, 0, this.vertex_buffer, size);
 }
 
 fn createIndexBuffer(this: *@This()) !void {
@@ -1109,7 +1118,7 @@ fn createIndexBuffer(this: *@This()) !void {
 
     var data: *@TypeOf(triangle_indices) = undefined;
     if (vk.mapMemory(this.device, staging_buffer_memory, 0, size, .{}, @ptrCast(&data)) != .SUCCESS) {
-        return error.mapMemoryFailed;
+        return error.MapMemoryFailed;
     }
     std.mem.copyForwards(@TypeOf(triangle_indices[0]), data, &triangle_indices);
     vk.unmapMemory(this.device, staging_buffer_memory);
@@ -1121,7 +1130,113 @@ fn createIndexBuffer(this: *@This()) !void {
         &this.index_buffer_memory,
     );
 
-    try this.copyBuffer(staging_buffer, this.index_buffer, size);
+    try this.copyBuffer(staging_buffer, 0, this.index_buffer, size);
+}
+
+fn makeSlice(comptime T: type, mem: []u8, offset: usize, len: usize) []T {
+    const offset_ptr: *u8 = &mem[offset];
+    return @as([*]T, @ptrCast(@alignCast(offset_ptr)))[0..len];
+}
+
+fn createCombinedBuffer(this: *@This()) !void {
+    const idx_size = @sizeOf(@TypeOf(triangle_indices));
+    const verts_size = @sizeOf(@TypeOf(triangle_vertices));
+
+    const qfis = this.device_info.queue_info.familyIndices();
+
+    const i_create_info = vk.BufferCreateInfo{
+        .sType = .BUFFER_CREATE_INFO,
+        .size = idx_size,
+        .usage = .{ .TRANSFER_DST_BIT = 1, .INDEX_BUFFER_BIT = 1 },
+        .sharingMode = .CONCURRENT,
+        .queueFamilyIndexCount = @intCast(qfis.len),
+        .pQueueFamilyIndices = qfis.ptr,
+    };
+
+    if (vk.createBuffer(this.device, &i_create_info, null, &this.index_buffer) != .SUCCESS) {
+        return error.CreateBufferFailed;
+    }
+    errdefer vk.destroyBuffer(this.device, this.index_buffer, null);
+
+    var i_requirements: vk.MemoryRequirements = undefined;
+    vk.getBufferMemoryRequirements(this.device, this.index_buffer, &i_requirements);
+
+    const v_create_info = vk.BufferCreateInfo{
+        .sType = .BUFFER_CREATE_INFO,
+        .size = verts_size,
+        .usage = .{ .TRANSFER_DST_BIT = 1, .VERTEX_BUFFER_BIT = 1 },
+        .sharingMode = .CONCURRENT,
+        .queueFamilyIndexCount = @intCast(qfis.len),
+        .pQueueFamilyIndices = qfis.ptr,
+    };
+
+    if (vk.createBuffer(this.device, &v_create_info, null, &this.vertex_buffer) != .SUCCESS) {
+        return error.CreateBufferFailed;
+    }
+    errdefer vk.destroyBuffer(this.device, this.vertex_buffer, null);
+
+    var v_requirements: vk.MemoryRequirements = undefined;
+    vk.getBufferMemoryRequirements(this.device, this.vertex_buffer, &v_requirements);
+
+    assert(i_requirements.memoryTypeBits == v_requirements.memoryTypeBits);
+
+    const staging_size = i_requirements.size + v_requirements.size + @max(i_requirements.alignment, v_requirements.alignment);
+
+    var staging_buffer_memory: vk.DeviceMemory = null;
+    const staging_buffer = try this.createBuffer(
+        staging_size,
+        .{ .TRANSFER_SRC_BIT = 1 },
+        .{ .HOST_VISIBLE_BIT = 1, .HOST_COHERENT_BIT = 1 },
+        &staging_buffer_memory,
+    );
+    defer {
+        vk.freeMemory(this.device, staging_buffer_memory, null);
+        vk.destroyBuffer(this.device, staging_buffer, null);
+    }
+
+    var _data: [*]u8 = undefined;
+    if (vk.mapMemory(this.device, staging_buffer_memory, 0, staging_size, .{}, @ptrCast(&_data)) != .SUCCESS) {
+        return error.MapMemoryFailed;
+    }
+
+    const verts_offset = std.mem.alignForward(usize, idx_size, v_requirements.alignment);
+
+    const data = _data[0..staging_size];
+    const idata = makeSlice(u16, data, 0, triangle_indices.len);
+    const vdata = makeSlice(Vertex, data, verts_offset, triangle_vertices.len);
+
+    std.mem.copyForwards(@TypeOf(triangle_indices[0]), idata, &triangle_indices);
+    std.mem.copyForwards(@TypeOf(triangle_vertices[0]), vdata, &triangle_vertices);
+
+    vk.unmapMemory(this.device, staging_buffer_memory);
+
+    dlog("ireq: {}", .{i_requirements});
+    dlog("vreq: {}", .{v_requirements});
+
+    const alloc_info: vk.MemoryAllocateInfo = .{
+        .sType = .MEMORY_ALLOCATE_INFO,
+        .allocationSize = i_requirements.size + v_requirements.size + @max(i_requirements.alignment, v_requirements.alignment),
+        .memoryTypeIndex = this.findMemoryType(i_requirements.memoryTypeBits, .{ .DEVICE_LOCAL_BIT = 1 }) orelse
+            return error.FindMemoryTypeFailed,
+    };
+
+    dlog("Allocating combined buffer: size: {}", .{alloc_info.allocationSize});
+
+    if (vk.allocateMemory(this.device, &alloc_info, null, &this.combined_buffer_memory) != .SUCCESS) {
+        return error.AllocateMemoryFailed;
+    }
+    errdefer vk.freeMemory(this.device, this.combined_buffer_memory, null);
+
+    if (vk.bindBufferMemory(this.device, this.index_buffer, this.combined_buffer_memory, 0) != .SUCCESS) {
+        return error.BindBufferMemoryFailed;
+    }
+
+    if (vk.bindBufferMemory(this.device, this.vertex_buffer, this.combined_buffer_memory, verts_offset) != .SUCCESS) {
+        return error.BindBufferMemoryFailed;
+    }
+
+    try this.copyBuffer(staging_buffer, 0, this.index_buffer, idx_size);
+    try this.copyBuffer(staging_buffer, verts_offset, this.vertex_buffer, verts_size);
 }
 
 fn findMemoryType(this: *const @This(), type_filter: u32, properties: vk.MemoryPropertyFlags) ?u32 {
