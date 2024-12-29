@@ -690,13 +690,13 @@ pub const FenceCreateInfo = extern struct {
 pub const SubmitInfo = extern struct {
     sType: s.StructureType = std.mem.zeroes(s.StructureType),
     pNext: ?*const anyopaque = null,
-    waitSemaphoreCount: u32,
-    pWaitSemaphores: [*]const s.Semaphore,
-    pWaitDstStageMask: [*]const s.PipelineStageFlags,
-    commandBufferCount: u32,
-    pCommandBuffers: [*]const s.CommandBuffer,
-    signalSemaphoreCount: u32,
-    pSignalSemaphores: [*]const s.Semaphore,
+    waitSemaphoreCount: u32 = 0,
+    pWaitSemaphores: [*]const s.Semaphore = undefined,
+    pWaitDstStageMask: [*]const s.PipelineStageFlags = undefined,
+    commandBufferCount: u32 = 0,
+    pCommandBuffers: [*]const s.CommandBuffer = undefined,
+    signalSemaphoreCount: u32 = 0,
+    pSignalSemaphores: [*]const s.Semaphore = undefined,
 };
 
 pub const SubpassDependency = extern struct {
@@ -815,4 +815,10 @@ pub const MemoryAllocateInfo = extern struct {
     pNext: ?*const anyopaque = null,
     allocationSize: s.DeviceSize = std.mem.zeroes(s.DeviceSize),
     memoryTypeIndex: u32 = 0,
+};
+
+pub const BufferCopy = extern struct {
+    srcOffset: s.DeviceSize = 0,
+    dstOffset: s.DeviceSize = 0,
+    size: s.DeviceSize,
 };

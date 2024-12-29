@@ -45,6 +45,7 @@ framebuffer_resized: bool = false,
 render_pass: vk.RenderPass = null,
 pipeline_layout: vk.PipelineLayout = null,
 graphics_pipeline: vk.Pipeline = null,
+// TODO: Command pool for temporary command buffers
 command_pool: vk.CommandPool = null,
 transfer_command_pool: vk.CommandPool = null,
 current_frame: u32 = 0,
@@ -958,7 +959,7 @@ fn createCommandPools(this: *@This()) !void {
 
     const transfer_create_info = vk.CommandPoolCreateInfo{
         .sType = .COMMAND_POOL_CREATE_INFO,
-        .flags = .{ .RESET_COMMAND_BUFFER = 1 },
+        .flags = .{ .RESET_COMMAND_BUFFER = 1, .TRANSIENT = 1 },
         .queueFamilyIndex = this.device_info.queue_info.transfer_index,
     };
 
@@ -967,50 +968,119 @@ fn createCommandPools(this: *@This()) !void {
     }
 }
 
-fn createVertexBuffer(this: *@This()) !void {
-    const request_size = @sizeOf(@TypeOf(triangle_vertices));
-
+pub fn createBuffer(this: *const @This(), size: vk.DeviceSize, usage: vk.BufferUsageFlags, properties: vk.MemoryPropertyFlags, memory: *vk.DeviceMemory) !vk.Buffer {
     const qfis = this.device_info.queue_info.familyIndices();
 
     const create_info = vk.BufferCreateInfo{
         .sType = .BUFFER_CREATE_INFO,
-        .size = request_size,
-        .usage = .{ .VERTEX_BUFFER_BIT = 1 },
+        .size = size,
+        .usage = usage,
         .sharingMode = .CONCURRENT,
         .queueFamilyIndexCount = @intCast(qfis.len),
         .pQueueFamilyIndices = qfis.ptr,
     };
 
-    if (vk.createBuffer(this.device, &create_info, null, &this.vertex_buffer) != .SUCCESS) {
+    var buffer: vk.Buffer = null;
+
+    if (vk.createBuffer(this.device, &create_info, null, &buffer) != .SUCCESS) {
         return error.CreateBufferFailed;
     }
 
     var requirements: vk.MemoryRequirements = undefined;
-    vk.getBufferMemoryRequirements(this.device, this.vertex_buffer, &requirements);
+    vk.getBufferMemoryRequirements(this.device, buffer, &requirements);
 
     const alloc_info: vk.MemoryAllocateInfo = .{
         .sType = .MEMORY_ALLOCATE_INFO,
         .allocationSize = requirements.size,
-        .memoryTypeIndex = this.findMemoryType(requirements.memoryTypeBits, .{
-            .HOST_VISIBLE_BIT = 1,
-            .HOST_COHERENT_BIT = 1,
-        }) orelse return error.FindMemoryTypeFailed,
+        .memoryTypeIndex = this.findMemoryType(requirements.memoryTypeBits, properties) orelse
+            return error.FindMemoryTypeFailed,
     };
 
-    if (vk.allocateMemory(this.device, &alloc_info, null, &this.vertex_buffer_memory) != .SUCCESS) {
-        return error.allocateMemoryFailed;
+    if (vk.allocateMemory(this.device, &alloc_info, null, memory) != .SUCCESS) {
+        return error.AllocateMemoryFailed;
     }
 
-    if (vk.bindBufferMemory(this.device, this.vertex_buffer, this.vertex_buffer_memory, 0) != .SUCCESS) {
+    if (vk.bindBufferMemory(this.device, buffer, memory.*, 0) != .SUCCESS) {
         return error.BindBufferMemoryFailed;
     }
 
+    return buffer;
+}
+
+pub fn copyBuffer(this: *const @This(), src: vk.Buffer, dst: vk.Buffer, size: vk.DeviceSize) !void {
+    var cmd_bufs = [_]vk.CommandBuffer{null};
+    const alloc_info = vk.CommandBufferAllocateInfo{
+        .sType = .COMMAND_BUFFER_ALLOCATE_INFO,
+        .level = .PRIMARY,
+        .commandPool = this.transfer_command_pool,
+        .commandBufferCount = cmd_bufs.len,
+    };
+
+    if (vk.allocateCommandBuffers(this.device, &alloc_info, &cmd_bufs) != .SUCCESS) {
+        return error.AllocateCommandBuffersFailed;
+    }
+    const cmd_buf = cmd_bufs[0];
+    defer vk.freeCommandBuffers(this.device, this.transfer_command_pool, cmd_bufs.len, &cmd_bufs);
+
+    const begin_info = vk.CommandBufferBeginInfo{
+        .sType = .COMMAND_BUFFER_BEGIN_INFO,
+        .flags = .{ .ONE_TIME_SUBMIT_BIT = 1 },
+    };
+
+    if (vk.beginCommandBuffer(cmd_buf, &begin_info) != .SUCCESS) {
+        return error.BeginCommandBufferFailed;
+    }
+
+    const copy_regions = [_]vk.BufferCopy{.{ .size = size }};
+    vk.cmdCopyBuffer(cmd_buf, src, dst, copy_regions.len, &copy_regions);
+
+    if (vk.endCommandBuffer(cmd_buf) != .SUCCESS) {
+        return error.EndCommandBufferFailed;
+    }
+
+    const submit_infos = [_]vk.SubmitInfo{.{
+        .sType = .SUBMIT_INFO,
+        .commandBufferCount = cmd_bufs.len,
+        .pCommandBuffers = &cmd_bufs,
+    }};
+
+    if (vk.queueSubmit(this.transfer_que, submit_infos.len, &submit_infos, null) != .SUCCESS) {
+        return error.QueueSubmitFailed;
+    }
+
+    if (vk.queueWaitIdle(this.transfer_que) != .SUCCESS) {
+        return error.QueueWaitIdleFailed;
+    }
+}
+
+fn createVertexBuffer(this: *@This()) !void {
+    const size = @sizeOf(@TypeOf(triangle_vertices));
+
+    var staging_buffer_memory: vk.DeviceMemory = null;
+    const staging_buffer = try this.createBuffer(size, .{ .TRANSFER_SRC_BIT = 1 }, .{
+        .HOST_VISIBLE_BIT = 1,
+        .HOST_COHERENT_BIT = 1,
+    }, &staging_buffer_memory);
+    defer {
+        vk.destroyBuffer(this.device, staging_buffer, null);
+        vk.freeMemory(this.device, staging_buffer_memory, null);
+    }
+
     var data: *@TypeOf(triangle_vertices) = undefined;
-    if (vk.mapMemory(this.device, this.vertex_buffer_memory, 0, create_info.size, .{}, @ptrCast(&data)) != .SUCCESS) {
+    if (vk.mapMemory(this.device, staging_buffer_memory, 0, size, .{}, @ptrCast(&data)) != .SUCCESS) {
         return error.mapMemoryFailed;
     }
     std.mem.copyForwards(@TypeOf(triangle_vertices[0]), data, &triangle_vertices);
-    vk.unmapMemory(this.device, this.vertex_buffer_memory);
+    vk.unmapMemory(this.device, staging_buffer_memory);
+
+    this.vertex_buffer = try this.createBuffer(
+        size,
+        .{ .TRANSFER_DST_BIT = 1, .VERTEX_BUFFER_BIT = 1 },
+        .{ .DEVICE_LOCAL_BIT = 1 },
+        &this.vertex_buffer_memory,
+    );
+
+    try this.copyBuffer(staging_buffer, this.vertex_buffer, size);
 }
 
 fn findMemoryType(this: *const @This(), type_filter: u32, properties: vk.MemoryPropertyFlags) ?u32 {
