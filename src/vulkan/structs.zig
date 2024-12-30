@@ -2,7 +2,7 @@ const std = @import("std");
 const s = @import("vulkan.zig");
 
 pub const ApplicationInfo = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType,
     pNext: ?*const anyopaque = null,
     pApplicationName: [*:0]const u8,
     applicationVersion: u32 = 0,
@@ -24,7 +24,7 @@ pub const LayerProperties = extern struct {
 };
 
 pub const InstanceCreateInfo = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType,
     pNext: ?*const anyopaque = null,
     flags: s.InstanceCreateFlags = std.mem.zeroes(s.InstanceCreateFlags),
     pApplicationInfo: *const ApplicationInfo,
@@ -238,7 +238,7 @@ pub const QueueFamilyProperties = extern struct {
 };
 
 pub const DeviceQueueCreateInfo = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType,
     pNext: ?*const anyopaque = null,
     flags: s.DeviceQueueCreateFlags = std.mem.zeroes(s.DeviceQueueCreateFlags),
     queueFamilyIndex: u32 = 0,
@@ -247,7 +247,7 @@ pub const DeviceQueueCreateInfo = extern struct {
 };
 
 pub const DeviceCreateInfo = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType,
     pNext: ?*const anyopaque = null,
     flags: s.DeviceCreateFlags = std.mem.zeroes(s.DeviceCreateFlags),
     queueCreateInfoCount: u32 = 0,
@@ -260,7 +260,7 @@ pub const DeviceCreateInfo = extern struct {
 };
 
 pub const XcbSurfaceCreateInfoKHR = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType,
     pNext: ?*const anyopaque = null,
     flags: s.XcbSurfaceCreateFlagsKHR = std.mem.zeroes(s.XcbSurfaceCreateFlagsKHR),
     connection: *s.x.xcb_connection_t,
@@ -268,7 +268,7 @@ pub const XcbSurfaceCreateInfoKHR = extern struct {
 };
 
 pub const XlibSurfaceCreateInfoKHR = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType,
     pNext: ?*const anyopaque = null,
     flags: s.XlibSurfaceCreateFlagsKHR = std.mem.zeroes(s.XlibSurfaceCreateFlagsKHR),
     dpy: *s.x.Display,
@@ -276,7 +276,7 @@ pub const XlibSurfaceCreateInfoKHR = extern struct {
 };
 
 pub const Win32SurfaceCreateInfoKHR = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType,
     pNext: ?*const anyopaque = null,
     flags: s.Win32SurfaceCreateFlagsKHR = std.mem.zeroes(s.Win32SurfaceCreateFlagsKHR),
     hinstance: s.win32.HINSTANCE,
@@ -313,7 +313,7 @@ pub const Extent2D = extern struct {
 };
 
 pub const SwapchainCreateInfoKHR = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType,
     pNext: ?*const anyopaque = null,
     flags: s.SwapchainCreateFlagsKHR = std.mem.zeroes(s.SwapchainCreateFlagsKHR),
     surface: s.SurfaceKHR = null,
@@ -334,7 +334,7 @@ pub const SwapchainCreateInfoKHR = extern struct {
 };
 
 pub const ImageViewCreateInfo = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType,
     pNext: ?*const anyopaque = null,
     flags: s.ImageViewCreateFlags = std.mem.zeroes(s.ImageViewCreateFlags),
     image: s.Image = null,
@@ -360,7 +360,7 @@ pub const ImageSubresourceRange = extern struct {
 };
 
 pub const ShaderModuleCreateInfo = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType,
     pNext: ?*const anyopaque = null,
     flags: s.ShaderModuleCreateFlags = std.mem.zeroes(s.ShaderModuleCreateFlags),
     codeSize: usize,
@@ -368,7 +368,7 @@ pub const ShaderModuleCreateInfo = extern struct {
 };
 
 pub const PipelineShaderStageCreateInfo = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType,
     pNext: ?*const anyopaque = null,
     flags: s.PipelineShaderStageCreateFlags = std.mem.zeroes(s.PipelineShaderStageCreateFlags),
     stage: s.ShaderStageFlags,
@@ -391,7 +391,7 @@ pub const SpecializationMapEntry = extern struct {
 };
 
 pub const PipelineDynamicStateCreateInfo = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType,
     pNext: ?*const anyopaque = null,
     flags: s.PipelineDynamicStateCreateFlags = std.mem.zeroes(s.PipelineDynamicStateCreateFlags),
     dynamicStateCount: u32,
@@ -412,7 +412,7 @@ pub const VertexInputAttributeDescription = extern struct {
 };
 
 pub const PipelineVertexInputStateCreateInfo = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType,
     pNext: ?*const anyopaque = null,
     flags: s.PipelineVertexInputStateCreateFlags = 0,
     vertexBindingDescriptionCount: u32,
@@ -422,7 +422,7 @@ pub const PipelineVertexInputStateCreateInfo = extern struct {
 };
 
 pub const PipelineInputAssemblyStateCreateInfo = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType,
     pNext: ?*const anyopaque = null,
     flags: s.PipelineInputAssemblyStateCreateFlags = std.mem.zeroes(s.PipelineInputAssemblyStateCreateFlags),
     topology: s.PrimitiveTopology = std.mem.zeroes(s.PrimitiveTopology),
@@ -430,7 +430,7 @@ pub const PipelineInputAssemblyStateCreateInfo = extern struct {
 };
 
 pub const PipelineTessellationStateCreateInfo = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType,
     pNext: ?*const anyopaque = null,
     flags: s.PipelineTessellationStateCreateFlags = std.mem.zeroes(s.PipelineTessellationStateCreateFlags),
     patchControlPoints: u32 = 0,
@@ -456,7 +456,7 @@ pub const Rect2D = extern struct {
 };
 
 pub const PipelineViewportStateCreateInfo = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType,
     pNext: ?*const anyopaque = null,
     flags: s.PipelineViewportStateCreateFlags = std.mem.zeroes(s.PipelineViewportStateCreateFlags),
     viewportCount: u32,
@@ -466,7 +466,7 @@ pub const PipelineViewportStateCreateInfo = extern struct {
 };
 
 pub const PipelineRasterizationStateCreateInfo = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType,
     pNext: ?*const anyopaque = null,
     flags: s.PipelineRasterizationStateCreateFlags = std.mem.zeroes(s.PipelineRasterizationStateCreateFlags),
     depthClampEnable: s.Bool32 = s.FALSE,
@@ -482,7 +482,7 @@ pub const PipelineRasterizationStateCreateInfo = extern struct {
 };
 
 pub const PipelineMultisampleStateCreateInfo = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType,
     pNext: ?*const anyopaque = null,
     flags: s.PipelineMultisampleStateCreateFlags = std.mem.zeroes(s.PipelineMultisampleStateCreateFlags),
     rasterizationSamples: s.SampleCountFlags = std.mem.zeroes(s.SampleCountFlags),
@@ -494,7 +494,7 @@ pub const PipelineMultisampleStateCreateInfo = extern struct {
 };
 
 pub const PipelineDepthStencilStateCreateInfo = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType,
     pNext: ?*const anyopaque = null,
     flags: s.PipelineDepthStencilStateCreateFlags = std.mem.zeroes(s.PipelineDepthStencilStateCreateFlags),
     depthTestEnable: s.Bool32 = s.FALSE,
@@ -530,7 +530,7 @@ pub const PipelineColorBlendAttachmentState = extern struct {
 };
 
 pub const PipelineColorBlendStateCreateInfo = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType,
     pNext: ?*const anyopaque = null,
     flags: s.PipelineColorBlendStateCreateFlags = std.mem.zeroes(s.PipelineColorBlendStateCreateFlags),
     logicOpEnable: s.Bool32 = s.FALSE,
@@ -541,11 +541,11 @@ pub const PipelineColorBlendStateCreateInfo = extern struct {
 };
 
 pub const PipelineLayoutCreateInfo = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType,
     pNext: ?*const anyopaque = null,
-    flags: s.PipelineLayoutCreateFlags = std.mem.zeroes(s.PipelineLayoutCreateFlags),
+    flags: s.PipelineLayoutCreateFlags,
     setLayoutCount: u32,
-    pSetLayouts: ?[*]const s.DescriptorSetLayout,
+    pSetLayouts: ?[*]const s.DescriptorSetLayout = null,
     pushConstantRangeCount: u32,
     pPushConstantRanges: ?[*]const s.PushConstantRange,
 };
@@ -587,7 +587,7 @@ pub const SubpassDescription = extern struct {
 };
 
 pub const RenderPassCreateInfo = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType,
     pNext: ?*const anyopaque = null,
     flags: s.RenderPassCreateFlags = std.mem.zeroes(s.RenderPassCreateFlags),
     attachmentCount: u32,
@@ -599,7 +599,7 @@ pub const RenderPassCreateInfo = extern struct {
 };
 
 pub const GraphicsPipelineCreateInfo = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType,
     pNext: ?*const anyopaque = null,
     flags: s.PipelineCreateFlags = std.mem.zeroes(s.PipelineCreateFlags),
     stageCount: u32,
@@ -621,7 +621,7 @@ pub const GraphicsPipelineCreateInfo = extern struct {
 };
 
 pub const FramebufferCreateInfo = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType,
     pNext: ?*const anyopaque = null,
     flags: s.FramebufferCreateFlags = std.mem.zeroes(s.FramebufferCreateFlags),
     renderPass: s.RenderPass,
@@ -633,14 +633,14 @@ pub const FramebufferCreateInfo = extern struct {
 };
 
 pub const CommandPoolCreateInfo = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType,
     pNext: ?*const anyopaque = null,
     flags: s.CommandPoolCreateFlags = std.mem.zeroes(s.CommandPoolCreateFlags),
     queueFamilyIndex: u32,
 };
 
 pub const CommandBufferAllocateInfo = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType,
     pNext: ?*const anyopaque = null,
     commandPool: s.CommandPool,
     level: s.CommandBufferLevel = std.mem.zeroes(s.CommandBufferLevel),
@@ -648,14 +648,14 @@ pub const CommandBufferAllocateInfo = extern struct {
 };
 
 pub const CommandBufferBeginInfo = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType,
     pNext: ?*const anyopaque = null,
     flags: s.CommandBufferUsageFlags = std.mem.zeroes(s.CommandBufferUsageFlags),
     pInheritanceInfo: ?*const s.CommandBufferInheritanceInfo = null,
 };
 
 pub const CommandBufferInheritanceInfo = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType,
     pNext: ?*const anyopaque = null,
     renderPass: s.RenderPass = null,
     subpass: u32,
@@ -666,7 +666,7 @@ pub const CommandBufferInheritanceInfo = extern struct {
 };
 
 pub const RenderPassBeginInfo = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType,
     pNext: ?*const anyopaque = null,
     renderPass: s.RenderPass,
     framebuffer: s.Framebuffer,
@@ -676,19 +676,19 @@ pub const RenderPassBeginInfo = extern struct {
 };
 
 pub const SemaphoreCreateInfo = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType,
     pNext: ?*const anyopaque = null,
     flags: s.SemaphoreCreateFlags = std.mem.zeroes(s.SemaphoreCreateFlags),
 };
 
 pub const FenceCreateInfo = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType,
     pNext: ?*const anyopaque = null,
     flags: s.FenceCreateFlags = std.mem.zeroes(s.FenceCreateFlags),
 };
 
 pub const SubmitInfo = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType,
     pNext: ?*const anyopaque = null,
     waitSemaphoreCount: u32 = 0,
     pWaitSemaphores: [*]const s.Semaphore = undefined,
@@ -710,7 +710,7 @@ pub const SubpassDependency = extern struct {
 };
 
 pub const PresentInfoKHR = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType,
     pNext: ?*const anyopaque = null,
     waitSemaphoreCount: u32,
     pWaitSemaphores: [*]const s.Semaphore,
@@ -737,14 +737,14 @@ pub const ClearValue = extern union {
 };
 
 pub const DebugUtilsLabelEXT = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType,
     pNext: ?*const anyopaque = null,
     pLabelName: [*:0]const u8,
     color: [4]f32,
 };
 
 pub const DebugUtilsObjectNameInfoEXT = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType,
     pNext: ?*const anyopaque = std.mem.zeroes(?*const anyopaque),
     objectType: s.ObjectType = std.mem.zeroes(s.ObjectType),
     objectHandle: u64 = 0,
@@ -752,7 +752,7 @@ pub const DebugUtilsObjectNameInfoEXT = extern struct {
 };
 
 pub const DebugUtilsMessengerCallbackData = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType,
     pNext: ?*const anyopaque = null,
     flags: s.DebugUtilsMessengerCallbackDataFlagsEXT,
     pMessageIdName: [*:0]const u8,
@@ -767,7 +767,7 @@ pub const DebugUtilsMessengerCallbackData = extern struct {
 };
 
 pub const DebugUtilsMessengerCreateInfoEXT = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType,
     pNext: ?*const anyopaque = null,
     flags: s.DebugUtilsMessengerCreateFlagsEXT = std.mem.zeroes(s.DebugUtilsMessengerCreateFlagsEXT),
     messageSeverity: s.DebugUtilsMessageSeverityFlagsEXT,
@@ -821,4 +821,20 @@ pub const BufferCopy = extern struct {
     srcOffset: s.DeviceSize = 0,
     dstOffset: s.DeviceSize = 0,
     size: s.DeviceSize,
+};
+
+pub const DescriptorSetLayoutBinding = extern struct {
+    binding: u32,
+    descriptorType: s.DescriptorType,
+    descriptorCount: u32,
+    stageFlags: s.ShaderStageFlags,
+    pImmutableSamplers: ?[*]const s.Sampler = null,
+};
+
+pub const DescriptorSetLayoutCreateInfo = extern struct {
+    sType: s.StructureType,
+    pNext: ?*const anyopaque = null,
+    flags: s.DescriptorSetLayoutCreateFlags,
+    bindingCount: u32,
+    pBindings: [*]const s.DescriptorSetLayoutBinding,
 };

@@ -25,6 +25,7 @@ const Renderer = @This();
 
 const MAX_FRAMES_IN_FLIGHT = 2;
 const MAX_SWAPCHAIN_IMAGES = 8;
+const UBO_COUNT = 1;
 
 const Window = @import("root").Window;
 
@@ -43,6 +44,7 @@ image_count: usize = 0,
 framebuffer_resized: bool = false,
 
 render_pass: vk.RenderPass = null,
+descriptor_set_layout: vk.DescriptorSetLayout = null,
 pipeline_layout: vk.PipelineLayout = null,
 graphics_pipeline: vk.Pipeline = null,
 // TODO: Command pool for temporary command buffers
@@ -57,17 +59,26 @@ image_views: [MAX_SWAPCHAIN_IMAGES]vk.ImageView = undefined,
 framebuffers: [MAX_SWAPCHAIN_IMAGES]vk.Framebuffer = undefined,
 
 // presentation
-command_buffers: [MAX_FRAMES_IN_FLIGHT]vk.CommandBuffer = undefined,
-image_available_semaphores: [MAX_FRAMES_IN_FLIGHT]vk.Semaphore = undefined,
-render_finished_semaphores: [MAX_FRAMES_IN_FLIGHT]vk.Semaphore = undefined,
-in_flight_fences: [MAX_FRAMES_IN_FLIGHT]vk.Fence = undefined,
+command_buffers: [MAX_FRAMES_IN_FLIGHT]vk.CommandBuffer = .{null} ** MAX_FRAMES_IN_FLIGHT,
+image_available_semaphores: [MAX_FRAMES_IN_FLIGHT]vk.Semaphore = .{null} ** MAX_FRAMES_IN_FLIGHT,
+render_finished_semaphores: [MAX_FRAMES_IN_FLIGHT]vk.Semaphore = .{null} ** MAX_FRAMES_IN_FLIGHT,
+in_flight_fences: [MAX_FRAMES_IN_FLIGHT]vk.Fence = .{null} ** MAX_FRAMES_IN_FLIGHT,
 
 index_buffer: vk.Buffer = null,
 vertex_buffer: vk.Buffer = null,
+uniform_buffers: [MAX_FRAMES_IN_FLIGHT]vk.Buffer = .{null} ** MAX_FRAMES_IN_FLIGHT,
+uniform_buffers_mapped: [MAX_FRAMES_IN_FLIGHT][UBO_COUNT]UniformBufferObject = undefined,
 
-index_buffer_memory: vk.DeviceMemory = null,
-vertex_buffer_memory: vk.DeviceMemory = null,
+// index_buffer_memory: vk.DeviceMemory = null,
+// vertex_buffer_memory: vk.DeviceMemory = null,
+uniform_buffers_memory: [MAX_FRAMES_IN_FLIGHT]vk.DeviceMemory = .{null} ** MAX_FRAMES_IN_FLIGHT,
 combined_buffer_memory: vk.DeviceMemory = null,
+
+const UniformBufferObject = extern struct {
+    model: math.Mat4,
+    view: math.Mat4,
+    proj: math.Mat4,
+};
 
 const triangle_vertices = [_]Vertex{
     .{ .pos = .{ .x = -0.5, .y = -0.5 }, .color = .{ .x = 1, .y = 0, .z = 0 } },
@@ -178,12 +189,14 @@ pub fn init(this: *@This(), window: *Window) !void {
     try this.createImageViews();
 
     try this.createRenderPass();
+    try this.createDescriptorSetLayout();
     try this.createGraphicsPipeline();
     try this.createFrameBuffers();
     try this.createCommandPools();
     // try this.createVertexBuffer();
     // try this.createIndexBuffer();
     try this.createCombinedBuffer();
+    try this.createUniformBuffers();
     try this.createCommandBuffers();
     try this.createSyncObjects();
 }
@@ -196,10 +209,13 @@ pub fn deinit(this: *const @This()) void {
     this.cleanupSwapchain();
 
     vk.destroyBuffer(this.device, this.vertex_buffer, null);
-    vk.freeMemory(this.device, this.vertex_buffer_memory, null);
+    // vk.freeMemory(this.device, this.vertex_buffer_memory, null);
 
     vk.destroyBuffer(this.device, this.index_buffer, null);
-    vk.freeMemory(this.device, this.index_buffer_memory, null);
+    // vk.freeMemory(this.device, this.index_buffer_memory, null);
+
+    for (this.uniform_buffers) |ub| vk.destroyBuffer(this.device, ub, null);
+    for (this.uniform_buffers_memory) |ubm| vk.freeMemory(this.device, ubm, null);
 
     vk.freeMemory(this.device, this.combined_buffer_memory, null);
 
@@ -213,6 +229,7 @@ pub fn deinit(this: *const @This()) void {
     vk.destroyCommandPool(dev, this.transfer_command_pool, null);
     vk.destroyPipeline(dev, this.graphics_pipeline, null);
     vk.destroyPipelineLayout(dev, this.pipeline_layout, null);
+    vk.destroyDescriptorSetLayout(dev, this.descriptor_set_layout, null);
     vk.destroyRenderPass(dev, this.render_pass, null);
 
     vk.destroyDevice(dev, null);
@@ -807,6 +824,27 @@ fn createRenderPass(this: *@This()) !void {
     }
 }
 
+fn createDescriptorSetLayout(this: *@This()) !void {
+    const ubo_layout_bindings = [_]vk.DescriptorSetLayoutBinding{.{
+        .binding = 0,
+        .descriptorType = .UNIFORM_BUFFER,
+        .descriptorCount = 1,
+        .stageFlags = .{ .VERTEX_BIT = 1 },
+        .pImmutableSamplers = null,
+    }};
+
+    const layout_info = vk.DescriptorSetLayoutCreateInfo{
+        .sType = .DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        .flags = .{},
+        .bindingCount = ubo_layout_bindings.len,
+        .pBindings = &ubo_layout_bindings,
+    };
+
+    if (vk.createDescriptorSetLayout(this.device, &layout_info, null, &this.descriptor_set_layout) != .SUCCESS) {
+        return error.CreateDescriptorSetLayoutFailed;
+    }
+}
+
 fn createGraphicsPipeline(this: *@This()) !void {
     const vert_shader_module = try this.createShaderModule(&builtin_shaders.@"color_triangle.vert");
     defer vk.destroyShaderModule(this.device, vert_shader_module, null);
@@ -906,8 +944,9 @@ fn createGraphicsPipeline(this: *@This()) !void {
 
     const pipeline_layout_create_info = vk.PipelineLayoutCreateInfo{
         .sType = .PIPELINE_LAYOUT_CREATE_INFO,
-        .setLayoutCount = 0,
-        .pSetLayouts = null,
+        .flags = .{},
+        .setLayoutCount = 1,
+        .pSetLayouts = &.{this.descriptor_set_layout},
         .pushConstantRangeCount = 0,
         .pPushConstantRanges = null,
     };
@@ -1250,6 +1289,30 @@ fn findMemoryType(this: *const @This(), type_filter: u32, properties: vk.MemoryP
     return null;
 }
 
+fn createUniformBuffers(this: *@This()) !void {
+    const buf_size: vk.DeviceSize = @sizeOf(UniformBufferObject) * UBO_COUNT;
+
+    for (0..MAX_FRAMES_IN_FLIGHT) |i| {
+        this.uniform_buffers[i] = try this.createBuffer(
+            buf_size,
+            .{ .UNIFORM_BUFFER_BIT = 1 },
+            .{ .HOST_VISIBLE_BIT = 1, .HOST_COHERENT_BIT = 1 },
+            &this.uniform_buffers_memory[i],
+        );
+
+        if (vk.mapMemory(
+            this.device,
+            this.uniform_buffers_memory[i],
+            0,
+            buf_size,
+            .{},
+            @ptrCast(@alignCast(&this.uniform_buffers_mapped[i])),
+        ) != .SUCCESS) {
+            return error.MapMemoryFailed;
+        }
+    }
+}
+
 fn createCommandBuffers(this: *@This()) !void {
     const alloc_info = vk.CommandBufferAllocateInfo{
         .sType = .COMMAND_BUFFER_ALLOCATE_INFO,
@@ -1343,6 +1406,17 @@ fn recordCommandBuffer(this: *const @This(), image_index: u32) void {
     }
 }
 
+fn updateUniformBuffer(this: *@This(), image_index: u32) void {
+    const ubos = &[UBO_COUNT]UniformBufferObject{.{
+        .model = math.Mat4.identity,
+        .view = math.Mat4.identity,
+        .proj = math.Mat4.identity,
+    }};
+
+    const dest: []UniformBufferObject = &this.uniform_buffers_mapped[image_index];
+    std.mem.copyForwards(UniformBufferObject, dest, ubos);
+}
+
 pub fn drawFrame(this: *@This()) void {
     const cfi = this.current_frame;
     const cmd_buf = this.command_buffers[cfi];
@@ -1364,8 +1438,9 @@ pub fn drawFrame(this: *@This()) void {
     _ = vk.resetFences(this.device, 1, @ptrCast(&this.in_flight_fences[cfi]));
 
     _ = vk.resetCommandBuffer(cmd_buf, .{});
-
     this.recordCommandBuffer(image_index);
+
+    this.updateUniformBuffer(this.current_frame);
 
     const wait_semaphores = [_]vk.Semaphore{this.image_available_semaphores[cfi]};
     const wait_stages = [wait_semaphores.len]vk.PipelineStageFlags{.{ .COLOR_ATTACHMENT_OUTPUT_BIT = 1 }};

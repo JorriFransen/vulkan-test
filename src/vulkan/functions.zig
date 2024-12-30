@@ -93,3 +93,5 @@ pub const mapMemory = f("vkMapMemory", fn (device: Device, memory: DeviceMemory,
 pub const unmapMemory = f("vkUnmapMemory", fn (device: Device, memory: DeviceMemory) callconv(.C) void);
 pub const cmdCopyBuffer = f("vkCmdCopyBuffer", fn (commandBuffer: CommandBuffer, srcBuffer: Buffer, dstBuffer: Buffer, regionCount: u32, pRegions: [*]const vk.BufferCopy) callconv(.C) void);
 pub const cmdDrawIndexed = f("vkCmdDrawIndexed", fn (commandBuffer: CommandBuffer, indexCount: u32, instanceCount: u32, firstIndex: u32, vertexOffset: i32, firstInstance: u32) callconv(.C) void);
+pub const createDescriptorSetLayout = f("vkCreateDescriptorSetLayout", fn (device: Device, pCreateInfo: *const vk.DescriptorSetLayoutCreateInfo, pAllocator: ?*const AllocationCallbacks, pSetLayout: *vk.DescriptorSetLayout) callconv(.C) Result);
+pub const destroyDescriptorSetLayout = f("vkDestroyDescriptorSetLayout", fn (device: Device, descriptorSetLayout: vk.DescriptorSetLayout, pAllocator: ?*const AllocationCallbacks) callconv(.C) void);
