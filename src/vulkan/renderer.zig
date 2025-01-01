@@ -701,6 +701,7 @@ pub fn cleanupSwapchain(this: *const @This()) void {
 }
 
 pub fn createSwapchain(this: *@This()) !void {
+    this.device_info.swapchain_info = try querySwapchainInfo(this.device_info.physical_device, this.surface) orelse @panic("Swapchain creation failed!");
     const dev_info = &this.device_info;
     const info = dev_info.swapchain_info;
     const cap = &info.surface_capabilities;
