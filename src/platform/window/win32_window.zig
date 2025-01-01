@@ -129,7 +129,7 @@ pub fn pollEvents(this: *@This()) void {
         const impl_ptr: *Window.Impl = @fieldParentPtr("win32_window", this);
         assert(@as(*@This(), @ptrCast(impl_ptr)) == this);
         const window: *Window = @fieldParentPtr("impl", impl_ptr);
-        if (window.framebuffer_resize_callback) |cb| {
+        if (this.framebuffer_resize_callback) |cb| {
             cb.fun(window, s.x, s.y, cb.user_data);
         }
         this.new_fb_size = null;
@@ -229,19 +229,19 @@ fn windowProc(_hwnd: win32.HWND, uMsg: u32, wParam: win32.WPARAM, lParam: win32.
         return win32.DefWindowProcW(hwnd, uMsg, wParam, lParam);
     }
 
-    const impl: *@This() = @ptrFromInt(data_int);
-    const impl_ptr: *Window.Impl = @fieldParentPtr("win32_window", impl);
-    assert(@as(*@This(), @ptrCast(impl_ptr)) == impl);
-    const this: *Window = @fieldParentPtr("impl", impl_ptr);
+    const this: *@This() = @ptrFromInt(data_int);
+    const impl_ptr: *Window.Impl = @fieldParentPtr("win32_window", this);
+    assert(@as(*@This(), @ptrCast(impl_ptr)) == this);
+    const window: *Window = @fieldParentPtr("impl", impl_ptr);
 
     switch (uMsg) {
         win32.WM_SIZE => {
-            impl.new_fb_size = .{ .x = win32.LOWORD(lParam), .y = win32.HIWORD(lParam) };
+            this.new_fb_size = .{ .x = win32.LOWORD(lParam), .y = win32.HIWORD(lParam) };
             return 0;
         },
         win32.WM_DESTROY => {
             win32.PostQuitMessage(0);
-            impl.close_requested = true;
+            this.close_requested = true;
             return 0;
         },
 
@@ -252,7 +252,7 @@ fn windowProc(_hwnd: win32.HWND, uMsg: u32, wParam: win32.WPARAM, lParam: win32.
                 const action: platform.KeyAction = if (flags.previous_state == 0) .press else .repeat;
                 const key = if (wParam < 255) virtualKeyToPlatformKey(@enumFromInt(wParam), flags) else .unknown;
 
-                cb.fun(this, key, action, flags.scan_code, cb.user_data);
+                cb.fun(window, key, action, flags.scan_code, cb.user_data);
             }
             return 0;
         },
@@ -262,7 +262,7 @@ fn windowProc(_hwnd: win32.HWND, uMsg: u32, wParam: win32.WPARAM, lParam: win32.
                 const flags: KeyLParam = @bitCast(@as(u32, @intCast(lParam)));
                 const key = if (wParam < 255) virtualKeyToPlatformKey(@enumFromInt(wParam), flags) else .unknown;
 
-                cb.fun(this, key, .release, flags.scan_code, cb.user_data);
+                cb.fun(window, key, .release, flags.scan_code, cb.user_data);
             }
             return 0;
         },
