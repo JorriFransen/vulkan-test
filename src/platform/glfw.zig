@@ -31,7 +31,7 @@ pub extern fn glfwSwapBuffers(window: ?*const GLFWwindow) callconv(.C) void;
 pub extern fn glfwPlatformSupported(platform: Platform) callconv(.C) c_int;
 pub extern fn glfwGetPlatform() callconv(.C) Platform;
 pub extern fn glfwVulkanSupported() callconv(.C) c_int;
-pub extern fn glfwGetRequiredInstanceExtensions(count: *u32) callconv(.C) [*c][*c]const u8;
+pub extern fn glfwGetRequiredInstanceExtensions(count: *u32) callconv(.C) ?[*][*:0]const u8;
 pub extern fn glfwSetWindowUserPointer(window: ?*GLFWwindow, ptr: *anyopaque) callconv(.C) void;
 pub extern fn glfwGetWindowUserPointer(window: ?*GLFWwindow) callconv(.C) *anyopaque;
 pub extern fn glfwGetX11Display() callconv(.C) *x.Display;

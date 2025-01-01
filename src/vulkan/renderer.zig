@@ -69,7 +69,7 @@ in_flight_fences: [MAX_FRAMES_IN_FLIGHT]vk.Fence = .{null} ** MAX_FRAMES_IN_FLIG
 index_buffer: vk.Buffer = null,
 vertex_buffer: vk.Buffer = null,
 uniform_buffers: [MAX_FRAMES_IN_FLIGHT]vk.Buffer = .{null} ** MAX_FRAMES_IN_FLIGHT,
-uniform_buffers_mapped: [MAX_FRAMES_IN_FLIGHT][UBO_COUNT]UniformBufferObject = undefined,
+uniform_buffers_mapped: [MAX_FRAMES_IN_FLIGHT][UBO_COUNT]UniformBufferObject align(64) = undefined,
 
 // index_buffer_memory: vk.DeviceMemory = null,
 // vertex_buffer_memory: vk.DeviceMemory = null,
@@ -77,9 +77,10 @@ uniform_buffers_memory: [MAX_FRAMES_IN_FLIGHT]vk.DeviceMemory = .{null} ** MAX_F
 combined_buffer_memory: vk.DeviceMemory = null,
 
 const UniformBufferObject = extern struct {
-    model: math.Mat4,
-    view: math.Mat4,
-    proj: math.Mat4,
+    // model: math.Mat4,
+    // view: math.Mat4,
+    // proj: math.Mat4,
+    color: math.Vec4,
 };
 
 const triangle_vertices = [_]Vertex{
@@ -1417,7 +1418,7 @@ fn recordCommandBuffer(this: *const @This(), cmd_buf: vk.CommandBuffer, image_in
         @panic("beginCommandBuffer failed!");
     }
 
-    const clear_values = [_]vk.ClearValue{.{ .color = .{ .float32 = .{ 0, 0, 0, 1 } } }};
+    const clear_values = [_]vk.ClearValue{.{ .color = .{ .float32 = .{ 0.392, 0.584, 0.929, 1 } } }};
 
     const render_pass_info = vk.RenderPassBeginInfo{
         .sType = .RENDER_PASS_BEGIN_INFO,
@@ -1469,13 +1470,17 @@ fn recordCommandBuffer(this: *const @This(), cmd_buf: vk.CommandBuffer, image_in
 }
 
 fn updateUniformBuffer(this: *@This(), image_index: usize) void {
-    const ubo = UniformBufferObject{
-        .model = math.Mat4.identity,
-        .view = math.Mat4.identity,
-        .proj = math.Mat4.identity,
-    };
-    var dest: [UBO_COUNT]UniformBufferObject = this.uniform_buffers_mapped[image_index];
-    dest = .{ubo};
+    // const ubo = UniformBufferObject{
+    //     .color = .{ .x = 0.5, .y = 0.2, .z = 0.1, .w = 1 },
+    //     // .model = math.Mat4.identity,
+    //     // .view = math.Mat4.identity,
+    //     // .proj = math.Mat4.identity,
+    // };
+    // var dest: [UBO_COUNT]UniformBufferObject = this.uniform_buffers_mapped[image_index];
+    // dest = .{ubo};
+    //
+
+    this.uniform_buffers_mapped[image_index][0].color = .{ .x = 0.5, .y = 0.4, .z = 0.3, .w = 1 };
 }
 
 pub fn drawFrame(this: *@This()) void {

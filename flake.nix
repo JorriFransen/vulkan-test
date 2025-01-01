@@ -16,6 +16,7 @@
       packages = [
         # zls
         # zig
+        pkgs.renderdoc
       ];
 
       buildInputs = [
