@@ -18,4 +18,13 @@ pub const Mat4 = extern struct {
         .{ 0, 0, 1, 0 },
         .{ 0, 0, 0, 1 },
     } };
+
+    pub fn rotation_z(r: f32) @This() {
+        return .{ .m = .{
+            .{ @cos(r), -@sin(r), 0, 0 },
+            .{ @sin(r), @cos(r), 0, 0 },
+            .{ 0, 0, 1, 0 },
+            .{ 0, 0, 0, 1 },
+        } };
+    }
 };

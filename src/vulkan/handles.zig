@@ -21,3 +21,6 @@ pub const DebugUtilsMessengerEXT = ?*opaque {};
 pub const Buffer = ?*opaque {};
 pub const DeviceMemory = ?*opaque {};
 pub const Sampler = ?*opaque {};
+pub const DescriptorPool = ?*opaque {};
+pub const DescriptorSet = ?*opaque {};
+pub const BufferView = ?*opaque {};

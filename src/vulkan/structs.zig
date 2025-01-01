@@ -838,3 +838,62 @@ pub const DescriptorSetLayoutCreateInfo = extern struct {
     bindingCount: u32,
     pBindings: [*]const s.DescriptorSetLayoutBinding,
 };
+
+pub const DescriptorPoolSize = extern struct {
+    type: s.DescriptorType,
+    descriptorCount: u32,
+};
+
+pub const DescriptorPoolCreateInfo = extern struct {
+    sType: s.StructureType,
+    pNext: ?*const anyopaque = null,
+    flags: s.DescriptorPoolCreateFlags = std.mem.zeroes(s.DescriptorPoolCreateFlags),
+    maxSets: u32,
+    poolSizeCount: u32,
+    pPoolSizes: [*]const s.DescriptorPoolSize,
+};
+
+pub const DescriptorSetAllocateInfo = extern struct {
+    sType: s.StructureType,
+    pNext: ?*const anyopaque = null,
+    descriptorPool: s.DescriptorPool,
+    descriptorSetCount: u32,
+    pSetLayouts: [*]const s.DescriptorSetLayout,
+};
+
+pub const DescriptorBufferInfo = extern struct {
+    buffer: s.Buffer,
+    offset: s.DeviceSize,
+    range: s.DeviceSize,
+};
+
+pub const WriteDescriptorSet = extern struct {
+    sType: s.StructureType,
+    pNext: ?*const anyopaque = null,
+    dstSet: s.DescriptorSet,
+    dstBinding: u32,
+    dstArrayElement: u32,
+    descriptorCount: u32,
+    descriptorType: s.DescriptorType,
+    pImageInfo: ?[*]const s.DescriptorImageInfo,
+    pBufferInfo: ?[*]const s.DescriptorBufferInfo,
+    pTexelBufferView: ?[*]const s.BufferView,
+};
+
+pub const DescriptorImageInfo = extern struct {
+    sampler: s.Sampler,
+    imageView: s.ImageView,
+    imageLayout: s.ImageLayout,
+};
+
+pub const CopyDescriptorSet = extern struct {
+    sType: s.StructureType,
+    pNext: ?*const anyopaque = null,
+    srcSet: s.DescriptorSet,
+    srcBinding: u32,
+    srcArrayElement: u32,
+    dstSet: s.DescriptorSet,
+    dstBinding: u32,
+    dstArrayElement: u32,
+    descriptorCount: u32,
+};

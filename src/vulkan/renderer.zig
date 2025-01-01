@@ -45,6 +45,8 @@ framebuffer_resized: bool = false,
 
 render_pass: vk.RenderPass = null,
 descriptor_set_layout: vk.DescriptorSetLayout = null,
+descriptor_pool: vk.DescriptorPool = null,
+descriptor_sets: [MAX_FRAMES_IN_FLIGHT]vk.DescriptorSet = .{null} ** MAX_FRAMES_IN_FLIGHT,
 pipeline_layout: vk.PipelineLayout = null,
 graphics_pipeline: vk.Pipeline = null,
 // TODO: Command pool for temporary command buffers
@@ -193,10 +195,14 @@ pub fn init(this: *@This(), window: *Window) !void {
     try this.createGraphicsPipeline();
     try this.createFrameBuffers();
     try this.createCommandPools();
+
     // try this.createVertexBuffer();
     // try this.createIndexBuffer();
     try this.createCombinedBuffer();
     try this.createUniformBuffers();
+    try this.createDescriptorPool();
+    try this.createDescriptorSets();
+
     try this.createCommandBuffers();
     try this.createSyncObjects();
 }
@@ -229,6 +235,7 @@ pub fn deinit(this: *const @This()) void {
     vk.destroyCommandPool(dev, this.transfer_command_pool, null);
     vk.destroyPipeline(dev, this.graphics_pipeline, null);
     vk.destroyPipelineLayout(dev, this.pipeline_layout, null);
+    vk.destroyDescriptorPool(dev, this.descriptor_pool, null);
     vk.destroyDescriptorSetLayout(dev, this.descriptor_set_layout, null);
     vk.destroyRenderPass(dev, this.render_pass, null);
 
@@ -1313,6 +1320,61 @@ fn createUniformBuffers(this: *@This()) !void {
     }
 }
 
+fn createDescriptorPool(this: *@This()) !void {
+    const pool_sizes = [_]vk.DescriptorPoolSize{.{
+        .type = .UNIFORM_BUFFER,
+        .descriptorCount = MAX_FRAMES_IN_FLIGHT,
+    }};
+
+    const pool_info = vk.DescriptorPoolCreateInfo{
+        .sType = .DESCRIPTOR_POOL_CREATE_INFO,
+        .poolSizeCount = pool_sizes.len,
+        .pPoolSizes = &pool_sizes,
+        .maxSets = MAX_FRAMES_IN_FLIGHT,
+    };
+
+    if (vk.createDescriptorPool(this.device, &pool_info, null, &this.descriptor_pool) != .SUCCESS) {
+        return error.CreateDescriptorPoolFailed;
+    }
+}
+
+fn createDescriptorSets(this: *@This()) !void {
+    const layouts = [_]vk.DescriptorSetLayout{this.descriptor_set_layout} ** MAX_FRAMES_IN_FLIGHT;
+
+    const alloc_info = vk.DescriptorSetAllocateInfo{
+        .sType = .DESCRIPTOR_SET_ALLOCATE_INFO,
+        .descriptorPool = this.descriptor_pool,
+        .descriptorSetCount = layouts.len,
+        .pSetLayouts = &layouts,
+    };
+
+    if (vk.allocateDescriptorSets(this.device, &alloc_info, &this.descriptor_sets) != .SUCCESS) {
+        return error.AllocateDescriptorSetsFailed;
+    }
+
+    for (0..MAX_FRAMES_IN_FLIGHT) |i| {
+        const buffer_infos = [_]vk.DescriptorBufferInfo{.{
+            .buffer = this.uniform_buffers[i],
+            .offset = 0,
+            .range = @sizeOf(UniformBufferObject),
+        }};
+
+        const descriptor_writes = [_]vk.WriteDescriptorSet{.{
+            .sType = .WRITE_DESCRIPTOR_SET,
+            .dstSet = this.descriptor_sets[i],
+            .dstBinding = 0,
+            .dstArrayElement = 0,
+            .descriptorType = .UNIFORM_BUFFER,
+            .descriptorCount = buffer_infos.len,
+            .pBufferInfo = &buffer_infos,
+            .pImageInfo = null,
+            .pTexelBufferView = null,
+        }};
+
+        vk.updateDescriptorSets(this.device, descriptor_writes.len, &descriptor_writes, 0, null);
+    }
+}
+
 fn createCommandBuffers(this: *@This()) !void {
     const alloc_info = vk.CommandBufferAllocateInfo{
         .sType = .COMMAND_BUFFER_ALLOCATE_INFO,
@@ -1349,9 +1411,7 @@ fn createSyncObjects(this: *@This()) !void {
     }
 }
 
-fn recordCommandBuffer(this: *const @This(), image_index: u32) void {
-    const cmd_buf = this.command_buffers[this.current_frame];
-
+fn recordCommandBuffer(this: *const @This(), cmd_buf: vk.CommandBuffer, image_index: u32) void {
     if (vk.beginCommandBuffer(cmd_buf, &.{ .sType = .COMMAND_BUFFER_BEGIN_INFO }) != .SUCCESS) {
         @panic("beginCommandBuffer failed!");
     }
@@ -1397,6 +1457,7 @@ fn recordCommandBuffer(this: *const @This(), image_index: u32) void {
     vk.cmdBindIndexBuffer(cmd_buf, this.index_buffer, 0, .UINT16);
 
     // vk.cmdDraw(cmd_buf, triangle_vertices.len, 1, 0, 0);
+    vk.cmdBindDescriptorSets(cmd_buf, .GRAPHICS, this.pipeline_layout, 0, 1, &this.descriptor_sets[this.current_frame], 0, null);
     vk.cmdDrawIndexed(cmd_buf, triangle_indices.len, 1, 0, 0, 0);
 
     vk.cmdEndRenderPass(cmd_buf);
@@ -1406,15 +1467,14 @@ fn recordCommandBuffer(this: *const @This(), image_index: u32) void {
     }
 }
 
-fn updateUniformBuffer(this: *@This(), image_index: u32) void {
-    const ubos = &[UBO_COUNT]UniformBufferObject{.{
+fn updateUniformBuffer(this: *@This(), image_index: usize) void {
+    const ubo = UniformBufferObject{
         .model = math.Mat4.identity,
         .view = math.Mat4.identity,
         .proj = math.Mat4.identity,
-    }};
-
-    const dest: []UniformBufferObject = &this.uniform_buffers_mapped[image_index];
-    std.mem.copyForwards(UniformBufferObject, dest, ubos);
+    };
+    var dest: [UBO_COUNT]UniformBufferObject = this.uniform_buffers_mapped[image_index];
+    dest = .{ubo};
 }
 
 pub fn drawFrame(this: *@This()) void {
@@ -1435,12 +1495,12 @@ pub fn drawFrame(this: *@This()) void {
         else => @panic("AcquireNextImageKHR Failed!"),
     }
 
+    this.updateUniformBuffer(cfi);
+
     _ = vk.resetFences(this.device, 1, @ptrCast(&this.in_flight_fences[cfi]));
 
     _ = vk.resetCommandBuffer(cmd_buf, .{});
-    this.recordCommandBuffer(image_index);
-
-    this.updateUniformBuffer(this.current_frame);
+    this.recordCommandBuffer(cmd_buf, image_index);
 
     const wait_semaphores = [_]vk.Semaphore{this.image_available_semaphores[cfi]};
     const wait_stages = [wait_semaphores.len]vk.PipelineStageFlags{.{ .COLOR_ATTACHMENT_OUTPUT_BIT = 1 }};

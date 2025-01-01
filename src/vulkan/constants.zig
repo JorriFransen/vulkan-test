@@ -1399,6 +1399,17 @@ pub const DescriptorSetLayoutCreateFlags = packed struct(Flags) {
     pub const HOST_ONLY_POOL_BIT_VALVE = .VK_DESCRIPTOR_SET_LAYOUT_CREATE_HOST_ONLY_POOL_BIT_EXT;
 };
 
+pub const DescriptorPoolCreateFlags = packed struct(Flags) {
+    FREE_DESCRIPTOR_SET_BIT: u1 = 0, // 0x00000001
+    UPDATE_AFTER_BIND_BIT: u1 = 0, // 0x00000002
+    HOST_ONLY_BIT_EXT: u1 = 0, // 0x00000004
+    ALLOW_OVERALLOCATION_SETS_BIT_NV: u1 = 0, // 0x00000008
+    ALLOW_OVERALLOCATION_POOLS_BIT_NV: u1 = 0, // 0x00000010
+    __reserved: u27 = 0,
+    pub const UPDATE_AFTER_BIND_BIT_EXT: @This() = .{ .UPDATE_AFTER_BIND_BIT = 1 };
+    pub const HOST_ONLY_BIT_VALVE: @This() = .{ .HOST_ONLY_BIT_EXT = 1 };
+};
+
 pub const StructureType = enum(c_int) {
     APPLICATION_INFO = 0,
     INSTANCE_CREATE_INFO = 1,
