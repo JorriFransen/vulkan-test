@@ -90,7 +90,7 @@ pub fn build(b: *std.Build) !void {
     vulkan_mod.addImport("debug_timer", debug_timer_mod);
     vulkan_mod.addImport("math", math_mod);
 
-    platform_mod.addIncludePath(vulkan_info.include_path);
+    // platform_mod.addIncludePath(vulkan_info.include_path);
     platform_mod.addImport("callback", callback_mod);
     platform_mod.addImport("externFn", extern_fn_mod);
     platform_mod.addImport("options", options_mod);
@@ -124,50 +124,17 @@ fn addPrivateModule(b: *std.Build, path: []const u8, name: []const u8) *std.Buil
 
 const VulkanInfo = struct {
     module: *std.Build.Module,
-    include_path: std.Build.LazyPath,
-    lib_path: std.Build.LazyPath,
+    // include_path: std.Build.LazyPath,
+    // lib_path: std.Build.LazyPath,
 };
 
 fn useVulkan(b: *std.Build) !VulkanInfo {
     const vk_lib_name = if (target.result.os.tag == .windows) "vulkan-1" else "vulkan";
-    var lib_path: []const u8 = undefined;
-    var include_path: []const u8 = undefined;
-
-    const env_var_map = try std.process.getEnvMap(b.allocator);
-    if (env_var_map.get("VK_SDK_PATH")) |path| {
-        lib_path = try std.fmt.allocPrint(b.allocator, "{s}" ++ sep ++ "lib", .{path});
-        include_path = try std.fmt.allocPrint(b.allocator, "{s}" ++ sep ++ "include", .{path});
-    } else {
-
-        // Nix
-        if (env_var_map.get("VK_LIB_PATH")) |path| {
-            lib_path = path;
-        } else {
-            return error.VK_LIB_PATH_Not_Set;
-        }
-
-        if (env_var_map.get("VK_INCLUDE_PATH")) |path| {
-            include_path = path;
-        } else {
-            return error.VK_INCLUDE_PATH_Not_Set;
-        }
-    }
-
-    try checkPath(lib_path);
-    try checkPath(include_path);
-
-    const lazy_lib_path = std.Build.LazyPath{ .cwd_relative = lib_path };
-    const lazy_include_path = std.Build.LazyPath{ .cwd_relative = include_path };
-
     const vk_mod = addPrivateModule(b, "src/vulkan/vulkan.zig", "vulkan");
-    vk_mod.addLibraryPath(lazy_lib_path);
-    vk_mod.addIncludePath(lazy_include_path);
     vk_mod.linkSystemLibrary(vk_lib_name, .{});
 
     return .{
         .module = vk_mod,
-        .include_path = lazy_include_path,
-        .lib_path = lazy_lib_path,
     };
 }
 
