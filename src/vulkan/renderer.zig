@@ -7,9 +7,14 @@ const builtin_shaders = @import("shaders");
 const math = @import("math");
 const options = @import("options");
 const platform = @import("platform");
+const Window = platform.Window;
 const vk = @import("vulkan");
 const vke = vk.extensions;
 const vkl = vk.loader;
+
+const Vec2 = math.Vec2;
+const Vec3 = math.Vec3;
+const Mat4 = math.Mat4;
 
 const DTimer = @import("debug_timer").Timer;
 
@@ -26,8 +31,6 @@ const Renderer = @This();
 const MAX_FRAMES_IN_FLIGHT = 2;
 const MAX_SWAPCHAIN_IMAGES = 8;
 const UBO_COUNT = 1;
-
-const Window = @import("root").Window;
 
 window: *Window = undefined,
 instance: vk.Instance = null,
@@ -69,27 +72,28 @@ in_flight_fences: [MAX_FRAMES_IN_FLIGHT]vk.Fence = .{null} ** MAX_FRAMES_IN_FLIG
 index_buffer: vk.Buffer = null,
 vertex_buffer: vk.Buffer = null,
 uniform_buffers: [MAX_FRAMES_IN_FLIGHT]vk.Buffer = .{null} ** MAX_FRAMES_IN_FLIGHT,
-uniform_buffers_mapped: [MAX_FRAMES_IN_FLIGHT][UBO_COUNT]UniformBufferObject align(64) = undefined,
+uniform_buffers_mapped: [MAX_FRAMES_IN_FLIGHT][UBO_COUNT]*UniformBufferObject = undefined,
 
 // index_buffer_memory: vk.DeviceMemory = null,
 // vertex_buffer_memory: vk.DeviceMemory = null,
 uniform_buffers_memory: [MAX_FRAMES_IN_FLIGHT]vk.DeviceMemory = .{null} ** MAX_FRAMES_IN_FLIGHT,
 combined_buffer_memory: vk.DeviceMemory = null,
 
+timer: std.time.Timer = undefined,
+
 const UniformBufferObject = extern struct {
-    // model: math.Mat4,
-    // view: math.Mat4,
-    // proj: math.Mat4,
-    color: math.Vec4,
+    model: Mat4,
+    view: Mat4,
+    proj: Mat4,
 };
 
 const triangle_vertices = [_]Vertex{
-    .{ .pos = .{ .x = -0.5, .y = -0.5 }, .color = .{ .x = 1, .y = 0, .z = 0 } },
-    .{ .pos = .{ .x = 0.5, .y = -0.5 }, .color = .{ .x = 0, .y = 1, .z = 0 } },
-    .{ .pos = .{ .x = 0.5, .y = 0.5 }, .color = .{ .x = 0, .y = 0, .z = 1 } },
+    .{ .pos = Vec2.new(-0.5, -0.5), .color = .{ .a = .{ 1, 0, 0 } } },
+    .{ .pos = Vec2.new(0.5, -0.5), .color = .{ .a = .{ 0, 1, 0 } } },
+    .{ .pos = Vec2.new(0.5, 0.5), .color = .{ .a = .{ 0, 0, 1 } } },
 
     // .{ .pos = .{ .x = 0.5, .y = 0.5 }, .color = .{ .x = 0, .y = 0, .z = 1 } },
-    .{ .pos = .{ .x = -0.5, .y = 0.5 }, .color = .{ .x = 1, .y = 1, .z = 1 } },
+    .{ .pos = Vec2.new(-0.5, 0.5), .color = .{ .a = .{ 1, 1, 1 } } },
     // .{ .pos = .{ .x = -0.5, .y = -0.5 }, .color = .{ .x = 1, .y = 0, .z = 0 } },
 };
 
@@ -206,6 +210,8 @@ pub fn init(this: *@This(), window: *Window) !void {
 
     try this.createCommandBuffers();
     try this.createSyncObjects();
+
+    this.timer = try std.time.Timer.start();
 }
 
 pub fn deinit(this: *const @This()) void {
@@ -951,11 +957,13 @@ fn createGraphicsPipeline(this: *@This()) !void {
         .blendConstants = .{ 0, 0, 0, 0 },
     };
 
+    const descriptor_set_layouts = [_]vk.DescriptorSetLayout{this.descriptor_set_layout};
+
     const pipeline_layout_create_info = vk.PipelineLayoutCreateInfo{
         .sType = .PIPELINE_LAYOUT_CREATE_INFO,
         .flags = .{},
-        .setLayoutCount = 1,
-        .pSetLayouts = &.{this.descriptor_set_layout},
+        .setLayoutCount = descriptor_set_layouts.len,
+        .pSetLayouts = &descriptor_set_layouts,
         .pushConstantRangeCount = 0,
         .pPushConstantRanges = null,
     };
@@ -1418,7 +1426,10 @@ fn recordCommandBuffer(this: *const @This(), cmd_buf: vk.CommandBuffer, image_in
         @panic("beginCommandBuffer failed!");
     }
 
-    const clear_values = [_]vk.ClearValue{.{ .color = .{ .float32 = .{ 0.392, 0.584, 0.929, 1 } } }};
+    const clear_values = [_]vk.ClearValue{.{ .color = .{ .float32 = .{ 0, 0, 0, 0 } } }};
+
+    // cornflower blue
+    // const clear_values = [_]vk.ClearValue{.{ .color = .{ .float32 = .{ 0.392, 0.584, 0.929, 1 } } }};
 
     const render_pass_info = vk.RenderPassBeginInfo{
         .sType = .RENDER_PASS_BEGIN_INFO,
@@ -1470,17 +1481,14 @@ fn recordCommandBuffer(this: *const @This(), cmd_buf: vk.CommandBuffer, image_in
 }
 
 fn updateUniformBuffer(this: *@This(), image_index: usize) void {
-    // const ubo = UniformBufferObject{
-    //     .color = .{ .x = 0.5, .y = 0.2, .z = 0.1, .w = 1 },
-    //     // .model = math.Mat4.identity,
-    //     // .view = math.Mat4.identity,
-    //     // .proj = math.Mat4.identity,
-    // };
-    // var dest: [UBO_COUNT]UniformBufferObject = this.uniform_buffers_mapped[image_index];
-    // dest = .{ubo};
-    //
+    const elapsed = @as(f64, @floatFromInt(this.timer.read())) / 1000_000_000.0;
 
-    this.uniform_buffers_mapped[image_index][0].color = .{ .x = 0.5, .y = 0.4, .z = 0.3, .w = 1 };
+    this.uniform_buffers_mapped[image_index][0].* = .{
+        .model = Mat4.rotation_z(@floatCast(elapsed * math.radians(90))),
+        // .model = Mat4.identity,
+        .view = Mat4.identity,
+        .proj = Mat4.identity,
+    };
 }
 
 pub fn drawFrame(this: *@This()) void {

@@ -47,7 +47,7 @@ pub fn vMain() !u8 {
 
     var window = try Window.init(cmd_line_options.window_api);
 
-    try window.initSystem();
+    try window.initSystem(.{});
     defer window.deinitSystem();
 
     try window.open("Vulkan Test");

@@ -36,9 +36,14 @@ pub const Impl = union {
     glfw_window: GlfwWindow,
 };
 
+pub const InitSystemOptions = struct {
+    window_api: platform.WindowApi = .default,
+    glfw_api: platform.GlfwWindowApi = .default,
+};
+
 impl: Impl,
 
-initSystemFn: *const fn () InitSystemError!void,
+initSystemFn: *const fn (options: InitSystemOptions) InitSystemError!void,
 deinitSystemFn: *const fn () void,
 openFn: *const fn (*anyopaque, [:0]const u8) OpenError!void,
 closeFn: *const fn (*const anyopaque) void,
@@ -147,8 +152,8 @@ fn initT(comptime T: type, impl: Impl) @This() {
     };
 }
 
-pub fn initSystem(this: *@This()) InitSystemError!void {
-    try this.initSystemFn();
+pub fn initSystem(this: *@This(), init_options: InitSystemOptions) InitSystemError!void {
+    try this.initSystemFn(init_options);
 }
 
 pub fn deinitSystem(this: @This()) void {
@@ -200,7 +205,7 @@ pub fn setKeyCallback(this: *@This(), callback: KeyCallback) void {
 }
 
 const Stub = struct {
-    pub fn initSystem() InitSystemError!void {}
+    pub fn initSystem(_: InitSystemOptions) InitSystemError!void {}
     pub fn deinitSystem() void {}
     pub fn open(_: *@This(), _: [:0]const u8) OpenError!void {}
     pub fn close(_: *const @This()) void {}

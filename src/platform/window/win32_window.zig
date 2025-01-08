@@ -10,7 +10,7 @@ const win32 = platform.windows;
 const Window = platform.Window;
 const elog = Window.elog;
 
-pub fn initSystem() !void {
+pub fn initSystem(_: Window.InitSystemOptions) !void {
     // assert(root.cmd_line_options.glfw_window_api == .win32 or root.cmd_line_options.glfw_window_api == .default);
     // if (win32.AttachConsole(win32.ATTACH_PARENT_PROCESS) == 0) {
     //     if (win32.CreateFileW(W("nul"), win32.GENERIC_READ | win32.GENERIC_WRITE, 0, null, win32.OPEN_EXISTING, win32.FILE_ATTRIBUTE_NORMAL, null)) |nul_handle| {

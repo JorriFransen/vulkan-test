@@ -78,6 +78,7 @@ pub fn build(b: *std.Build) !void {
 
     exe.root_module.addImport("alloc", alloc_mod);
     exe.root_module.addImport("flags", flags_mod);
+    exe.root_module.addImport("math", math_mod);
     exe.root_module.addImport("options", options_mod);
     exe.root_module.addImport("platform", platform_mod);
     exe.root_module.addImport("vulkan", vulkan_mod);
@@ -105,6 +106,16 @@ pub fn build(b: *std.Build) !void {
     const run_step = b.step("run", "Run the app");
     run_step.dependOn(&run_cmd.step);
 
+    const unit_tests = b.addTest(.{
+        .root_source_file = b.path("src/tests.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const run_unit_tests = b.addRunArtifact(unit_tests);
+    const test_step = b.step("test", "Run unit tests");
+    test_step.dependOn(&run_unit_tests.step);
+
     const clean_step = b.step("clean", "Clean zig-out and .zig-cache");
     clean_step.dependOn(&b.addRemoveDirTree(std.Build.LazyPath{ .cwd_relative = b.install_path }).step);
     if (builtin.os.tag != .windows)
@@ -124,8 +135,6 @@ fn addPrivateModule(b: *std.Build, path: []const u8, name: []const u8) *std.Buil
 
 const VulkanInfo = struct {
     module: *std.Build.Module,
-    // include_path: std.Build.LazyPath,
-    // lib_path: std.Build.LazyPath,
 };
 
 fn useVulkan(b: *std.Build) !VulkanInfo {

@@ -14,12 +14,12 @@ const glfw = platform.glfw;
 const dlog = Window.dlog;
 const elog = Window.elog;
 
-pub fn initSystem() Window.InitSystemError!void {
+pub fn initSystem(options: Window.InitSystemOptions) Window.InitSystemError!void {
     const wayland_support = glfw.glfwPlatformSupported(.WAYLAND) == glfw.TRUE;
     const x11_support = glfw.glfwPlatformSupported(.X11) == glfw.TRUE;
     const win32_support = glfw.glfwPlatformSupported(.WIN32) == glfw.TRUE;
 
-    var glfw_api = root.cmd_line_options.glfw_window_api;
+    var glfw_api = options.glfw_api;
     if (glfw_api == .default) {
         if (builtin.os.tag == .windows) {
             glfw_api = .win32;
