@@ -35,6 +35,9 @@ pub fn build(b: *std.Build) !void {
     const flags_dep = b.dependency("flags", .{ .target = target, .optimize = optimize });
     const flags_mod = flags_dep.module("flags");
 
+    const zalg_dep = b.dependency("zalgebra", .{ .target = target, .optimize = optimize });
+    const zalg_mod = zalg_dep.module("zalgebra");
+
     const root_source_file = b.path("src/main.zig");
 
     const exe = b.addExecutable(.{
@@ -90,6 +93,7 @@ pub fn build(b: *std.Build) !void {
     vulkan_mod.addImport("shaders", shaders_mod);
     vulkan_mod.addImport("debug_timer", debug_timer_mod);
     vulkan_mod.addImport("math", math_mod);
+    vulkan_mod.addImport("zalgebra", zalg_mod);
 
     // platform_mod.addIncludePath(vulkan_info.include_path);
     platform_mod.addImport("callback", callback_mod);

@@ -10,6 +10,10 @@
             .url = "https://github.com/slimsag/glfw/archive/refs/heads/master.tar.gz",
             .hash = "12207be469bad84baed2ede75cf89ede37e1ed5ee8be62a54d2b2112c5f56a44cc89",
         },
+        .zalgebra = .{
+            .url = "https://github.com/kooparse/zalgebra/archive/refs/heads/latest.tar.gz",
+            .hash = "1220fbbcfa859f668d69b4f7d2aa621d13b128a77b46965e6c4aae35f9c1d7b85eb8",
+        },
     },
     .paths = .{
         "src/",
