@@ -88,12 +88,12 @@ const UniformBufferObject = extern struct {
 };
 
 const triangle_vertices = [_]Vertex{
-    .{ .pos = Vec2.new(-0.5, -0.5), .color = .{ .a = .{ 1, 0, 0 } } },
-    .{ .pos = Vec2.new(0.5, -0.5), .color = .{ .a = .{ 0, 1, 0 } } },
-    .{ .pos = Vec2.new(0.5, 0.5), .color = .{ .a = .{ 0, 0, 1 } } },
+    .{ .pos = Vec2.new(-0.5, -0.5), .color = Vec3.new(1, 0, 0) },
+    .{ .pos = Vec2.new(0.5, -0.5), .color = Vec3.new(0, 1, 0) },
+    .{ .pos = Vec2.new(0.5, 0.5), .color = Vec3.new(0, 0, 1) },
 
-    // .{ .pos = .{ .x = 0.5, .y = 0.5 }, .color = .{ .x = 0, .y = 0, .z = 1 } },
-    .{ .pos = Vec2.new(-0.5, 0.5), .color = .{ .a = .{ 1, 1, 1 } } },
+    // .{ .pos = .{ .x = 1.0, .y = 1.0 }, .color = .{ .x = 0, .y = 0, .z = 1 } },
+    .{ .pos = Vec2.new(-0.5, 0.5), .color = Vec3.new(1, 1, 1) },
     // .{ .pos = .{ .x = -0.5, .y = -0.5 }, .color = .{ .x = 1, .y = 0, .z = 0 } },
 };
 
@@ -102,8 +102,8 @@ const triangle_indices = [_]u16{
 };
 
 const Vertex = struct {
-    pos: math.Vec2,
-    color: math.Vec3,
+    pos: Vec2,
+    color: Vec3,
 
     pub const binding_description: vk.VertexInputBindingDescription = .{ .binding = 0, .stride = @sizeOf(@This()), .inputRate = .VERTEX };
 
@@ -119,8 +119,8 @@ const Vertex = struct {
                 .location = i,
                 .format = switch (field_info.type) {
                     else => @compileError(std.fmt.comptimePrint("Unhandled Vertex member type '{}'", .{field_info.type})),
-                    math.Vec2 => .R32G32_SFLOAT,
-                    math.Vec3 => .R32G32B32_SFLOAT,
+                    Vec2 => .R32G32_SFLOAT,
+                    Vec3 => .R32G32B32_SFLOAT,
                 },
                 .offset = @offsetOf(@This(), field_info.name),
             };
@@ -920,7 +920,7 @@ fn createGraphicsPipeline(this: *@This()) !void {
         .polygonMode = .FILL,
         .lineWidth = 1,
         .cullMode = .{ .BACK_BIT = 1 },
-        .frontFace = .CLOCKWISE,
+        .frontFace = .COUNTER_CLOCKWISE,
         .depthBiasEnable = vk.FALSE,
         .depthBiasConstantFactor = 0,
         .depthBiasClamp = 0,
@@ -1481,14 +1481,22 @@ fn recordCommandBuffer(this: *const @This(), cmd_buf: vk.CommandBuffer, image_in
 }
 
 fn updateUniformBuffer(this: *@This(), image_index: usize) void {
-    const elapsed = @as(f64, @floatFromInt(this.timer.read())) / 1000_000_000.0;
+    const elapsed = @as(f32, @floatFromInt(this.timer.read())) / 1000_000_000.0;
 
-    this.uniform_buffers_mapped[image_index][0].* = .{
-        .model = Mat4.rotation_z(@floatCast(elapsed * math.radians(90))),
-        // .model = Mat4.identity,
-        .view = Mat4.identity,
-        .proj = Mat4.identity,
+    const extent = Vec2.new(@floatFromInt(this.swapchain_extent.width), @floatFromInt(this.swapchain_extent.height));
+
+    const model = Mat4.rotation_z(@floatCast(elapsed * math.radians(90)));
+    const proj = Mat4.perspective(math.radians(45), extent.x / extent.y, 0.1, 10);
+
+    const view = Mat4.lookAt(Vec3.new(2, 2, 2), Vec3.new(0, 0, 0), Vec3.new(0, 0, 1));
+
+    const ubo = this.uniform_buffers_mapped[image_index][0];
+    ubo.* = .{
+        .model = model,
+        .view = view,
+        .proj = proj,
     };
+    ubo.proj.cr[1][1] *= -1;
 }
 
 pub fn drawFrame(this: *@This()) void {
