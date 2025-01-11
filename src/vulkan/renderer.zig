@@ -82,9 +82,9 @@ combined_buffer_memory: vk.DeviceMemory = null,
 timer: std.time.Timer = undefined,
 
 const UniformBufferObject = extern struct {
-    model: Mat4,
-    view: Mat4,
-    proj: Mat4,
+    model: Mat4 align(16),
+    view: Mat4 align(16),
+    proj: Mat4 align(16),
 };
 
 const triangle_vertices = [_]Vertex{
