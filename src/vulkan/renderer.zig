@@ -12,8 +12,8 @@ const vk = @import("vulkan");
 const vke = vk.extensions;
 const vkl = vk.loader;
 
-const Vec2 = math.Vec2;
-const Vec3 = math.Vec3;
+const Vec2 = math.Vec2f32;
+const Vec3 = math.Vec3f32;
 const Mat4 = math.Mat4;
 
 const DTimer = @import("debug_timer").Timer;

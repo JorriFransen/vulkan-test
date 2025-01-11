@@ -2,73 +2,102 @@ const std = @import("std");
 
 pub const FLOAT_EPSILON = 0.00001;
 
-pub const f32x4 = @Vector(4, f32);
-
 pub const degrees = std.math.radiansToDegrees;
 pub const radians = std.math.degreesToRadians;
 
-pub const Vec2 = extern struct {
-    x: f32,
-    y: f32,
+pub const Vec2f32 = Vec(2, f32);
+pub const Vec3f32 = Vec(3, f32);
+pub const Vec4f32 = Vec(4, f32);
 
-    pub fn new(x: f32, y: f32) Vec2 {
-        return .{ .x = x, .y = y };
+pub fn Vec(comptime N: usize, comptime T: type) type {
+    if (N == 0 or N > 4) @compileError("N must be between 2 and 4");
+
+    switch (N) {
+        else => unreachable,
+
+        2 => return extern struct {
+            x: T,
+            y: T,
+            pub fn new(x: T, y: T) @This() {
+                return .{ .x = x, .y = y };
+            }
+            pub usingnamespace VecFunctionsMixin(N, T, @This());
+        },
+        3 => return extern struct {
+            x: T,
+            y: T,
+            z: T,
+            pub fn new(x: T, y: T, z: T) @This() {
+                return .{ .x = x, .y = y, .z = z };
+            }
+            pub usingnamespace VecFunctionsMixin(N, T, @This());
+        },
+        4 => return extern struct {
+            x: T,
+            y: T,
+            z: T,
+            w: T,
+            pub fn new(x: T, y: T, z: T, w: T) @This() {
+                return .{ .x = x, .y = y, .z = z, .w = w };
+            }
+            pub usingnamespace VecFunctionsMixin(N, T, @This());
+        },
     }
-};
+}
 
-pub const Vec3 = extern struct {
-    x: f32,
-    y: f32,
-    z: f32,
+pub fn VecFunctionsMixin(comptime N: usize, comptime T: type, comptime Base: type) type {
+    const V = @Vector(N, T);
+    return extern struct {
+        pub inline fn initV(v: V) Base {
+            return @bitCast(v);
+        }
+        pub inline fn vector(this: Base) V {
+            return @bitCast(this);
+        }
+        pub inline fn add(a: Base, b: Base) Base {
+            return initV(a.vector() + b.vector());
+        }
+        pub inline fn sub(a: Base, b: Base) Base {
+            return initV(a.vector() - b.vector());
+        }
+        pub inline fn mul(a: Base, b: Base) Base {
+            return initV(a.vector() * b.vector());
+        }
+        pub inline fn div(a: Base, b: Base) Base {
+            return initV(a.vector() / b.vector());
+        }
+        pub inline fn div_scalar(v: Base, s: T) Base {
+            return initV(v.vector() / @as(V, @splat(s)));
+        }
+        pub inline fn length(v: Base) T {
+            const p = v.vector() * v.vector();
+            return std.math.sqrt(@reduce(.Add, p));
+        }
+        pub inline fn normalized(v: Base) Base {
+            return v.div_scalar(v.length());
+        }
+        pub inline fn dot(a: Base, b: Base) T {
+            return @reduce(.Add, a.mul(b).vector());
+        }
+        pub inline fn cross(a: Base, b: Base) Base {
+            comptime if (N == 2) @compileError("Cannot apply cross product to Vector2");
 
-    pub const zero = Vec3{ .x = 0, .y = 0, .z = 0 };
+            const av = a.vector();
+            const bv = b.vector();
 
-    pub fn new(x: f32, y: f32, z: f32) Vec3 {
-        return .{ .x = x, .y = y, .z = z };
-    }
+            const M = @Vector(N, i32);
+            const m1 = if (N == 3) M{ 1, 2, 0 } else M{ 1, 2, 0, 3 };
+            const m2 = if (N == 3) M{ 2, 0, 1 } else M{ 2, 0, 1, 3 };
 
-    pub fn add(a: Vec3, b: Vec3) Vec3 {
-        return .{ .x = a.x + b.x, .y = a.y + b.y, .z = a.z + b.z };
-    }
+            const v1 = @shuffle(T, av, undefined, m1);
+            const v2 = @shuffle(T, bv, undefined, m2);
+            const v3 = @shuffle(T, av, undefined, m2);
+            const v4 = @shuffle(T, bv, undefined, m1);
 
-    pub fn sub(a: Vec3, b: Vec3) Vec3 {
-        return .{ .x = a.x - b.x, .y = a.y - b.y, .z = a.z - b.z };
-    }
-
-    pub fn mul(a: Vec3, b: Vec3) Vec3 {
-        return .{ .x = a.x * b.x, .y = a.y * b.y, .z = a.z * b.z };
-    }
-
-    pub fn mul_scalar(v: Vec3, s: f32) Vec3 {
-        return .{ .x = v.x * s, .y = v.y * s, .z = v.z * s };
-    }
-
-    pub fn div_scalar(v: Vec3, s: f32) Vec3 {
-        return .{ .x = v.x / s, .y = v.y / s, .z = v.z / s };
-    }
-
-    pub fn normalized(v: Vec3) Vec3 {
-        return v.div_scalar(v.length());
-    }
-
-    pub fn length(v: Vec3) f32 {
-        return std.math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
-    }
-
-    pub fn cross(a: Vec3, b: Vec3) Vec3 {
-        const v1 = Vec3.new(a.y, a.z, a.x);
-        const v2 = Vec3.new(b.z, b.x, b.y);
-        const v3 = Vec3.new(a.z, a.x, a.y);
-        const v4 = Vec3.new(b.y, b.z, b.x);
-
-        return v1.mul(v2).sub(v3.mul(v4));
-    }
-
-    pub fn dot(a: Vec3, b: Vec3) f32 {
-        const m = a.mul(b);
-        return m.x + m.y + m.z;
-    }
-};
+            return initV((v1 * v2) - (v3 * v4));
+        }
+    };
+}
 
 pub const Mat4 = extern union {
     a: [4 * 4]f32,
@@ -130,37 +159,37 @@ pub const Mat4 = extern union {
         } };
     }
 
-    pub fn perspective(fovy: f32, aspect: f32, near: f32, far: f32) Mat4 {
-        const f = 1 / @tan(fovy * 0.5);
+    pub fn perspective(fovy: f32, a: f32, n: f32, f: f32) Mat4 {
+        const s = 1 / @tan(fovy * 0.5);
 
         return .{ .a = .{
-            f / aspect, 0, 0,                             0,
-            0,          f, 0,                             0,
-            0,          0, (near + far) / (near - far),   -1,
-            0,          0, 2 * far * near / (near - far), 0,
+            s / a, 0, 0,                   0,
+            0,     s, 0,                   0,
+            0,     0, (n + f) / (n - f),   -1,
+            0,     0, 2 * f * n / (n - f), 0,
         } };
     }
 
-    pub fn ortho(left: f32, right: f32, bottom: f32, top: f32, near: f32, far: f32) Mat4 {
+    pub fn ortho(l: f32, r: f32, b: f32, t: f32, n: f32, f: f32) Mat4 {
         const result = Mat4{ .a = .{
-            2 / (right - left),              0,                               0,                           0,
-            0,                               2 / (top - bottom),              0,                           0,
-            0,                               0,                               2 / (near - far),            0,
-            (left + right) / (left - right), (bottom + top) / (bottom - top), (far + near) / (near - far), 1,
+            2 / (r - l),       0,                 0,                 0,
+            0,                 2 / (t - b),       0,                 0,
+            0,                 0,                 2 / (n - f),       0,
+            (l + r) / (l - r), (b + t) / (b - t), (f + n) / (n - f), 1,
         } };
         return result;
     }
 
-    pub fn lookAt(eye: Vec3, to: Vec3, up: Vec3) Mat4 {
-        const forward = to.sub(eye).normalized();
-        const left = forward.cross(up).normalized();
-        const true_up = left.cross(forward);
+    pub fn lookAt(eye: Vec3f32, to: Vec3f32, up: Vec3f32) Mat4 {
+        const f = to.sub(eye).normalized();
+        const l = f.cross(up).normalized();
+        const u = l.cross(f);
 
         return .{ .a = .{
-            left.x,        true_up.x,         -forward.x,       0,
-            left.y,        true_up.y,         -forward.y,       0,
-            left.z,        true_up.z,         -forward.z,       0,
-            left.dot(eye), -true_up.dot(eye), forward.dot(eye), 1,
+            l.x,        u.x,         -f.x,       0,
+            l.y,        u.y,         -f.y,       0,
+            l.z,        u.z,         -f.z,       0,
+            l.dot(eye), -u.dot(eye), f.dot(eye), 1,
         } };
     }
 
@@ -199,11 +228,11 @@ pub const Mat4 = extern union {
 };
 
 test "Vec3 cross" {
-    const a = Vec3.new(1, 2, 3);
-    const b = Vec3.new(2, 3, 4);
+    const a = Vec3f32.new(1, 2, 3);
+    const b = Vec3f32.new(2, 3, 4);
 
-    const expected_ab = Vec3.new(-1, 2, -1);
-    const expected_ba = Vec3.new(1, -2, 1);
+    const expected_ab = Vec3f32.new(-1, 2, -1);
+    const expected_ba = Vec3f32.new(1, -2, 1);
 
     const result_ab = a.cross(b);
     const result_ba = b.cross(a);
@@ -235,9 +264,9 @@ test "Mat4 mul" {
 }
 
 test "Mat4 look_at default" {
-    const eye = Vec3.new(0, 0, 0);
-    const to = Vec3.new(0, 0, -1);
-    const up = Vec3.new(0, 1, 0);
+    const eye = Vec3f32.new(0, 0, 0);
+    const to = Vec3f32.new(0, 0, -1);
+    const up = Vec3f32.new(0, 1, 0);
 
     const tf = Mat4.lookAt(eye, to, up);
 
@@ -245,9 +274,9 @@ test "Mat4 look_at default" {
 }
 
 test "Mat4 look_at positive z" {
-    const eye = Vec3.new(0, 0, 0);
-    const to = Vec3.new(0, 0, 1);
-    const up = Vec3.new(0, 1, 0);
+    const eye = Vec3f32.new(0, 0, 0);
+    const to = Vec3f32.new(0, 0, 1);
+    const up = Vec3f32.new(0, 1, 0);
 
     const tf = Mat4.lookAt(eye, to, up);
 
@@ -255,9 +284,9 @@ test "Mat4 look_at positive z" {
 }
 
 test "Mat4 look_at moves world" {
-    const eye = Vec3.new(0, 0, 8);
-    const to = Vec3.new(0, 0, 0);
-    const up = Vec3.new(0, 1, 0);
+    const eye = Vec3f32.new(0, 0, 8);
+    const to = Vec3f32.new(0, 0, 0);
+    const up = Vec3f32.new(0, 1, 0);
 
     const tf = Mat4.lookAt(eye, to, up);
 
@@ -265,9 +294,9 @@ test "Mat4 look_at moves world" {
 }
 
 test "Mat4 look_at arbitrary" {
-    const eye = Vec3.new(1, 3, 2);
-    const to = Vec3.new(4, -2, 8);
-    const up = Vec3.new(1, 1, 0);
+    const eye = Vec3f32.new(1, 3, 2);
+    const to = Vec3f32.new(4, -2, 8);
+    const up = Vec3f32.new(1, 1, 0);
 
     const tf = Mat4.lookAt(eye, to, up);
 
