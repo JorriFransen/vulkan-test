@@ -130,6 +130,7 @@ fn addPrivateModule(b: *std.Build, path: []const u8, name: []const u8) *std.Buil
     });
     mod.addImport(name, mod);
 
+
     return mod;
 }
 
@@ -138,9 +139,22 @@ const VulkanInfo = struct {
 };
 
 fn useVulkan(b: *std.Build) !VulkanInfo {
-    const vk_lib_name = if (target.result.os.tag == .windows) "vulkan-1" else "vulkan";
+    const windows = target.result.os.tag == .windows;
+    const vk_lib_name = if (windows) "vulkan-1" else "vulkan";
     const vk_mod = addPrivateModule(b, "src/vulkan/vulkan.zig", "vulkan");
     vk_mod.linkSystemLibrary(vk_lib_name, .{});
+
+    if (windows) {
+        var env = std.process.getEnvMap(b.allocator) catch unreachable;
+        defer env.deinit();
+
+        if (env.get("VULKAN_SDK")) |sdk_path| { 
+            const lib_path = b.pathJoin(&.{sdk_path, "lib"});
+            vk_mod.addLibraryPath(.{.cwd_relative=lib_path});
+        } else {
+            return error.VulkanSDKNotFound;
+        }
+    }
 
     return .{
         .module = vk_mod,
