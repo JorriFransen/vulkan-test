@@ -8,6 +8,7 @@ pub const radians = std.math.degreesToRadians;
 pub const Vec2f32 = Vec(2, f32);
 pub const Vec3f32 = Vec(3, f32);
 pub const Vec4f32 = Vec(4, f32);
+pub const Mat4f32 = Mat(4, 4, f32);
 
 pub fn Vec(comptime N: usize, comptime T: type) type {
     if (N == 0 or N > 4) @compileError("N must be between 2 and 4");
@@ -99,133 +100,138 @@ pub fn VecFunctionsMixin(comptime N: usize, comptime T: type, comptime Base: typ
     };
 }
 
-pub const Mat4 = extern union {
-    a: [4 * 4]f32,
-    cr: [4][4]f32,
+pub fn Mat(comptime c: usize, comptime r: usize, comptime T: type) type {
+    return extern struct {
+        data: [C * R]T,
 
-    pub fn new(m0: f32, m1: f32, m2: f32, m3: f32, m4: f32, m5: f32, m6: f32, m7: f32, m8: f32, m9: f32, m10: f32, m11: f32, m12: f32, m13: f32, m14: f32, m15: f32) @This() {
-        return .{ .a = .{
-            m0,  m1,  m2,  m3,
-            m4,  m5,  m6,  m7,
-            m8,  m9,  m10, m11,
-            m12, m13, m14, m15,
-        } };
+        pub const C = c;
+        pub const R = r;
+
+        pub const identity: @This() = blk: {
+            var result: @This() = undefined;
+            for (0..c) |ci| {
+                for (0..r) |ri| {
+                    const i = ci + (r * ri);
+                    result.data[i] = if (ci == ri) 1 else 0;
+                }
+            }
+            break :blk result;
+        };
+
+        const Base = @This();
+        pub usingnamespace MatFunctionsMixin(C, R, T, Base);
+    };
+}
+
+pub fn MatFunctionsMixin(comptime C: usize, comptime R: usize, comptime T: type, comptime Base: type) type {
+    if (!(C == 4 and R == 4)) {
+        @compileError("TODO: unhandled matrix dimension");
     }
 
-    pub inline fn eq(a: Mat4, b: Mat4) bool {
-        const V = @Vector(4 * 4, f32);
-
-        const va: V = @bitCast(a);
-        const vb: V = @bitCast(b);
-
-        const diff = va - vb;
-        for (0..@typeInfo(V).vector.len) |i| {
-            if (@abs(diff[i]) >= FLOAT_EPSILON) return false;
+    return extern struct {
+        pub fn new(m0: T, m1: T, m2: T, m3: T, m4: T, m5: T, m6: T, m7: T, m8: T, m9: T, m10: T, m11: T, m12: T, m13: T, m14: T, m15: T) Base {
+            return .{ .data = .{
+                m0,  m1,  m2,  m3,
+                m4,  m5,  m6,  m7,
+                m8,  m9,  m10, m11,
+                m12, m13, m14, m15,
+            } };
         }
-        return true;
-    }
 
-    pub const identity = @This(){ .a = .{
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        0, 0, 0, 1,
-    } };
+        pub fn rotation_z(r: T) Base {
+            return .{ .data = .{
+                @cos(r),  @sin(r), 0, 0,
+                -@sin(r), @cos(r), 0, 0,
+                0,        0,       1, 0,
+                0,        0,       0, 1,
+            } };
+        }
 
-    pub fn rotation_z(r: f32) @This() {
-        return .{ .a = .{
-            @cos(r),  @sin(r), 0, 0,
-            -@sin(r), @cos(r), 0, 0,
-            0,        0,       1, 0,
-            0,        0,       0, 1,
-        } };
-    }
+        pub fn translation(x: T, y: T, z: T) Base {
+            return .{ .data = .{
+                1, 0, 0, 0,
+                0, 1, 0, 0,
+                0, 0, 1, 0,
+                x, y, z, 1,
+            } };
+        }
 
-    pub fn translation(x: f32, y: f32, z: f32) @This() {
-        return .{ .a = .{
-            1, 0, 0, 0,
-            0, 1, 0, 0,
-            0, 0, 1, 0,
-            x, y, z, 1,
-        } };
-    }
+        pub fn scaling(x: T, y: T, z: T) Base {
+            return .{ .data = .{
+                x, 0, 0, 0,
+                0, y, 0, 0,
+                0, 0, z, 0,
+                0, 0, 0, 1,
+            } };
+        }
 
-    pub fn scaling(x: f32, y: f32, z: f32) Mat4 {
-        return .{ .a = .{
-            x, 0, 0, 0,
-            0, y, 0, 0,
-            0, 0, z, 0,
-            0, 0, 0, 1,
-        } };
-    }
+        pub fn perspective(fovy: T, a: T, n: T, f: T) Base {
+            const s = 1 / @tan(fovy * 0.5);
 
-    pub fn perspective(fovy: f32, a: f32, n: f32, f: f32) Mat4 {
-        const s = 1 / @tan(fovy * 0.5);
+            return .{ .data = .{
+                s / a, 0, 0,                   0,
+                0,     s, 0,                   0,
+                0,     0, (n + f) / (n - f),   -1,
+                0,     0, 2 * f * n / (n - f), 0,
+            } };
+        }
 
-        return .{ .a = .{
-            s / a, 0, 0,                   0,
-            0,     s, 0,                   0,
-            0,     0, (n + f) / (n - f),   -1,
-            0,     0, 2 * f * n / (n - f), 0,
-        } };
-    }
+        pub fn ortho(l: T, r: T, b: T, t: T, n: T, f: T) Base {
+            return .{ .data = .{
+                2 / (r - l),       0,                 0,                 0,
+                0,                 2 / (t - b),       0,                 0,
+                0,                 0,                 2 / (n - f),       0,
+                (l + r) / (l - r), (b + t) / (b - t), (f + n) / (n - f), 1,
+            } };
+        }
 
-    pub fn ortho(l: f32, r: f32, b: f32, t: f32, n: f32, f: f32) Mat4 {
-        const result = Mat4{ .a = .{
-            2 / (r - l),       0,                 0,                 0,
-            0,                 2 / (t - b),       0,                 0,
-            0,                 0,                 2 / (n - f),       0,
-            (l + r) / (l - r), (b + t) / (b - t), (f + n) / (n - f), 1,
-        } };
-        return result;
-    }
+        pub fn lookAt(eye: Vec3f32, to: Vec3f32, up: Vec3f32) Base {
+            const f = to.sub(eye).normalized();
+            const l = f.cross(up).normalized();
+            const u = l.cross(f);
 
-    pub fn lookAt(eye: Vec3f32, to: Vec3f32, up: Vec3f32) Mat4 {
-        const f = to.sub(eye).normalized();
-        const l = f.cross(up).normalized();
-        const u = l.cross(f);
+            return .{ .data = .{
+                l.x,        u.x,         -f.x,       0,
+                l.y,        u.y,         -f.y,       0,
+                l.z,        u.z,         -f.z,       0,
+                l.dot(eye), -u.dot(eye), f.dot(eye), 1,
+            } };
+        }
 
-        return .{ .a = .{
-            l.x,        u.x,         -f.x,       0,
-            l.y,        u.y,         -f.y,       0,
-            l.z,        u.z,         -f.z,       0,
-            l.dot(eye), -u.dot(eye), f.dot(eye), 1,
-        } };
-    }
+        pub fn transposed(m: *const Base) Base {
+            return .{ .data = .{
+                m.a[0], m.a[4], m.a[8],  m.a[12],
+                m.a[1], m.a[5], m.a[9],  m.a[13],
+                m.a[2], m.a[6], m.a[10], m.a[14],
+                m.a[3], m.a[7], m.a[11], m.a[15],
+            } };
+        }
 
-    pub fn transposed(m: *const Mat4) Mat4 {
-        return .{ .a = .{
-            m.a[0], m.a[4], m.a[8],  m.a[12],
-            m.a[1], m.a[5], m.a[9],  m.a[13],
-            m.a[2], m.a[6], m.a[10], m.a[14],
-            m.a[3], m.a[7], m.a[11], m.a[15],
-        } };
-    }
+        pub fn mul(a: *const Base, b: Base) Base {
+            return .{ .data = .{
+                a.data[0] * b.data[0] + a.data[1] * b.data[4] + a.data[2] * b.data[8] + a.data[3] * b.data[12],
+                a.data[0] * b.data[1] + a.data[1] * b.data[5] + a.data[2] * b.data[9] + a.data[3] * b.data[13],
+                a.data[0] * b.data[2] + a.data[1] * b.data[6] + a.data[2] * b.data[10] + a.data[3] * b.data[14],
+                a.data[0] * b.data[3] + a.data[1] * b.data[7] + a.data[2] * b.data[11] + a.data[3] * b.data[15],
 
-    pub fn mul(a: *const @This(), b: @This()) @This() {
-        return .{ .a = .{
-            a.cr[0][0] * b.cr[0][0] + a.cr[0][1] * b.cr[1][0] + a.cr[0][2] * b.cr[2][0] + a.cr[0][3] * b.cr[3][0],
-            a.cr[0][0] * b.cr[0][1] + a.cr[0][1] * b.cr[1][1] + a.cr[0][2] * b.cr[2][1] + a.cr[0][3] * b.cr[3][1],
-            a.cr[0][0] * b.cr[0][2] + a.cr[0][1] * b.cr[1][2] + a.cr[0][2] * b.cr[2][2] + a.cr[0][3] * b.cr[3][2],
-            a.cr[0][0] * b.cr[0][3] + a.cr[0][1] * b.cr[1][3] + a.cr[0][2] * b.cr[2][3] + a.cr[0][3] * b.cr[3][3],
+                a.data[4] * b.data[0] + a.data[5] * b.data[4] + a.data[6] * b.data[8] + a.data[7] * b.data[12],
+                a.data[4] * b.data[1] + a.data[5] * b.data[5] + a.data[6] * b.data[9] + a.data[7] * b.data[13],
+                a.data[4] * b.data[2] + a.data[5] * b.data[6] + a.data[6] * b.data[10] + a.data[7] * b.data[14],
+                a.data[4] * b.data[3] + a.data[5] * b.data[7] + a.data[6] * b.data[11] + a.data[7] * b.data[15],
 
-            a.cr[1][0] * b.cr[0][0] + a.cr[1][1] * b.cr[1][0] + a.cr[1][2] * b.cr[2][0] + a.cr[1][3] * b.cr[3][0],
-            a.cr[1][0] * b.cr[0][1] + a.cr[1][1] * b.cr[1][1] + a.cr[1][2] * b.cr[2][1] + a.cr[1][3] * b.cr[3][1],
-            a.cr[1][0] * b.cr[0][2] + a.cr[1][1] * b.cr[1][2] + a.cr[1][2] * b.cr[2][2] + a.cr[1][3] * b.cr[3][2],
-            a.cr[1][0] * b.cr[0][3] + a.cr[1][1] * b.cr[1][3] + a.cr[1][2] * b.cr[2][3] + a.cr[1][3] * b.cr[3][3],
+                a.data[8] * b.data[0] + a.data[9] * b.data[4] + a.data[10] * b.data[8] + a.data[11] * b.data[12],
+                a.data[8] * b.data[1] + a.data[9] * b.data[5] + a.data[10] * b.data[9] + a.data[11] * b.data[13],
+                a.data[8] * b.data[2] + a.data[9] * b.data[6] + a.data[10] * b.data[10] + a.data[11] * b.data[14],
+                a.data[8] * b.data[3] + a.data[9] * b.data[7] + a.data[10] * b.data[11] + a.data[11] * b.data[15],
 
-            a.cr[2][0] * b.cr[0][0] + a.cr[2][1] * b.cr[1][0] + a.cr[2][2] * b.cr[2][0] + a.cr[2][3] * b.cr[3][0],
-            a.cr[2][0] * b.cr[0][1] + a.cr[2][1] * b.cr[1][1] + a.cr[2][2] * b.cr[2][1] + a.cr[2][3] * b.cr[3][1],
-            a.cr[2][0] * b.cr[0][2] + a.cr[2][1] * b.cr[1][2] + a.cr[2][2] * b.cr[2][2] + a.cr[2][3] * b.cr[3][2],
-            a.cr[2][0] * b.cr[0][3] + a.cr[2][1] * b.cr[1][3] + a.cr[2][2] * b.cr[2][3] + a.cr[2][3] * b.cr[3][3],
-
-            a.cr[3][0] * b.cr[0][0] + a.cr[3][1] * b.cr[1][0] + a.cr[3][2] * b.cr[2][0] + a.cr[3][3] * b.cr[3][0],
-            a.cr[3][0] * b.cr[0][1] + a.cr[3][1] * b.cr[1][1] + a.cr[3][2] * b.cr[2][1] + a.cr[3][3] * b.cr[3][1],
-            a.cr[3][0] * b.cr[0][2] + a.cr[3][1] * b.cr[1][2] + a.cr[3][2] * b.cr[2][2] + a.cr[3][3] * b.cr[3][2],
-            a.cr[3][0] * b.cr[0][3] + a.cr[3][1] * b.cr[1][3] + a.cr[3][2] * b.cr[2][3] + a.cr[3][3] * b.cr[3][3],
-        } };
-    }
-};
+                a.data[12] * b.data[0] + a.data[13] * b.data[4] + a.data[14] * b.data[8] + a.data[15] * b.data[12],
+                a.data[12] * b.data[1] + a.data[13] * b.data[5] + a.data[14] * b.data[9] + a.data[15] * b.data[13],
+                a.data[12] * b.data[2] + a.data[13] * b.data[6] + a.data[14] * b.data[10] + a.data[15] * b.data[14],
+                a.data[12] * b.data[3] + a.data[13] * b.data[7] + a.data[14] * b.data[11] + a.data[15] * b.data[15],
+            } };
+        }
+    };
+}
 
 test "Vec3 cross" {
     const a = Vec3f32.new(1, 2, 3);
@@ -242,16 +248,16 @@ test "Vec3 cross" {
 }
 
 test "Mat4 mul" {
-    const a = Mat4.new(1, 2, 3, 4, 5, 6, 7, 8, 9, 8, 7, 6, 5, 4, 3, 2);
+    const a = Mat4f32.new(1, 2, 3, 4, 5, 6, 7, 8, 9, 8, 7, 6, 5, 4, 3, 2);
 
-    const b = Mat4{ .a = .{
+    const b = Mat4f32{ .data = .{
         -2, 1, 2, 3,
         3,  2, 1, -1,
         4,  3, 6, 5,
         1,  2, 7, 8,
     } };
 
-    const expected = Mat4{ .a = .{
+    const expected = Mat4f32{ .data = .{
         20, 22, 50,  48,
         44, 54, 114, 108,
         40, 58, 110, 102,
@@ -260,7 +266,7 @@ test "Mat4 mul" {
 
     const result = a.mul(b);
 
-    try std.testing.expectEqual(expected.cr, result.cr);
+    try std.testing.expectEqual(expected.data, result.data);
 }
 
 test "Mat4 look_at default" {
@@ -268,9 +274,9 @@ test "Mat4 look_at default" {
     const to = Vec3f32.new(0, 0, -1);
     const up = Vec3f32.new(0, 1, 0);
 
-    const tf = Mat4.lookAt(eye, to, up);
+    const tf = Mat4f32.lookAt(eye, to, up);
 
-    try std.testing.expectEqual(Mat4.identity.cr, tf.cr);
+    try std.testing.expectEqual(Mat4f32.identity.data, tf.data);
 }
 
 test "Mat4 look_at positive z" {
@@ -278,9 +284,9 @@ test "Mat4 look_at positive z" {
     const to = Vec3f32.new(0, 0, 1);
     const up = Vec3f32.new(0, 1, 0);
 
-    const tf = Mat4.lookAt(eye, to, up);
+    const tf = Mat4f32.lookAt(eye, to, up);
 
-    try std.testing.expectEqual(Mat4.scaling(-1, 1, -1).cr, tf.cr);
+    try std.testing.expectEqual(Mat4f32.scaling(-1, 1, -1).data, tf.data);
 }
 
 test "Mat4 look_at moves world" {
@@ -288,9 +294,9 @@ test "Mat4 look_at moves world" {
     const to = Vec3f32.new(0, 0, 0);
     const up = Vec3f32.new(0, 1, 0);
 
-    const tf = Mat4.lookAt(eye, to, up);
+    const tf = Mat4f32.lookAt(eye, to, up);
 
-    try std.testing.expectEqual(Mat4.translation(0, 0, -8).cr, tf.cr);
+    try std.testing.expectEqual(Mat4f32.translation(0, 0, -8).data, tf.data);
 }
 
 test "Mat4 look_at arbitrary" {
@@ -298,9 +304,9 @@ test "Mat4 look_at arbitrary" {
     const to = Vec3f32.new(4, -2, 8);
     const up = Vec3f32.new(1, 1, 0);
 
-    const tf = Mat4.lookAt(eye, to, up);
+    const tf = Mat4f32.lookAt(eye, to, up);
 
-    const expected = Mat4{ .a = .{
+    const expected = Mat4f32{ .data = .{
         -0.51449, 0.77892,  -0.35856, 0.00000,
         0.51449,  0.61494,  0.59761,  0.00000,
         0.68599,  0.12298,  -0.71713, 0.00000,
@@ -310,7 +316,7 @@ test "Mat4 look_at arbitrary" {
     try expectApproxEqualMatrix(expected, tf);
 }
 
-fn expectApproxEqualMatrix(expected: Mat4, actual: Mat4) !void {
+fn expectApproxEqualMatrix(expected: Mat4f32, actual: Mat4f32) !void {
     const V = @Vector(4 * 4, f32);
 
     const ve: V = @bitCast(expected);
@@ -354,23 +360,29 @@ fn expectApproxEqualMatrix(expected: Mat4, actual: Mat4) !void {
 }
 
 const MatrixDiffer = struct {
-    expected: Mat4,
-    actual: Mat4,
+    expected: Mat4f32,
+    actual: Mat4f32,
     ttyconf: std.io.tty.Config,
 
     pub fn write(self: MatrixDiffer, writer: anytype) !void {
         try writer.print("\n", .{});
-        for (self.expected.cr, self.actual.cr) |er, ar| {
-            try writer.print("[ ", .{});
-            for (er, ar, 0..) |evalue, avalue, i| {
-                const diff = @abs(evalue - avalue) >= FLOAT_EPSILON;
-                if (diff) try self.ttyconf.setColor(writer, .red);
-                try writer.print("{d: >14.6}", .{evalue});
-                if (diff) try self.ttyconf.setColor(writer, .reset);
+        for (self.expected.data, 0..) |evalue, i| {
+            const end = i % Mat4f32.C;
+            const start = end == 0;
+            if (start) try writer.print("[ ", .{});
 
-                if (i < 3) try writer.print(", ", .{});
+            const avalue = self.actual.data[i];
+            const diff = @abs(evalue - avalue) >= FLOAT_EPSILON;
+
+            if (diff) try self.ttyconf.setColor(writer, .red);
+            try writer.print("{d: >14.6}", .{evalue});
+            if (diff) try self.ttyconf.setColor(writer, .reset);
+
+            if (end == Mat4f32.C - 1) {
+                try writer.print(" ]\n", .{});
+            } else {
+                try writer.print(", ", .{});
             }
-            try writer.print(" ]\n", .{});
         }
         try writer.print("\n", .{});
     }

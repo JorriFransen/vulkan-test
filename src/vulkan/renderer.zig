@@ -14,7 +14,7 @@ const vkl = vk.loader;
 
 const Vec2 = math.Vec2f32;
 const Vec3 = math.Vec3f32;
-const Mat4 = math.Mat4;
+const Mat4 = math.Mat4f32;
 
 const DTimer = @import("debug_timer").Timer;
 
@@ -1487,7 +1487,6 @@ fn updateUniformBuffer(this: *@This(), image_index: usize) void {
 
     const model = Mat4.rotation_z(@floatCast(elapsed * math.radians(90)));
     const proj = Mat4.perspective(math.radians(45), extent.x / extent.y, 0.1, 10);
-
     const view = Mat4.lookAt(Vec3.new(2, 2, 2), Vec3.new(0, 0, 0), Vec3.new(0, 0, 1));
 
     const ubo = this.uniform_buffers_mapped[image_index][0];
@@ -1496,7 +1495,7 @@ fn updateUniformBuffer(this: *@This(), image_index: usize) void {
         .view = view,
         .proj = proj,
     };
-    ubo.proj.cr[1][1] *= -1;
+    ubo.proj.data[5] *= -1;
 }
 
 pub fn drawFrame(this: *@This()) void {
