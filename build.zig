@@ -64,40 +64,14 @@ pub fn build(b: *std.Build) !void {
         exe.linkSystemLibrary("X11-xcb");
     }
 
-    const alloc_mod = addPrivateModule(b, "src/alloc.zig", "alloc");
-    const callback_mod = addPrivateModule(b, "src/callback.zig", "callback");
-    const debug_timer_mod = addPrivateModule(b, "src/debug_timer.zig", "debug_timer");
-    const extern_fn_mod = addPrivateModule(b, "src/externFn.zig", "externFn");
-    const math_mod = addPrivateModule(b, "src/math.zig", "math");
-    const platform_mod = addPrivateModule(b, "src/platform.zig", "platform");
-    const vulkan_info = try useVulkan(b);
-    const vulkan_mod = vulkan_info.module;
+    try useVulkan(b, exe);
 
     const shaders = try Shaders.init(b, &exe.step, &shader_dirs);
     const shaders_mod = try shaders.emitShadersModule();
 
-    exe.root_module.addImport("alloc", alloc_mod);
     exe.root_module.addImport("flags", flags_mod);
-    exe.root_module.addImport("math", math_mod);
     exe.root_module.addImport("options", options_mod);
-    exe.root_module.addImport("platform", platform_mod);
-    exe.root_module.addImport("vulkan", vulkan_mod);
-
-    vulkan_mod.addImport("alloc", alloc_mod);
-    vulkan_mod.addImport("externFn", extern_fn_mod);
-    vulkan_mod.addImport("options", options_mod);
-    vulkan_mod.addImport("platform", platform_mod);
-    vulkan_mod.addImport("shaders", shaders_mod);
-    vulkan_mod.addImport("debug_timer", debug_timer_mod);
-    vulkan_mod.addImport("math", math_mod);
-
-    // platform_mod.addIncludePath(vulkan_info.include_path);
-    platform_mod.addImport("callback", callback_mod);
-    platform_mod.addImport("externFn", extern_fn_mod);
-    platform_mod.addImport("options", options_mod);
-    platform_mod.addImport("vulkan", vulkan_mod);
-
-    debug_timer_mod.addImport("options", options_mod);
+    exe.root_module.addImport("shaders", shaders_mod);
 
     const run_cmd = b.addRunArtifact(exe);
     run_cmd.step.dependOn(b.getInstallStep());
@@ -130,35 +104,25 @@ fn addPrivateModule(b: *std.Build, path: []const u8, name: []const u8) *std.Buil
     });
     mod.addImport(name, mod);
 
-
     return mod;
 }
 
-const VulkanInfo = struct {
-    module: *std.Build.Module,
-};
-
-fn useVulkan(b: *std.Build) !VulkanInfo {
+fn useVulkan(b: *std.Build, c: *std.Build.Step.Compile) !void {
     const windows = target.result.os.tag == .windows;
     const vk_lib_name = if (windows) "vulkan-1" else "vulkan";
-    const vk_mod = addPrivateModule(b, "src/vulkan/vulkan.zig", "vulkan");
-    vk_mod.linkSystemLibrary(vk_lib_name, .{});
+    c.linkSystemLibrary(vk_lib_name);
 
     if (windows) {
         var env = std.process.getEnvMap(b.allocator) catch unreachable;
         defer env.deinit();
 
-        if (env.get("VULKAN_SDK")) |sdk_path| { 
-            const lib_path = b.pathJoin(&.{sdk_path, "lib"});
-            vk_mod.addLibraryPath(.{.cwd_relative=lib_path});
+        if (env.get("VULKAN_SDK")) |sdk_path| {
+            const lib_path = b.pathJoin(&.{ sdk_path, "lib" });
+            c.addLibraryPath(.{ .cwd_relative = lib_path });
         } else {
             return error.VulkanSDKNotFound;
         }
     }
-
-    return .{
-        .module = vk_mod,
-    };
 }
 
 const Shaders = struct {

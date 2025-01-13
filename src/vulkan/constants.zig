@@ -1,6 +1,6 @@
 const c = @import("platform").c;
 
-const vk = @import("vulkan");
+const vk = @import("vulkan.zig");
 const Flags = vk.Flags;
 
 pub const API_VERSION_1_0 = vk.MAKE_API_VERSION(0, 1, 0, 0);

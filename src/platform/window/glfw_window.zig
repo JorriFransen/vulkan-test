@@ -1,7 +1,7 @@
 const std = @import("std");
 const builtin = @import("builtin");
-const platform = @import("platform");
-const vk = @import("vulkan");
+const platform = @import("../../platform.zig");
+const vk = @import("../../vulkan/vulkan.zig");
 const root = @import("root");
 const f = @import("externFn").externFn;
 

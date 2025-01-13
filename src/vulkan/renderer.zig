@@ -2,13 +2,13 @@ const std = @import("std");
 const assert = std.debug.assert;
 const builtin = @import("builtin");
 
-const alloc = @import("alloc");
+const alloc = @import("../alloc.zig");
 const builtin_shaders = @import("shaders");
-const math = @import("math");
+const math = @import("../math.zig");
 const options = @import("options");
-const platform = @import("platform");
+const platform = @import("../platform.zig");
 const Window = platform.Window;
-const vk = @import("vulkan");
+const vk = @import("vulkan.zig");
 const vke = vk.extensions;
 const vkl = vk.loader;
 
@@ -16,7 +16,7 @@ const Vec2 = math.Vec2f32;
 const Vec3 = math.Vec3f32;
 const Mat4 = math.Mat4f32;
 
-const DTimer = @import("debug_timer").Timer;
+const DTimer = @import("../debug_timer.zig").Timer;
 
 const vlog = std.log.scoped(.vulkan);
 const dlog = vlog.debug;

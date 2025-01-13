@@ -2,7 +2,7 @@ const std = @import("std");
 const assert = std.debug.assert;
 const log = std.log.scoped(.VK_EXT_Debug_utils);
 
-const vk = @import("vulkan");
+const vk = @import("vulkan.zig");
 
 pub const name = "VK_EXT_debug_utils";
 pub var loaded = false;

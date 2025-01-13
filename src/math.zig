@@ -208,26 +208,29 @@ pub fn MatFunctionsMixin(comptime C: usize, comptime R: usize, comptime T: type,
         }
 
         pub fn mul(a: *const Base, b: Base) Base {
+            const ad = &a.data;
+            const bd = &b.data;
+
             return .{ .data = .{
-                a.data[0] * b.data[0] + a.data[1] * b.data[4] + a.data[2] * b.data[8] + a.data[3] * b.data[12],
-                a.data[0] * b.data[1] + a.data[1] * b.data[5] + a.data[2] * b.data[9] + a.data[3] * b.data[13],
-                a.data[0] * b.data[2] + a.data[1] * b.data[6] + a.data[2] * b.data[10] + a.data[3] * b.data[14],
-                a.data[0] * b.data[3] + a.data[1] * b.data[7] + a.data[2] * b.data[11] + a.data[3] * b.data[15],
+                ad[0] * bd[0] + ad[1] * bd[4] + ad[2] * bd[8] + ad[3] * bd[12],
+                ad[0] * bd[1] + ad[1] * bd[5] + ad[2] * bd[9] + ad[3] * bd[13],
+                ad[0] * bd[2] + ad[1] * bd[6] + ad[2] * bd[10] + ad[3] * bd[14],
+                ad[0] * bd[3] + ad[1] * bd[7] + ad[2] * bd[11] + ad[3] * bd[15],
 
-                a.data[4] * b.data[0] + a.data[5] * b.data[4] + a.data[6] * b.data[8] + a.data[7] * b.data[12],
-                a.data[4] * b.data[1] + a.data[5] * b.data[5] + a.data[6] * b.data[9] + a.data[7] * b.data[13],
-                a.data[4] * b.data[2] + a.data[5] * b.data[6] + a.data[6] * b.data[10] + a.data[7] * b.data[14],
-                a.data[4] * b.data[3] + a.data[5] * b.data[7] + a.data[6] * b.data[11] + a.data[7] * b.data[15],
+                ad[4] * bd[0] + ad[5] * bd[4] + ad[6] * bd[8] + ad[7] * bd[12],
+                ad[4] * bd[1] + ad[5] * bd[5] + ad[6] * bd[9] + ad[7] * bd[13],
+                ad[4] * bd[2] + ad[5] * bd[6] + ad[6] * bd[10] + ad[7] * bd[14],
+                ad[4] * bd[3] + ad[5] * bd[7] + ad[6] * bd[11] + ad[7] * bd[15],
 
-                a.data[8] * b.data[0] + a.data[9] * b.data[4] + a.data[10] * b.data[8] + a.data[11] * b.data[12],
-                a.data[8] * b.data[1] + a.data[9] * b.data[5] + a.data[10] * b.data[9] + a.data[11] * b.data[13],
-                a.data[8] * b.data[2] + a.data[9] * b.data[6] + a.data[10] * b.data[10] + a.data[11] * b.data[14],
-                a.data[8] * b.data[3] + a.data[9] * b.data[7] + a.data[10] * b.data[11] + a.data[11] * b.data[15],
+                ad[8] * bd[0] + ad[9] * bd[4] + ad[10] * bd[8] + ad[11] * bd[12],
+                ad[8] * bd[1] + ad[9] * bd[5] + ad[10] * bd[9] + ad[11] * bd[13],
+                ad[8] * bd[2] + ad[9] * bd[6] + ad[10] * bd[10] + ad[11] * bd[14],
+                ad[8] * bd[3] + ad[9] * bd[7] + ad[10] * bd[11] + ad[11] * bd[15],
 
-                a.data[12] * b.data[0] + a.data[13] * b.data[4] + a.data[14] * b.data[8] + a.data[15] * b.data[12],
-                a.data[12] * b.data[1] + a.data[13] * b.data[5] + a.data[14] * b.data[9] + a.data[15] * b.data[13],
-                a.data[12] * b.data[2] + a.data[13] * b.data[6] + a.data[14] * b.data[10] + a.data[15] * b.data[14],
-                a.data[12] * b.data[3] + a.data[13] * b.data[7] + a.data[14] * b.data[11] + a.data[15] * b.data[15],
+                ad[12] * bd[0] + ad[13] * bd[4] + ad[14] * bd[8] + ad[15] * bd[12],
+                ad[12] * bd[1] + ad[13] * bd[5] + ad[14] * bd[9] + ad[15] * bd[13],
+                ad[12] * bd[2] + ad[13] * bd[6] + ad[14] * bd[10] + ad[15] * bd[14],
+                ad[12] * bd[3] + ad[13] * bd[7] + ad[14] * bd[11] + ad[15] * bd[15],
             } };
         }
     };

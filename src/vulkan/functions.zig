@@ -1,5 +1,5 @@
-const f = @import("externFn").externFn;
-const vk = @import("vulkan");
+const f = @import("../externFn.zig").externFn;
+const vk = @import("vulkan.zig");
 
 const Result = vk.Result;
 const Instance = vk.Instance;

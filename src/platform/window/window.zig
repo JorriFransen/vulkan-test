@@ -1,14 +1,14 @@
 const std = @import("std");
 const builtin = @import("builtin");
-const vk = @import("vulkan");
+const vk = @import("../../vulkan/vulkan.zig");
 const options = @import("options");
 
-const platform = @import("platform");
+const platform = @import("../../platform.zig");
 const Api = platform.WindowApi;
 const Key = platform.Key;
 const KeyAction = platform.KeyAction;
 
-const Callback = @import("callback").Callback;
+const Callback = @import("../../callback.zig").Callback;
 
 const log = std.log.scoped(.window);
 pub const dlog = log.debug;

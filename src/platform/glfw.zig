@@ -7,9 +7,9 @@ pub const NO_API: c_int = 0;
 pub const TRUE = 1;
 pub const FALSE = 0;
 
-const platform = @import("platform");
+const platform = @import("../platform.zig");
 const x = platform.x;
-const vk = @import("vulkan");
+const vk = @import("../vulkan/vulkan.zig");
 
 pub extern fn glfwInit() callconv(.C) c_int;
 pub extern fn glfwInitHint(hint: c_int, value: c_int) callconv(.C) void;

@@ -6,12 +6,12 @@ const ilog = std.log.info;
 
 const builtin = @import("builtin");
 
-const alloc = @import("alloc");
+const alloc = @import("alloc.zig");
 
-const platform = @import("platform");
+const platform = @import("platform.zig");
 pub const Window = platform.Window;
 
-const Renderer = @import("vulkan").Renderer;
+const Renderer = @import("vulkan/vulkan.zig").Renderer;
 
 const options = @import("options");
 const flags = @import("flags");
