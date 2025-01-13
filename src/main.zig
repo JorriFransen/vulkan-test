@@ -17,6 +17,8 @@ const options = @import("options");
 const flags = @import("flags");
 pub var cmd_line_options: CmdLineOptions = undefined;
 
+const stb = @import("stb.zig");
+
 const CmdLineOptions = struct {
     pub const description = "Testing vulkan api";
 
@@ -59,8 +61,15 @@ pub fn vMain() !u8 {
 
     window.setFramebufferResizeCallback(.{ .fun = framebufferResizeCallback, .user_data = &renderer });
     window.setKeyCallback(.{ .fun = keyCallback, .user_data = null });
-    // window.framebuffer_resize_callback = .{ .fun = framebufferResizeCallback, .user_data = &renderer };
-    // window.key_callback = .{ .fun = keyCallback, .user_data = null };
+
+
+    var x:c_int=undefined;
+    var y:c_int=undefined;
+    var c:c_int=undefined;
+      const image = stb.image.load("res/test.png", &x, &y, &c, 0) orelse @panic("Unable to find image");
+    defer stb.image.free(image);
+    dlog("Loaded image: {},{},{}", .{x, y, c});
+
 
     while (!window.shouldClose()) {
         renderer.drawFrame();
