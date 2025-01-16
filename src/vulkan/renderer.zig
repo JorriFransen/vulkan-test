@@ -12,6 +12,8 @@ const vk = @import("vulkan.zig");
 const vke = vk.extensions;
 const vkl = vk.loader;
 
+const stbi = @import("../stb.zig").image;
+
 const Vec2 = math.Vec2f32;
 const Vec3 = math.Vec3f32;
 const Mat4 = math.Mat4f32;
@@ -39,7 +41,7 @@ device: vk.Device = null,
 device_info: PDevInfo = undefined,
 graphics_que: vk.Queue = null,
 present_que: vk.Queue = null,
-transfer_que: vk.Queue = null,
+// transfer_que: vk.Queue = null,
 
 swapchain: vk.SwapchainKHR = null,
 swapchain_extent: vk.Extent2D = undefined,
@@ -52,9 +54,8 @@ descriptor_pool: vk.DescriptorPool = null,
 descriptor_sets: [MAX_FRAMES_IN_FLIGHT]vk.DescriptorSet = .{null} ** MAX_FRAMES_IN_FLIGHT,
 pipeline_layout: vk.PipelineLayout = null,
 graphics_pipeline: vk.Pipeline = null,
-// TODO: Command pool for temporary command buffers
 command_pool: vk.CommandPool = null,
-transfer_command_pool: vk.CommandPool = null,
+// tmp_command_pool: vk.CommandPool = null,
 current_frame: u32 = 0,
 debug_messenger: vk.DebugUtilsMessengerEXT = null,
 
@@ -78,6 +79,9 @@ uniform_buffers_mapped: [MAX_FRAMES_IN_FLIGHT][UBO_COUNT]*UniformBufferObject = 
 // vertex_buffer_memory: vk.DeviceMemory = null,
 uniform_buffers_memory: [MAX_FRAMES_IN_FLIGHT]vk.DeviceMemory = .{null} ** MAX_FRAMES_IN_FLIGHT,
 combined_buffer_memory: vk.DeviceMemory = null,
+
+texture_image: vk.Image = undefined,
+texture_image_memory: vk.DeviceMemory = undefined,
 
 timer: std.time.Timer = undefined,
 
@@ -140,13 +144,12 @@ const PDevInfo = struct {
 const QueueFamilyInfo = struct {
     graphics_index: u32 = undefined,
     present_index: u32 = undefined,
-    transfer_index: u32 = undefined,
 
     pub inline fn familyIndices(this: *const @This()) []const u32 {
         if (this.graphics_index == this.present_index) {
-            return &.{ this.graphics_index, this.transfer_index };
+            return &.{this.graphics_index};
         } else {
-            return &.{ this.graphics_index, this.present_index, this.transfer_index };
+            return &.{ this.graphics_index, this.present_index };
         }
     }
 };
@@ -200,6 +203,7 @@ pub fn init(this: *@This(), window: *Window) !void {
     try this.createGraphicsPipeline();
     try this.createFrameBuffers();
     try this.createCommandPools();
+    try this.createTextureImage();
 
     // try this.createVertexBuffer();
     // try this.createIndexBuffer();
@@ -221,6 +225,9 @@ pub fn deinit(this: *const @This()) void {
 
     this.cleanupSwapchain();
 
+    vk.destroyImage(this.device, this.texture_image, null);
+    vk.freeMemory(this.device, this.texture_image_memory, null);
+
     vk.destroyBuffer(this.device, this.vertex_buffer, null);
     // vk.freeMemory(this.device, this.vertex_buffer_memory, null);
 
@@ -239,7 +246,7 @@ pub fn deinit(this: *const @This()) void {
     }
 
     vk.destroyCommandPool(dev, this.command_pool, null);
-    vk.destroyCommandPool(dev, this.transfer_command_pool, null);
+    // vk.destroyCommandPool(dev, this.tmp_command_pool, null);
     vk.destroyPipeline(dev, this.graphics_pipeline, null);
     vk.destroyPipelineLayout(dev, this.pipeline_layout, null);
     vk.destroyDescriptorPool(dev, this.descriptor_pool, null);
@@ -503,15 +510,11 @@ fn queryQueueFamiliesInfo(pdev: vk.PhysicalDevice, surface: vk.SurfaceKHR) !?Que
 
     var graphics_que_found = false;
     var present_que_found = false;
-    var transfer_que_found = false;
 
     for (queue_families, 0..) |qf, qi| {
         if (qf.queueFlags.GRAPHICS_BIT == 1) {
             result.graphics_index = @intCast(qi);
             graphics_que_found = true;
-        } else if (qf.queueFlags.TRANSFER_BIT == 1) {
-            result.transfer_index = @intCast(qi);
-            transfer_que_found = true;
         }
 
         if (!present_que_found) {
@@ -523,7 +526,7 @@ fn queryQueueFamiliesInfo(pdev: vk.PhysicalDevice, surface: vk.SurfaceKHR) !?Que
             }
         }
 
-        if (graphics_que_found and present_que_found and transfer_que_found) return result;
+        if (graphics_que_found and present_que_found) return result;
     }
 
     return null;
@@ -622,7 +625,6 @@ fn createLogicalDevice(this: *@This()) !void {
     var fin_array = [_]u32{
         dev_info.queue_info.graphics_index,
         dev_info.queue_info.present_index,
-        dev_info.queue_info.transfer_index,
     };
 
     var fin: []u32 = &fin_array;
@@ -678,7 +680,7 @@ fn createLogicalDevice(this: *@This()) !void {
 
     vk.getDeviceQueue(this.device, dev_info.queue_info.graphics_index, 0, &this.graphics_que);
     vk.getDeviceQueue(this.device, dev_info.queue_info.present_index, 0, &this.present_que);
-    vk.getDeviceQueue(this.device, dev_info.queue_info.transfer_index, 0, &this.transfer_que);
+    // vk.getDeviceQueue(this.device, dev_info.queue_info.transfer_index, 0, &this.transfer_que);
 }
 
 pub fn handleFramebufferResize(this: *@This(), _: c_int, _: c_int) void {
@@ -741,7 +743,7 @@ pub fn createSwapchain(this: *@This()) !void {
         .imageExtent = this.swapchain_extent,
         .imageArrayLayers = 1,
         .imageUsage = .{ .COLOR_ATTACHMENT_BIT = 1 },
-        .imageSharingMode = .CONCURRENT,
+        .imageSharingMode = .EXCLUSIVE,
         .queueFamilyIndexCount = @intCast(queue_indices.len),
         .pQueueFamilyIndices = queue_indices.ptr,
         .preTransform = cap.currentTransform,
@@ -1028,15 +1030,106 @@ fn createCommandPools(this: *@This()) !void {
         return error.CreateCommandPoolFailed;
     }
 
-    const transfer_create_info = vk.CommandPoolCreateInfo{
-        .sType = .COMMAND_POOL_CREATE_INFO,
-        .flags = .{ .RESET_COMMAND_BUFFER = 1, .TRANSIENT = 1 },
-        .queueFamilyIndex = this.device_info.queue_info.transfer_index,
+    // const transfer_create_info = vk.CommandPoolCreateInfo{
+    //     .sType = .COMMAND_POOL_CREATE_INFO,
+    //     .flags = .{ .RESET_COMMAND_BUFFER = 1, .TRANSIENT = 1 },
+    //     .queueFamilyIndex = this.device_info.queue_info.transfer_index,
+    // };
+    //
+    // if (vk.createCommandPool(this.device, &transfer_create_info, null, &this.tmp_command_pool) != .SUCCESS) {
+    //     return error.CreateCommandPoolFailed;
+    // }
+}
+
+fn createImage(this: *@This(), width: usize, height: usize, format: vk.Format, tiling: vk.ImageTiling, usage: vk.ImageUsageFlags, properties: vk.MemoryPropertyFlags, memory: *vk.DeviceMemory) !vk.Image {
+    const image_info = vk.ImageCreateInfo{
+        .sType = .IMAGE_CREATE_INFO,
+        .imageType = .@"2D",
+        .extent = .{ .width = @intCast(width), .height = @intCast(height), .depth = 1 },
+        .mipLevels = 1,
+        .arrayLayers = 1,
+        .format = format,
+        .tiling = tiling,
+        .initialLayout = .UNDEFINED,
+        .usage = usage,
+        .sharingMode = .EXCLUSIVE,
+        .samples = .{ .@"1_BIT" = 1 },
+        .queueFamilyIndexCount = 0,
+        .pQueueFamilyIndices = null,
     };
 
-    if (vk.createCommandPool(this.device, &transfer_create_info, null, &this.transfer_command_pool) != .SUCCESS) {
-        return error.CreateCommandPoolFailed;
+    var result: vk.Image = undefined;
+
+    if (vk.createImage(this.device, &image_info, null, &result) != .SUCCESS) {
+        return error.CreateImageFailed;
     }
+
+    var mem_req: vk.MemoryRequirements = undefined;
+    vk.getImageMemoryRequirements(this.device, result, &mem_req);
+
+    const alloc_info = vk.MemoryAllocateInfo{
+        .sType = .MEMORY_ALLOCATE_INFO,
+        .allocationSize = mem_req.size,
+        .memoryTypeIndex = this.findMemoryType(mem_req.memoryTypeBits, properties) orelse {
+            return error.FindMemoryTypeFailed;
+        },
+    };
+
+    if (vk.allocateMemory(this.device, &alloc_info, null, memory) != .SUCCESS) {
+        return error.AllocateMemoryFailed;
+    }
+
+    if (vk.bindImageMemory(this.device, result, memory.*, 0) != .SUCCESS) {
+        return error.BindImageMemoryFailed;
+    }
+
+    return result;
+}
+
+fn createTextureImage(this: *@This()) !void {
+    var width: c_int = undefined;
+    var height: c_int = undefined;
+    const channels = stbi.rgb_alpha;
+    var __channels: c_int = undefined;
+
+    var pixels: [*]const u8 = undefined;
+    if (stbi.load("res/statue.jpg", &width, &height, &__channels, channels)) |p| {
+        pixels = p;
+    } else {
+        return error.stbi_loadFailed;
+    }
+    defer stbi.free(pixels);
+
+    const size: vk.DeviceSize = @intCast(width * height * channels);
+
+    var staging_buffer_mem: vk.DeviceMemory = undefined;
+    const staging_buffer = try this.createBuffer(size, .{ .TRANSFER_SRC_BIT = 1 }, .{ .HOST_VISIBLE_BIT = 1, .HOST_COHERENT_BIT = 1 }, &staging_buffer_mem);
+    defer {
+        vk.destroyBuffer(this.device, staging_buffer, null);
+        vk.freeMemory(this.device, staging_buffer_mem, null);
+    }
+
+    var data: [*]u8 = undefined;
+    if (vk.mapMemory(this.device, staging_buffer_mem, 0, size, .{}, @ptrCast(&data)) != .SUCCESS) {
+        return error.VkMapMemoryFailed;
+    }
+
+    std.mem.copyForwards(u8, data[0..size], pixels[0..size]);
+    vk.unmapMemory(this.device, staging_buffer_mem);
+
+    this.texture_image = try this.createImage(
+        @intCast(width),
+        @intCast(height),
+        .R8G8B8A8_SRGB,
+        .OPTIMAL,
+        .{ .TRANSFER_DST_BIT = 1, .SAMPLED_BIT = 1 },
+        .{ .DEVICE_LOCAL_BIT = 1 },
+        &this.texture_image_memory,
+    );
+
+    try this.transitionImageLayout(this.texture_image, .R8G8B8A8_SRGB, .UNDEFINED, .TRANSFER_DST_OPTIMAL);
+    try this.copyBufferToImage(staging_buffer, this.texture_image, @intCast(width), @intCast(height));
+    try this.transitionImageLayout(this.texture_image, .R8G8B8A8_SRGB, .TRANSFER_DST_OPTIMAL, .SHADER_READ_ONLY_OPTIMAL);
 }
 
 pub fn createBuffer(this: *const @This(), size: vk.DeviceSize, usage: vk.BufferUsageFlags, properties: vk.MemoryPropertyFlags, memory: *vk.DeviceMemory) !vk.Buffer {
@@ -1046,7 +1139,7 @@ pub fn createBuffer(this: *const @This(), size: vk.DeviceSize, usage: vk.BufferU
         .sType = .BUFFER_CREATE_INFO,
         .size = size,
         .usage = usage,
-        .sharingMode = .CONCURRENT,
+        .sharingMode = .EXCLUSIVE,
         .queueFamilyIndexCount = @intCast(qfis.len),
         .pQueueFamilyIndices = qfis.ptr,
     };
@@ -1081,50 +1174,139 @@ pub fn createBuffer(this: *const @This(), size: vk.DeviceSize, usage: vk.BufferU
 }
 
 pub fn copyBuffer(this: *const @This(), src: vk.Buffer, src_offset: usize, dst: vk.Buffer, size: vk.DeviceSize) !void {
-    dlog("copybuffer: size: {}, src_offset: {}", .{ size, src_offset });
-    var cmd_bufs = [_]vk.CommandBuffer{null};
+    const cmd_buf = try this.beginSingleTimeCommands();
+
+    const copy_regions = [_]vk.BufferCopy{.{ .srcOffset = src_offset, .size = size }};
+    vk.cmdCopyBuffer(cmd_buf, src, dst, copy_regions.len, &copy_regions);
+
+    try this.endSingleTimeCommands(cmd_buf);
+}
+
+fn beginSingleTimeCommands(this: *const @This()) !vk.CommandBuffer {
+    var cmd_bufs: [1]vk.CommandBuffer = undefined;
     const alloc_info = vk.CommandBufferAllocateInfo{
         .sType = .COMMAND_BUFFER_ALLOCATE_INFO,
         .level = .PRIMARY,
-        .commandPool = this.transfer_command_pool,
+        .commandPool = this.command_pool,
         .commandBufferCount = cmd_bufs.len,
     };
 
     if (vk.allocateCommandBuffers(this.device, &alloc_info, &cmd_bufs) != .SUCCESS) {
         return error.AllocateCommandBuffersFailed;
     }
-    const cmd_buf = cmd_bufs[0];
-    defer vk.freeCommandBuffers(this.device, this.transfer_command_pool, cmd_bufs.len, &cmd_bufs);
 
     const begin_info = vk.CommandBufferBeginInfo{
         .sType = .COMMAND_BUFFER_BEGIN_INFO,
         .flags = .{ .ONE_TIME_SUBMIT_BIT = 1 },
     };
 
-    if (vk.beginCommandBuffer(cmd_buf, &begin_info) != .SUCCESS) {
+    if (vk.beginCommandBuffer(cmd_bufs[0], &begin_info) != .SUCCESS) {
         return error.BeginCommandBufferFailed;
     }
 
-    const copy_regions = [_]vk.BufferCopy{.{ .srcOffset = src_offset, .size = size }};
-    vk.cmdCopyBuffer(cmd_buf, src, dst, copy_regions.len, &copy_regions);
+    return cmd_bufs[0];
+}
 
+fn endSingleTimeCommands(this: *const @This(), cmd_buf: vk.CommandBuffer) !void {
     if (vk.endCommandBuffer(cmd_buf) != .SUCCESS) {
         return error.EndCommandBufferFailed;
     }
 
+    const cmd_bufs = [_]vk.CommandBuffer{cmd_buf};
     const submit_infos = [_]vk.SubmitInfo{.{
         .sType = .SUBMIT_INFO,
         .commandBufferCount = cmd_bufs.len,
         .pCommandBuffers = &cmd_bufs,
     }};
 
-    if (vk.queueSubmit(this.transfer_que, submit_infos.len, &submit_infos, null) != .SUCCESS) {
+    if (vk.queueSubmit(this.graphics_que, submit_infos.len, &submit_infos, null) != .SUCCESS) {
         return error.QueueSubmitFailed;
     }
 
-    if (vk.queueWaitIdle(this.transfer_que) != .SUCCESS) {
+    if (vk.queueWaitIdle(this.graphics_que) != .SUCCESS) {
         return error.QueueWaitIdleFailed;
     }
+
+    // vk.freeCommandBuffers(this.device, this.tmp_command_pool, cmd_bufs.len, &cmd_bufs);
+}
+
+fn copyBufferToImage(this: *const @This(), buf: vk.Buffer, img: vk.Image, width: u32, height: u32) !void {
+    const cmd_buf = try this.beginSingleTimeCommands();
+
+    const region = vk.BufferImageCopy{
+        .bufferOffset = 0,
+        .bufferRowLength = 0,
+        .bufferImageHeight = 0,
+        .imageSubresource = .{
+            .aspectMask = .{ .COLOR_BIT = 1 },
+            .mipLevel = 0,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        },
+        .imageOffset = .{},
+        .imageExtent = .{ .width = width, .height = height, .depth = 1 },
+    };
+
+    vk.cmdCopyBufferToImage(cmd_buf, buf, img, .TRANSFER_DST_OPTIMAL, 1, @ptrCast(&region));
+
+    try this.endSingleTimeCommands(cmd_buf);
+}
+
+fn transitionImageLayout(this: *const @This(), image: vk.Image, format: vk.Format, old_layout: vk.ImageLayout, new_layout: vk.ImageLayout) !void {
+    const cmd_buf = try this.beginSingleTimeCommands();
+
+    var src_access_mask = vk.AccessFlags{};
+    var dst_access_mask = vk.AccessFlags{};
+    var src_stage = vk.PipelineStageFlags{};
+    var dst_stage = vk.PipelineStageFlags{};
+
+    if (old_layout == .UNDEFINED and new_layout == .TRANSFER_DST_OPTIMAL) {
+        dst_access_mask = .{ .TRANSFER_WRITE_BIT = 1 };
+        src_stage = .{ .TOP_OF_PIPE_BIT = 1 };
+        dst_stage = .{ .TRANSFER_BIT = 1 };
+    } else if (old_layout == .TRANSFER_DST_OPTIMAL and new_layout == .SHADER_READ_ONLY_OPTIMAL) {
+        src_access_mask = .{ .TRANSFER_WRITE_BIT = 1 };
+        dst_access_mask = .{ .SHADER_READ_BIT = 1 };
+        src_stage = .{ .TRANSFER_BIT = 1 };
+        dst_stage = .{ .FRAGMENT_SHADER_BIT = 1 };
+    } else {
+        return error.UnsupportedLayoutTransition;
+    }
+
+    const barrier = vk.ImageMemoryBarrier{
+        .sType = .IMAGE_MEMORY_BARRIER,
+        .oldLayout = old_layout,
+        .newLayout = new_layout,
+        .srcQueueFamilyIndex = vk.QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = vk.QUEUE_FAMILY_IGNORED,
+        .image = image,
+        .subresourceRange = .{
+            .aspectMask = .{ .COLOR_BIT = 1 },
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        },
+        .srcAccessMask = src_access_mask,
+        .dstAccessMask = dst_access_mask,
+    };
+
+    vk.cmdPipelineBarrier(
+        cmd_buf,
+        src_stage,
+        dst_stage,
+        .{},
+        0,
+        null,
+        0,
+        null,
+        1,
+        @ptrCast(&barrier),
+    );
+
+    _ = format;
+
+    try this.endSingleTimeCommands(cmd_buf);
 }
 
 fn createVertexBuffer(this: *@This()) !void {
@@ -1204,7 +1386,7 @@ fn createCombinedBuffer(this: *@This()) !void {
         .sType = .BUFFER_CREATE_INFO,
         .size = idx_size,
         .usage = .{ .TRANSFER_DST_BIT = 1, .INDEX_BUFFER_BIT = 1 },
-        .sharingMode = .CONCURRENT,
+        .sharingMode = .EXCLUSIVE,
         .queueFamilyIndexCount = @intCast(qfis.len),
         .pQueueFamilyIndices = qfis.ptr,
     };
@@ -1221,7 +1403,7 @@ fn createCombinedBuffer(this: *@This()) !void {
         .sType = .BUFFER_CREATE_INFO,
         .size = verts_size,
         .usage = .{ .TRANSFER_DST_BIT = 1, .VERTEX_BUFFER_BIT = 1 },
-        .sharingMode = .CONCURRENT,
+        .sharingMode = .EXCLUSIVE,
         .queueFamilyIndexCount = @intCast(qfis.len),
         .pQueueFamilyIndices = qfis.ptr,
     };

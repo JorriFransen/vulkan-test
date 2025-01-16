@@ -16,6 +16,8 @@ pub const MAX_MEMORY_HEAPS = 16;
 pub const SUBPASS_EXTERNAL = ~@as(u32, 0);
 pub const KHR_SWAPCHAIN_EXTENSION_NAME = "VK_KHR_swapchain";
 
+pub const QUEUE_FAMILY_IGNORED = ~@as(c_uint, 0);
+
 pub const Result = enum(c_int) {
     SUCCESS = 0,
     NOT_READY = 1,
@@ -724,13 +726,13 @@ pub const FrontFace = enum(c_int) {
 };
 
 pub const SampleCountFlags = packed struct(Flags) {
-    @"1_BIT": u1 = 0, // 1
-    @"2_BIT": u1 = 0, // 2
-    @"4_BIT": u1 = 0, // 4
-    @"8_BIT": u1 = 0, // 8
-    @"16_BIT": u1 = 0, // 16
-    @"32_BIT": u1 = 0, // 32
-    @"64_BIT": u1 = 0, // 64
+    @"1_BIT": u1 = 0, // 0x00000001
+    @"2_BIT": u1 = 0, // 0x00000002
+    @"4_BIT": u1 = 0, // 0x00000004
+    @"8_BIT": u1 = 0, // 0x00000008
+    @"16_BIT": u1 = 0, // 0x00000010
+    @"32_BIT": u1 = 0, // 0x00000020
+    @"64_BIT": u1 = 0, // 0x00000040
     _reserved: u25 = 0,
 };
 
@@ -1408,6 +1410,49 @@ pub const DescriptorPoolCreateFlags = packed struct(Flags) {
     __reserved: u27 = 0,
     pub const UPDATE_AFTER_BIND_BIT_EXT: @This() = .{ .UPDATE_AFTER_BIND_BIT = 1 };
     pub const HOST_ONLY_BIT_VALVE: @This() = .{ .HOST_ONLY_BIT_EXT = 1 };
+};
+
+pub const ImageCreateFlags = packed struct(Flags) {
+    SPARSE_BINDING_BIT: u1 = 0, // 0x00000001
+    SPARSE_RESIDENCY_BIT: u1 = 0, // 0x00000002
+    SPARSE_ALIASED_BIT: u1 = 0, // 0x00000004
+    MUTABLE_FORMAT_BIT: u1 = 0, // 0x00000008
+    CUBE_COMPATIBLE_BIT: u1 = 0, // 0x00000010
+    @"2D_ARRAY_COMPATIBLE_BIT": u1 = 0, // 0x00000020
+    SPLIT_INSTANCE_BIND_REGIONS_BIT: u1 = 0, // 0x00000040
+    BLOCK_TEXEL_VIEW_COMPATIBLE_BIT: u1 = 0, // 0x00000080
+    EXTENDED_USAGE_BIT: u1 = 0, // 0x00000100
+    DISJOINT_BIT: u1 = 0, // 0x00000200
+    ALIAS_BIT: u1 = 0, // 0x00000400
+    PROTECTED_BIT: u1 = 0, // 0x00000800
+    SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT: u1 = 0, // 0x00001000
+    CORNER_SAMPLED_BIT_NV: u1 = 0, // 0x00002000
+    SUBSAMPLED_BIT_EXT: u1 = 0, // 0x00004000
+    FRAGMENT_DENSITY_MAP_OFFSET_BIT_QCOM: u1 = 0, // 0x00008000
+    DESCRIPTOR_BUFFER_CAPTURE_REPLAY_BIT_EXT: u1 = 0, // 0x00010000
+    @"2D_VIEW_COMPATIBLE_BIT_EXT": u1 = 0, // 0x00020000
+    MULTISAMPLED_RENDER_TO_SINGLE_SAMPLED_BIT_EXT: u1 = 0, // 0x00040000
+    __reserved_1: u1 = 0,
+    VIDEO_PROFILE_INDEPENDENT_BIT_KHR: u1 = 0, // 0x00100000
+    __reserved_2: u11 = 0,
+    pub const SPLIT_INSTANCE_BIND_REGIONS_BIT_KHR: @This() = .{ .SPLIT_INSTANCE_BIND_REGIONS_BIT = 1 };
+    pub const @"2D_ARRAY_COMPATIBLE_BIT_KHR": @This() = .{ .@"2D_ARRAY_COMPATIBLE_BIT" = 1 };
+    pub const BLOCK_TEXEL_VIEW_COMPATIBLE_BIT_KHR: @This() = .{ .BLOCK_TEXEL_VIEW_COMPATIBLE_BIT = 1 };
+    pub const EXTENDED_USAGE_BIT_KHR: @This() = .{ .EXTENDED_USAGE_BIT = 1 };
+    pub const DISJOINT_BIT_KHR: @This() = .{ .DISJOINT_BIT = 1 };
+    pub const ALIAS_BIT_KHR: @This() = .{ .ALIAS_BIT = 1 };
+};
+
+pub const ImageType = enum(c_int) {
+    @"1D" = 0,
+    @"2D" = 1,
+    @"3D" = 2,
+};
+
+pub const ImageTiling = enum(c_int) {
+    OPTIMAL = 0,
+    LINEAR = 1,
+    DRM_FORMAT_MODIFIER_EXT = 1000158000,
 };
 
 pub const StructureType = enum(c_int) {

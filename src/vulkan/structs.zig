@@ -450,6 +450,12 @@ pub const Offset2D = extern struct {
     y: i32 = 0,
 };
 
+pub const Offset3D = extern struct {
+    x: i32 = 0,
+    y: i32 = 0,
+    z: i32 = 0,
+};
+
 pub const Rect2D = extern struct {
     offset: Offset2D = .{},
     extent: Extent2D = .{},
@@ -896,4 +902,70 @@ pub const CopyDescriptorSet = extern struct {
     dstBinding: u32,
     dstArrayElement: u32,
     descriptorCount: u32,
+};
+
+pub const ImageCreateInfo = extern struct {
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    pNext: ?*const anyopaque = null,
+    flags: s.ImageCreateFlags = std.mem.zeroes(s.ImageCreateFlags),
+    imageType: s.ImageType = std.mem.zeroes(s.ImageType),
+    format: s.Format = std.mem.zeroes(s.Format),
+    extent: s.Extent3D,
+    mipLevels: u32,
+    arrayLayers: u32,
+    samples: s.SampleCountFlags = std.mem.zeroes(s.SampleCountFlags),
+    tiling: s.ImageTiling = std.mem.zeroes(s.ImageTiling),
+    usage: s.ImageUsageFlags = std.mem.zeroes(s.ImageUsageFlags),
+    sharingMode: s.SharingMode = std.mem.zeroes(s.SharingMode),
+    queueFamilyIndexCount: u32,
+    pQueueFamilyIndices: ?[*]const u32,
+    initialLayout: s.ImageLayout = std.mem.zeroes(s.ImageLayout),
+};
+
+pub const ImageMemoryBarrier = extern struct {
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    pNext: ?*const anyopaque = null,
+    srcAccessMask: s.AccessFlags = .{},
+    dstAccessMask: s.AccessFlags = .{},
+    oldLayout: s.ImageLayout = .UNDEFINED,
+    newLayout: s.ImageLayout = .UNDEFINED,
+    srcQueueFamilyIndex: u32 = 0,
+    dstQueueFamilyIndex: u32 = 0,
+    image: s.Image = null,
+    subresourceRange: ImageSubresourceRange = .{},
+};
+
+pub const BufferMemoryBarrier = extern struct {
+    sType: s.StructureType,
+    pNext: ?*const anyopaque = null,
+    srcAccessMask: s.AccessFlags = .{},
+    dstAccessMask: s.AccessFlags = .{},
+    srcQueueFamilyIndex: u32 = 0,
+    dstQueueFamilyIndex: u32 = 0,
+    buffer: s.Buffer = null,
+    offset: s.DeviceSize = 0,
+    size: s.DeviceSize = 0,
+};
+
+pub const MemoryBarrier = extern struct {
+    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    pNext: ?*const anyopaque = null,
+    srcAccessMask: s.AccessFlags = .{},
+    dstAccessMask: s.AccessFlags = .{},
+};
+
+pub const BufferImageCopy = extern struct {
+    bufferOffset: s.DeviceSize = 0,
+    bufferRowLength: u32 = 0,
+    bufferImageHeight: u32 = 0,
+    imageSubresource: s.ImageSubresourceLayers = .{},
+    imageOffset: s.Offset3D = .{},
+    imageExtent: Extent3D = .{},
+};
+
+pub const ImageSubresourceLayers = extern struct {
+    aspectMask: s.ImageAspectFlags = .{},
+    mipLevel: u32 = 0,
+    baseArrayLayer: u32 = 0,
+    layerCount: u32 = 0,
 };

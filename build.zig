@@ -48,7 +48,8 @@ pub fn build(b: *std.Build) !void {
     const exe_install_artifact = b.addInstallArtifact(exe, .{});
     b.getInstallStep().dependOn(&exe_install_artifact.step);
 
-    exe.addCSourceFile(.{.file=b.path("src/stb_image.c")});
+    exe.addCSourceFile(.{ .file = b.path("src/stb_image.c") });
+    exe.addIncludePath(b.path("src/"));
 
     // Can't get wayland to work on nixos when building ourselves
     if (glfw_support) {
