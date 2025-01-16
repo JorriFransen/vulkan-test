@@ -80,6 +80,8 @@ uniform_buffers_mapped: [MAX_FRAMES_IN_FLIGHT][UBO_COUNT]*UniformBufferObject = 
 uniform_buffers_memory: [MAX_FRAMES_IN_FLIGHT]vk.DeviceMemory = .{null} ** MAX_FRAMES_IN_FLIGHT,
 combined_buffer_memory: vk.DeviceMemory = null,
 
+setup_command_buffer: vk.CommandBuffer = null,
+
 texture_image: vk.Image = undefined,
 texture_image_memory: vk.DeviceMemory = undefined,
 texture_image_view: vk.ImageView = undefined,
@@ -206,6 +208,7 @@ pub fn init(this: *@This(), window: *Window) !void {
     try this.createGraphicsPipeline();
     try this.createFrameBuffers();
     try this.createCommandPools();
+    try this.createCommandBuffers();
     try this.createTextureImage();
     try this.createTextureImageView();
     try this.createTextureSampler();
@@ -213,11 +216,11 @@ pub fn init(this: *@This(), window: *Window) !void {
     // try this.createVertexBuffer();
     // try this.createIndexBuffer();
     try this.createCombinedBuffer();
+
     try this.createUniformBuffers();
     try this.createDescriptorPool();
     try this.createDescriptorSets();
 
-    try this.createCommandBuffers();
     try this.createSyncObjects();
 
     this.timer = try std.time.Timer.start();
@@ -1106,8 +1109,9 @@ fn createTextureImage(this: *@This()) !void {
     );
 
     try this.transitionImageLayout(this.texture_image, .R8G8B8A8_SRGB, .UNDEFINED, .TRANSFER_DST_OPTIMAL);
-    try this.copyBufferToImage(staging_buffer, this.texture_image, @intCast(width), @intCast(height));
+    this.copyBufferToImage(staging_buffer, this.texture_image, @intCast(width), @intCast(height));
     try this.transitionImageLayout(this.texture_image, .R8G8B8A8_SRGB, .TRANSFER_DST_OPTIMAL, .SHADER_READ_ONLY_OPTIMAL);
+    try this.flushSetupCommands();
 }
 
 fn createTextureImageView(this: *@This()) !void {
@@ -1200,13 +1204,9 @@ pub fn createBuffer(this: *const @This(), size: vk.DeviceSize, usage: vk.BufferU
     return buffer;
 }
 
-pub fn copyBuffer(this: *const @This(), src: vk.Buffer, src_offset: usize, dst: vk.Buffer, size: vk.DeviceSize) !void {
-    const cmd_buf = try this.beginSingleTimeCommands();
-
+pub fn copyBuffer(this: *@This(), src: vk.Buffer, src_offset: usize, dst: vk.Buffer, size: vk.DeviceSize) !void {
     const copy_regions = [_]vk.BufferCopy{.{ .srcOffset = src_offset, .size = size }};
-    vk.cmdCopyBuffer(cmd_buf, src, dst, copy_regions.len, &copy_regions);
-
-    try this.endSingleTimeCommands(cmd_buf);
+    vk.cmdCopyBuffer(this.setup_command_buffer, src, dst, copy_regions.len, &copy_regions);
 }
 
 fn beginSingleTimeCommands(this: *const @This()) !vk.CommandBuffer {
@@ -1250,13 +1250,9 @@ fn endSingleTimeCommands(this: *const @This(), cmd_buf: vk.CommandBuffer) !void 
     if (vk.queueWaitIdle(this.graphics_que) != .SUCCESS) {
         return error.QueueWaitIdleFailed;
     }
-
-    // vk.freeCommandBuffers(this.device, this.tmp_command_pool, cmd_bufs.len, &cmd_bufs);
 }
 
-fn copyBufferToImage(this: *const @This(), buf: vk.Buffer, img: vk.Image, width: u32, height: u32) !void {
-    const cmd_buf = try this.beginSingleTimeCommands();
-
+fn copyBufferToImage(this: *const @This(), buf: vk.Buffer, img: vk.Image, width: u32, height: u32) void {
     const region = vk.BufferImageCopy{
         .bufferOffset = 0,
         .bufferRowLength = 0,
@@ -1271,14 +1267,10 @@ fn copyBufferToImage(this: *const @This(), buf: vk.Buffer, img: vk.Image, width:
         .imageExtent = .{ .width = width, .height = height, .depth = 1 },
     };
 
-    vk.cmdCopyBufferToImage(cmd_buf, buf, img, .TRANSFER_DST_OPTIMAL, 1, @ptrCast(&region));
-
-    try this.endSingleTimeCommands(cmd_buf);
+    vk.cmdCopyBufferToImage(this.setup_command_buffer, buf, img, .TRANSFER_DST_OPTIMAL, 1, @ptrCast(&region));
 }
 
 fn transitionImageLayout(this: *const @This(), image: vk.Image, format: vk.Format, old_layout: vk.ImageLayout, new_layout: vk.ImageLayout) !void {
-    const cmd_buf = try this.beginSingleTimeCommands();
-
     var src_access_mask = vk.AccessFlags{};
     var dst_access_mask = vk.AccessFlags{};
     var src_stage = vk.PipelineStageFlags{};
@@ -1316,7 +1308,7 @@ fn transitionImageLayout(this: *const @This(), image: vk.Image, format: vk.Forma
     };
 
     vk.cmdPipelineBarrier(
-        cmd_buf,
+        this.setup_command_buffer,
         src_stage,
         dst_stage,
         .{},
@@ -1329,8 +1321,6 @@ fn transitionImageLayout(this: *const @This(), image: vk.Image, format: vk.Forma
     );
 
     _ = format;
-
-    try this.endSingleTimeCommands(cmd_buf);
 }
 
 fn createVertexBuffer(this: *@This()) !void {
@@ -1361,6 +1351,7 @@ fn createVertexBuffer(this: *@This()) !void {
     );
 
     try this.copyBuffer(staging_buffer, 0, this.vertex_buffer, size);
+    try this.flushSetupCommands();
 }
 
 fn createIndexBuffer(this: *@This()) !void {
@@ -1393,6 +1384,7 @@ fn createIndexBuffer(this: *@This()) !void {
     );
 
     try this.copyBuffer(staging_buffer, 0, this.index_buffer, size);
+    try this.flushSetupCommands();
 }
 
 fn makeSlice(comptime T: type, mem: []u8, offset: usize, len: usize) []T {
@@ -1496,6 +1488,7 @@ fn createCombinedBuffer(this: *@This()) !void {
 
     try this.copyBuffer(staging_buffer, 0, this.index_buffer, idx_size);
     try this.copyBuffer(staging_buffer, verts_offset, this.vertex_buffer, verts_size);
+    try this.flushSetupCommands();
 }
 
 fn findMemoryType(this: *const @This(), type_filter: u32, properties: vk.MemoryPropertyFlags) ?u32 {
@@ -1606,14 +1599,54 @@ fn createDescriptorSets(this: *@This()) !void {
 }
 
 fn createCommandBuffers(this: *@This()) !void {
-    const alloc_info = vk.CommandBufferAllocateInfo{
+    const setup_alloc_info = vk.CommandBufferAllocateInfo{
+        .commandPool = this.command_pool,
+        .level = .PRIMARY,
+        .commandBufferCount = 1,
+    };
+
+    if (vk.allocateCommandBuffers(this.device, &setup_alloc_info, @ptrCast(&this.setup_command_buffer)) != .SUCCESS) {
+        return error.AllocateCommandBuffersFailed;
+    }
+
+    const begin_info = vk.CommandBufferBeginInfo{ .flags = .{ .ONE_TIME_SUBMIT_BIT = 1 } };
+    if (vk.beginCommandBuffer(this.setup_command_buffer, &begin_info) != .SUCCESS) {
+        return error.BeginCommandBufferFailed;
+    }
+
+    const presentation_alloc_info = vk.CommandBufferAllocateInfo{
         .commandPool = this.command_pool,
         .level = .PRIMARY,
         .commandBufferCount = this.command_buffers.len,
     };
 
-    if (vk.allocateCommandBuffers(this.device, &alloc_info, &this.command_buffers) != .SUCCESS) {
+    if (vk.allocateCommandBuffers(this.device, &presentation_alloc_info, &this.command_buffers) != .SUCCESS) {
         return error.AllocateCommandBuffersFailed;
+    }
+}
+
+fn flushSetupCommands(this: *@This()) !void {
+    if (vk.endCommandBuffer(this.setup_command_buffer) != .SUCCESS) {
+        return error.EndCommandbufferFailed;
+    }
+
+    const cmd_bufs = [_]vk.CommandBuffer{this.setup_command_buffer};
+    const submit_infos = [_]vk.SubmitInfo{.{
+        .commandBufferCount = cmd_bufs.len,
+        .pCommandBuffers = &cmd_bufs,
+    }};
+
+    if (vk.queueSubmit(this.graphics_que, submit_infos.len, &submit_infos, null) != .SUCCESS) {
+        return error.QueueSubmitFailed;
+    }
+
+    if (vk.queueWaitIdle(this.graphics_que) != .SUCCESS) {
+        return error.QueueWaitIdleFailed;
+    }
+
+    const begin_info = vk.CommandBufferBeginInfo{ .flags = .{ .ONE_TIME_SUBMIT_BIT = 1 } };
+    if (vk.beginCommandBuffer(this.setup_command_buffer, &begin_info) != .SUCCESS) {
+        return error.BeginCommandBufferFailed;
     }
 }
 
