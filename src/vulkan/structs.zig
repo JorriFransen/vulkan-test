@@ -971,3 +971,24 @@ pub const ImageSubresourceLayers = extern struct {
     baseArrayLayer: u32 = 0,
     layerCount: u32 = 0,
 };
+
+pub const SamplerCreateInfo = extern struct {
+    sType: s.StructureType = .SAMPLER_CREATE_INFO,
+    pNext: ?*const anyopaque = null,
+    flags: s.SamplerCreateFlags = .{},
+    magFilter: s.Filter = @enumFromInt(0),
+    minFilter: s.Filter = @enumFromInt(0),
+    mipmapMode: s.SamplerMipmapMode = @enumFromInt(0),
+    addressModeU: s.SamplerAddressMode = @enumFromInt(0),
+    addressModeV: s.SamplerAddressMode = @enumFromInt(0),
+    addressModeW: s.SamplerAddressMode = @enumFromInt(0),
+    mipLodBias: f32 = 0,
+    anisotropyEnable: s.Bool32 = s.FALSE,
+    maxAnisotropy: f32 = 0,
+    compareEnable: s.Bool32 = s.FALSE,
+    compareOp: s.CompareOp = @enumFromInt(0),
+    minLod: f32 = 0,
+    maxLod: f32 = 0,
+    borderColor: s.BorderColor = @enumFromInt(0),
+    unnormalizedCoordinates: s.Bool32 = s.FALSE,
+};

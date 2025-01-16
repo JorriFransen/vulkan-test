@@ -82,6 +82,8 @@ combined_buffer_memory: vk.DeviceMemory = null,
 
 texture_image: vk.Image = undefined,
 texture_image_memory: vk.DeviceMemory = undefined,
+texture_image_view: vk.ImageView = undefined,
+texture_sampler: vk.Sampler = undefined,
 
 timer: std.time.Timer = undefined,
 
@@ -92,12 +94,12 @@ const UniformBufferObject = extern struct {
 };
 
 const triangle_vertices = [_]Vertex{
-    .{ .pos = Vec2.new(-0.5, -0.5), .color = Vec3.new(1, 0, 0) },
-    .{ .pos = Vec2.new(0.5, -0.5), .color = Vec3.new(0, 1, 0) },
-    .{ .pos = Vec2.new(0.5, 0.5), .color = Vec3.new(0, 0, 1) },
+    .{ .pos = Vec2.new(-0.5, -0.5), .color = Vec3.new(1, 0, 0), .uv = Vec2.new(1, 0) },
+    .{ .pos = Vec2.new(0.5, -0.5), .color = Vec3.new(0, 1, 0), .uv = Vec2.new(0, 0) },
+    .{ .pos = Vec2.new(0.5, 0.5), .color = Vec3.new(0, 0, 1), .uv = Vec2.new(0, 1) },
 
     // .{ .pos = .{ .x = 1.0, .y = 1.0 }, .color = .{ .x = 0, .y = 0, .z = 1 } },
-    .{ .pos = Vec2.new(-0.5, 0.5), .color = Vec3.new(1, 1, 1) },
+    .{ .pos = Vec2.new(-0.5, 0.5), .color = Vec3.new(1, 1, 1), .uv = Vec2.new(1, 1) },
     // .{ .pos = .{ .x = -0.5, .y = -0.5 }, .color = .{ .x = 1, .y = 0, .z = 0 } },
 };
 
@@ -108,6 +110,7 @@ const triangle_indices = [_]u16{
 const Vertex = struct {
     pos: Vec2,
     color: Vec3,
+    uv: Vec2,
 
     pub const binding_description: vk.VertexInputBindingDescription = .{ .binding = 0, .stride = @sizeOf(@This()), .inputRate = .VERTEX };
 
@@ -135,7 +138,7 @@ const Vertex = struct {
 
 const PDevInfo = struct {
     score: u32,
-    name: [256]u8 = std.mem.zeroes([256]u8),
+    properties: vk.PhysicalDeviceProperties,
     queue_info: QueueFamilyInfo,
     swapchain_info: SwapchainInfo,
     physical_device: vk.PhysicalDevice,
@@ -204,6 +207,8 @@ pub fn init(this: *@This(), window: *Window) !void {
     try this.createFrameBuffers();
     try this.createCommandPools();
     try this.createTextureImage();
+    try this.createTextureImageView();
+    try this.createTextureSampler();
 
     // try this.createVertexBuffer();
     // try this.createIndexBuffer();
@@ -225,6 +230,8 @@ pub fn deinit(this: *const @This()) void {
 
     this.cleanupSwapchain();
 
+    vk.destroySampler(this.device, this.texture_sampler, null);
+    vk.destroyImageView(this.device, this.texture_image_view, null);
     vk.destroyImage(this.device, this.texture_image, null);
     vk.freeMemory(this.device, this.texture_image_memory, null);
 
@@ -462,6 +469,11 @@ fn choosePhysicalDevice(instance: vk.Instance, surface: vk.SurfaceKHR) !PDevInfo
             continue;
         };
 
+        if (features.samplerAnisotropy != vk.TRUE) {
+            dlog("pd[{}] does not meet sampler anisotropy requirements, skipping...", .{i});
+            continue;
+        }
+
         const score = type_score * image_dim_score;
         dlog("pd[{}]: score: {}", .{ i, score });
 
@@ -469,7 +481,7 @@ fn choosePhysicalDevice(instance: vk.Instance, surface: vk.SurfaceKHR) !PDevInfo
 
         const info = PDevInfo{
             .score = score,
-            .name = props.deviceName,
+            .properties = props,
             .queue_info = queue_info,
             .swapchain_info = swapchain_info,
             .physical_device = null,
@@ -489,7 +501,7 @@ fn choosePhysicalDevice(instance: vk.Instance, surface: vk.SurfaceKHR) !PDevInfo
     }
 
     best_device_info.physical_device = devices[best_device_index];
-    ilog("using device: {} ({s})", .{ best_device_index, best_device_info.name });
+    ilog("using device: {} ({s})", .{ best_device_index, best_device_info.properties.deviceName });
 
     return best_device_info;
 }
@@ -655,7 +667,9 @@ fn createLogicalDevice(this: *@This()) !void {
         .pQueuePriorities = &que_prios,
     };
 
-    const device_features = vk.PhysicalDeviceFeatures{};
+    const device_features = vk.PhysicalDeviceFeatures{
+        .samplerAnisotropy = vk.TRUE,
+    };
 
     const device_create_info = vk.DeviceCreateInfo{
         .pQueueCreateInfos = qcis.ptr,
@@ -764,25 +778,11 @@ pub fn createSwapchain(this: *@This()) !void {
 }
 
 fn createImageViews(this: *@This()) !void {
-    for (0..this.image_count) |i| {
-        const view_create_info = vk.ImageViewCreateInfo{
-            .image = this.images[i],
-            .viewType = .@"2D",
-            .format = this.device_info.swapchain_info.surface_format.format,
-            .components = .{ .r = .IDENTITY, .g = .IDENTITY, .b = .IDENTITY, .a = .IDENTITY },
-            .subresourceRange = .{
-                .aspectMask = .{ .COLOR_BIT = 1 },
-                .baseMipLevel = 0,
-                .levelCount = 1,
-                .baseArrayLayer = 0,
-                .layerCount = 1,
-            },
-        };
-
-        if (vk.createImageView(this.device, &view_create_info, null, &this.image_views[i]) != .SUCCESS) {
-            return error.Create_Image_View_Failed;
-        }
-    }
+    for (0..this.image_count) |i|
+        this.image_views[i] = try this.createImageView(
+            this.images[i],
+            this.device_info.swapchain_info.surface_format.format,
+        );
 }
 
 fn createRenderPass(this: *@This()) !void {
@@ -833,18 +833,27 @@ fn createRenderPass(this: *@This()) !void {
 }
 
 fn createDescriptorSetLayout(this: *@This()) !void {
-    const ubo_layout_bindings = [_]vk.DescriptorSetLayoutBinding{.{
-        .binding = 0,
-        .descriptorType = .UNIFORM_BUFFER,
-        .descriptorCount = 1,
-        .stageFlags = .{ .VERTEX_BIT = 1 },
-        .pImmutableSamplers = null,
-    }};
+    const layout_bindings = [_]vk.DescriptorSetLayoutBinding{
+        .{
+            .binding = 0,
+            .descriptorType = .UNIFORM_BUFFER,
+            .descriptorCount = 1,
+            .stageFlags = .{ .VERTEX_BIT = 1 },
+            .pImmutableSamplers = null,
+        },
+        .{
+            .binding = 1,
+            .descriptorType = .COMBINED_IMAGE_SAMPLER,
+            .descriptorCount = 1,
+            .stageFlags = .{ .FRAGMENT_BIT = 1 },
+            .pImmutableSamplers = null,
+        },
+    };
 
     const layout_info = vk.DescriptorSetLayoutCreateInfo{
         .flags = .{},
-        .bindingCount = ubo_layout_bindings.len,
-        .pBindings = &ubo_layout_bindings,
+        .bindingCount = layout_bindings.len,
+        .pBindings = &layout_bindings,
     };
 
     if (vk.createDescriptorSetLayout(this.device, &layout_info, null, &this.descriptor_set_layout) != .SUCCESS) {
@@ -1099,6 +1108,57 @@ fn createTextureImage(this: *@This()) !void {
     try this.transitionImageLayout(this.texture_image, .R8G8B8A8_SRGB, .UNDEFINED, .TRANSFER_DST_OPTIMAL);
     try this.copyBufferToImage(staging_buffer, this.texture_image, @intCast(width), @intCast(height));
     try this.transitionImageLayout(this.texture_image, .R8G8B8A8_SRGB, .TRANSFER_DST_OPTIMAL, .SHADER_READ_ONLY_OPTIMAL);
+}
+
+fn createTextureImageView(this: *@This()) !void {
+    this.texture_image_view = try this.createImageView(this.texture_image, .R8G8B8A8_SRGB);
+}
+
+fn createImageView(this: *@This(), image: vk.Image, format: vk.Format) !vk.ImageView {
+    const view_create_info = vk.ImageViewCreateInfo{
+        .image = image,
+        .viewType = .@"2D",
+        .format = format,
+        .components = .{ .r = .IDENTITY, .g = .IDENTITY, .b = .IDENTITY, .a = .IDENTITY },
+        .subresourceRange = .{
+            .aspectMask = .{ .COLOR_BIT = 1 },
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        },
+    };
+
+    var image_view: vk.ImageView = undefined;
+    if (vk.createImageView(this.device, &view_create_info, null, &image_view) != .SUCCESS) {
+        return error.Create_Image_View_Failed;
+    }
+
+    return image_view;
+}
+
+fn createTextureSampler(this: *@This()) !void {
+    const sampler_info = vk.SamplerCreateInfo{
+        .magFilter = .LINEAR,
+        .minFilter = .LINEAR,
+        .addressModeU = .REPEAT,
+        .addressModeV = .REPEAT,
+        .addressModeW = .REPEAT,
+        .anisotropyEnable = vk.TRUE,
+        .maxAnisotropy = this.device_info.properties.limits.maxSamplerAnisotropy,
+        .borderColor = .INT_OPAQUE_BLACK,
+        .unnormalizedCoordinates = vk.FALSE,
+        .compareEnable = vk.FALSE,
+        .compareOp = .ALWAYS,
+        .mipmapMode = .LINEAR,
+        .mipLodBias = 0,
+        .minLod = 0,
+        .maxLod = 0,
+    };
+
+    if (vk.createSampler(this.device, &sampler_info, null, &this.texture_sampler) != .SUCCESS) {
+        return error.CreateSamplerFailed;
+    }
 }
 
 pub fn createBuffer(this: *const @This(), size: vk.DeviceSize, usage: vk.BufferUsageFlags, properties: vk.MemoryPropertyFlags, memory: *vk.DeviceMemory) !vk.Buffer {
@@ -1474,10 +1534,16 @@ fn createUniformBuffers(this: *@This()) !void {
 }
 
 fn createDescriptorPool(this: *@This()) !void {
-    const pool_sizes = [_]vk.DescriptorPoolSize{.{
-        .type = .UNIFORM_BUFFER,
-        .descriptorCount = MAX_FRAMES_IN_FLIGHT,
-    }};
+    const pool_sizes = [_]vk.DescriptorPoolSize{
+        .{
+            .type = .UNIFORM_BUFFER,
+            .descriptorCount = MAX_FRAMES_IN_FLIGHT,
+        },
+        .{
+            .type = .COMBINED_IMAGE_SAMPLER,
+            .descriptorCount = MAX_FRAMES_IN_FLIGHT,
+        },
+    };
 
     const pool_info = vk.DescriptorPoolCreateInfo{
         .poolSizeCount = pool_sizes.len,
@@ -1510,16 +1576,30 @@ fn createDescriptorSets(this: *@This()) !void {
             .range = @sizeOf(UniformBufferObject),
         }};
 
-        const descriptor_writes = [_]vk.WriteDescriptorSet{.{
-            .dstSet = this.descriptor_sets[i],
-            .dstBinding = 0,
-            .dstArrayElement = 0,
-            .descriptorType = .UNIFORM_BUFFER,
-            .descriptorCount = buffer_infos.len,
-            .pBufferInfo = &buffer_infos,
-            .pImageInfo = null,
-            .pTexelBufferView = null,
+        const image_infos = [_]vk.DescriptorImageInfo{.{
+            .imageLayout = .SHADER_READ_ONLY_OPTIMAL,
+            .imageView = this.texture_image_view,
+            .sampler = this.texture_sampler,
         }};
+
+        const descriptor_writes = [_]vk.WriteDescriptorSet{
+            .{
+                .dstSet = this.descriptor_sets[i],
+                .dstBinding = 0,
+                .dstArrayElement = 0,
+                .descriptorType = .UNIFORM_BUFFER,
+                .descriptorCount = buffer_infos.len,
+                .pBufferInfo = &buffer_infos,
+            },
+            .{
+                .dstSet = this.descriptor_sets[i],
+                .dstBinding = 1,
+                .dstArrayElement = 0,
+                .descriptorType = .COMBINED_IMAGE_SAMPLER,
+                .descriptorCount = image_infos.len,
+                .pImageInfo = &image_infos,
+            },
+        };
 
         vk.updateDescriptorSets(this.device, descriptor_writes.len, &descriptor_writes, 0, null);
     }

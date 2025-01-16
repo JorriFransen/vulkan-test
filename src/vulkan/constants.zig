@@ -1455,6 +1455,47 @@ pub const ImageTiling = enum(c_int) {
     DRM_FORMAT_MODIFIER_EXT = 1000158000,
 };
 
+pub const SamplerCreateFlags = packed struct(Flags) {
+    SUBSAMPLED_BIT_EXT: u1 = 0, // 0x00000001
+    SUBSAMPLED_COARSE_RECONSTRUCTION_BIT_EXT: u1 = 0, // 0x00000002
+    NON_SEAMLESS_CUBE_MAP_BIT_EXT: u1 = 0, // 0x00000004
+    DESCRIPTOR_BUFFER_CAPTURE_REPLAY_BIT_EXT: u1 = 0, // 0x00000008
+    IMAGE_PROCESSING_BIT_QCOM: u1 = 0, // 0x00000010
+    __reserved: u27 = 0,
+};
+
+pub const Filter = enum(c_int) {
+    NEAREST = 0,
+    LINEAR = 1,
+    CUBIC_EXT = 1000015000,
+    pub const CUBIC_IMG = .CUBIC_EXT;
+};
+
+pub const SamplerMipmapMode = enum(c_int) {
+    NEAREST = 0,
+    LINEAR = 1,
+};
+
+pub const SamplerAddressMode = enum(c_int) {
+    REPEAT = 0,
+    MIRRORED_REPEAT = 1,
+    CLAMP_TO_EDGE = 2,
+    CLAMP_TO_BORDER = 3,
+    MIRROR_CLAMP_TO_EDGE = 4,
+    pub const MIRROR_CLAMP_TO_EDGE_KHR = .MIRROR_CLAMP_TO_EDGE;
+};
+
+pub const BorderColor = enum(c_int) {
+    FLOAT_TRANSPARENT_BLACK = 0,
+    INT_TRANSPARENT_BLACK = 1,
+    FLOAT_OPAQUE_BLACK = 2,
+    INT_OPAQUE_BLACK = 3,
+    FLOAT_OPAQUE_WHITE = 4,
+    INT_OPAQUE_WHITE = 5,
+    FLOAT_CUSTOM_EXT = 1000287003,
+    INT_CUSTOM_EXT = 1000287004,
+};
+
 pub const StructureType = enum(c_int) {
     APPLICATION_INFO = 0,
     INSTANCE_CREATE_INFO = 1,
