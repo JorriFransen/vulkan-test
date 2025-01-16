@@ -348,7 +348,6 @@ fn createInstance(window: *const Window) !vk.Instance {
     validation_layers_timer.lap();
 
     const app_info = vk.ApplicationInfo{
-        .sType = .APPLICATION_INFO,
         .pApplicationName = "Vulkan app",
         .applicationVersion = vk.MAKE_VERSION(1, 0, 0),
         .pEngineName = "Vulkan engine",
@@ -357,7 +356,6 @@ fn createInstance(window: *const Window) !vk.Instance {
     };
 
     const debug_messenger_create_info = vk.DebugUtilsMessengerCreateInfoEXT{
-        .sType = .DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
         .messageSeverity = .{ .VERBOSE_BIT_EXT = 1, .WARNING_BIT_EXT = 1, .ERROR_BIT_EXT = 1 },
         .messageType = .{ .GENERAL = 1, .VALIDATION = 1, .PERFORMANCE = 1 },
         .pfnUserCallback = vk_debug_callback,
@@ -365,7 +363,6 @@ fn createInstance(window: *const Window) !vk.Instance {
     };
 
     const instance_create_info = vk.InstanceCreateInfo{
-        .sType = .INSTANCE_CREATE_INFO,
         .pApplicationInfo = &app_info,
         .flags = .{ .ENUMERATE_PORTABILITY_BIT_KHR = if (is_mac) 1 else 0 },
         .enabledExtensionCount = @intCast(required_instance_extensions.items.len),
@@ -395,7 +392,6 @@ fn createInstance(window: *const Window) !vk.Instance {
 fn createDebugMessenger(instance: vk.Instance) vk.DebugUtilsMessengerEXT {
     if (debug) {
         const debug_messenger_create_info = vk.DebugUtilsMessengerCreateInfoEXT{
-            .sType = .DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
             .messageSeverity = .{ .VERBOSE_BIT_EXT = 1, .WARNING_BIT_EXT = 1, .ERROR_BIT_EXT = 1 },
             .messageType = .{ .GENERAL = 1, .VALIDATION = 1, .PERFORMANCE = 1 },
             .pfnUserCallback = vk_debug_callback,
@@ -654,7 +650,6 @@ fn createLogicalDevice(this: *@This()) !void {
     const que_prios = [_]f32{1.0};
 
     for (qcis, fin) |*qci, fi| qci.* = .{
-        .sType = .DEVICE_QUEUE_CREATE_INFO,
         .queueFamilyIndex = fi,
         .queueCount = 1,
         .pQueuePriorities = &que_prios,
@@ -663,7 +658,6 @@ fn createLogicalDevice(this: *@This()) !void {
     const device_features = vk.PhysicalDeviceFeatures{};
 
     const device_create_info = vk.DeviceCreateInfo{
-        .sType = .DEVICE_CREATE_INFO,
         .pQueueCreateInfos = qcis.ptr,
         .queueCreateInfoCount = @intCast(qcis.len),
         .pEnabledFeatures = &device_features,
@@ -735,7 +729,6 @@ pub fn createSwapchain(this: *@This()) !void {
     const queue_indices = dev_info.queue_info.familyIndices();
 
     const create_info = vk.SwapchainCreateInfoKHR{
-        .sType = .SWAPCHAIN_CREATE_INFO_KHR,
         .surface = this.surface,
         .minImageCount = dev_info.swapchain_info.min_image_count,
         .imageFormat = dev_info.swapchain_info.surface_format.format,
@@ -773,7 +766,6 @@ pub fn createSwapchain(this: *@This()) !void {
 fn createImageViews(this: *@This()) !void {
     for (0..this.image_count) |i| {
         const view_create_info = vk.ImageViewCreateInfo{
-            .sType = .IMAGE_VIEW_CREATE_INFO,
             .image = this.images[i],
             .viewType = .@"2D",
             .format = this.device_info.swapchain_info.surface_format.format,
@@ -827,7 +819,6 @@ fn createRenderPass(this: *@This()) !void {
         .dstAccessMask = .{ .COLOR_ATTACHMENT_WRITE_BIT = 1 },
     }};
     const render_pass_create_info = vk.RenderPassCreateInfo{
-        .sType = .RENDER_PASS_CREATE_INFO,
         .attachmentCount = color_attachments.len,
         .pAttachments = &color_attachments,
         .subpassCount = subpasses.len,
@@ -851,7 +842,6 @@ fn createDescriptorSetLayout(this: *@This()) !void {
     }};
 
     const layout_info = vk.DescriptorSetLayoutCreateInfo{
-        .sType = .DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
         .flags = .{},
         .bindingCount = ubo_layout_bindings.len,
         .pBindings = &ubo_layout_bindings,
@@ -871,13 +861,11 @@ fn createGraphicsPipeline(this: *@This()) !void {
 
     const shader_stages = [_]vk.PipelineShaderStageCreateInfo{
         .{
-            .sType = .PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage = .{ .VERTEX_BIT = 1 },
             .module = vert_shader_module,
             .pName = "main",
         },
         .{
-            .sType = .PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage = .{ .FRAGMENT_BIT = 1 },
             .module = frag_shader_module,
             .pName = "main",
@@ -890,13 +878,11 @@ fn createGraphicsPipeline(this: *@This()) !void {
     };
 
     const dynamic_state_create_info = vk.PipelineDynamicStateCreateInfo{
-        .sType = .PIPELINE_DYNAMIC_STATE_CREATE_INFO,
         .dynamicStateCount = dynamic_states.len,
         .pDynamicStates = &dynamic_states,
     };
 
     const vertex_input_state_create_info = vk.PipelineVertexInputStateCreateInfo{
-        .sType = .PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
         .vertexBindingDescriptionCount = 1,
         .pVertexBindingDescriptions = @ptrCast(&Vertex.binding_description),
         .vertexAttributeDescriptionCount = Vertex.attribute_descriptions.len,
@@ -904,19 +890,16 @@ fn createGraphicsPipeline(this: *@This()) !void {
     };
 
     const input_assembly_create_info = vk.PipelineInputAssemblyStateCreateInfo{
-        .sType = .PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
         .topology = .TRIANGLE_LIST,
         .primitiveRestartEnable = vk.FALSE,
     };
 
     const viewport_create_info = vk.PipelineViewportStateCreateInfo{
-        .sType = .PIPELINE_VIEWPORT_STATE_CREATE_INFO,
         .viewportCount = 1,
         .scissorCount = 1,
     };
 
     const rasterizer_create_info = vk.PipelineRasterizationStateCreateInfo{
-        .sType = .PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
         .depthClampEnable = vk.FALSE,
         .rasterizerDiscardEnable = vk.FALSE,
         .polygonMode = .FILL,
@@ -930,7 +913,6 @@ fn createGraphicsPipeline(this: *@This()) !void {
     };
 
     const multisampling_create_info = vk.PipelineMultisampleStateCreateInfo{
-        .sType = .PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
         .sampleShadingEnable = vk.FALSE,
         .rasterizationSamples = .{ .@"1_BIT" = 1 },
         .minSampleShading = 1,
@@ -951,7 +933,6 @@ fn createGraphicsPipeline(this: *@This()) !void {
     }};
 
     const blend_create_info = vk.PipelineColorBlendStateCreateInfo{
-        .sType = .PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
         .logicOpEnable = vk.FALSE,
         .logicOp = .COPY,
         .attachmentCount = color_blend_attachments.len,
@@ -962,7 +943,6 @@ fn createGraphicsPipeline(this: *@This()) !void {
     const descriptor_set_layouts = [_]vk.DescriptorSetLayout{this.descriptor_set_layout};
 
     const pipeline_layout_create_info = vk.PipelineLayoutCreateInfo{
-        .sType = .PIPELINE_LAYOUT_CREATE_INFO,
         .flags = .{},
         .setLayoutCount = descriptor_set_layouts.len,
         .pSetLayouts = &descriptor_set_layouts,
@@ -975,7 +955,6 @@ fn createGraphicsPipeline(this: *@This()) !void {
     }
 
     const pipeline_create_infos = [_]vk.GraphicsPipelineCreateInfo{.{
-        .sType = .GRAPHICS_PIPELINE_CREATE_INFO,
         .stageCount = shader_stages.len,
         .pStages = &shader_stages,
         .pVertexInputState = &vertex_input_state_create_info,
@@ -1002,7 +981,6 @@ fn createFrameBuffers(this: *@This()) !void {
     for (0..this.image_count) |i| {
         const attachments = [_]vk.ImageView{this.image_views[i]};
         const framebuffer_create_info = vk.FramebufferCreateInfo{
-            .sType = .FRAMEBUFFER_CREATE_INFO,
             .renderPass = this.render_pass,
             .attachmentCount = 1,
             .pAttachments = &attachments,
@@ -1021,7 +999,6 @@ fn createCommandPools(this: *@This()) !void {
     assert(this.device_info.queue_info.graphics_index == this.device_info.queue_info.present_index);
 
     const create_info = vk.CommandPoolCreateInfo{
-        .sType = .COMMAND_POOL_CREATE_INFO,
         .flags = .{ .RESET_COMMAND_BUFFER = 1 },
         .queueFamilyIndex = this.device_info.queue_info.graphics_index,
     };
@@ -1029,16 +1006,6 @@ fn createCommandPools(this: *@This()) !void {
     if (vk.createCommandPool(this.device, &create_info, null, &this.command_pool) != .SUCCESS) {
         return error.CreateCommandPoolFailed;
     }
-
-    // const transfer_create_info = vk.CommandPoolCreateInfo{
-    //     .sType = .COMMAND_POOL_CREATE_INFO,
-    //     .flags = .{ .RESET_COMMAND_BUFFER = 1, .TRANSIENT = 1 },
-    //     .queueFamilyIndex = this.device_info.queue_info.transfer_index,
-    // };
-    //
-    // if (vk.createCommandPool(this.device, &transfer_create_info, null, &this.tmp_command_pool) != .SUCCESS) {
-    //     return error.CreateCommandPoolFailed;
-    // }
 }
 
 fn createImage(this: *@This(), width: usize, height: usize, format: vk.Format, tiling: vk.ImageTiling, usage: vk.ImageUsageFlags, properties: vk.MemoryPropertyFlags, memory: *vk.DeviceMemory) !vk.Image {
@@ -1136,7 +1103,6 @@ pub fn createBuffer(this: *const @This(), size: vk.DeviceSize, usage: vk.BufferU
     const qfis = this.device_info.queue_info.familyIndices();
 
     const create_info = vk.BufferCreateInfo{
-        .sType = .BUFFER_CREATE_INFO,
         .size = size,
         .usage = usage,
         .sharingMode = .EXCLUSIVE,
@@ -1155,7 +1121,6 @@ pub fn createBuffer(this: *const @This(), size: vk.DeviceSize, usage: vk.BufferU
     vk.getBufferMemoryRequirements(this.device, buffer, &requirements);
 
     const alloc_info: vk.MemoryAllocateInfo = .{
-        .sType = .MEMORY_ALLOCATE_INFO,
         .allocationSize = requirements.size,
         .memoryTypeIndex = this.findMemoryType(requirements.memoryTypeBits, properties) orelse
             return error.FindMemoryTypeFailed,
@@ -1185,7 +1150,6 @@ pub fn copyBuffer(this: *const @This(), src: vk.Buffer, src_offset: usize, dst: 
 fn beginSingleTimeCommands(this: *const @This()) !vk.CommandBuffer {
     var cmd_bufs: [1]vk.CommandBuffer = undefined;
     const alloc_info = vk.CommandBufferAllocateInfo{
-        .sType = .COMMAND_BUFFER_ALLOCATE_INFO,
         .level = .PRIMARY,
         .commandPool = this.command_pool,
         .commandBufferCount = cmd_bufs.len,
@@ -1196,7 +1160,6 @@ fn beginSingleTimeCommands(this: *const @This()) !vk.CommandBuffer {
     }
 
     const begin_info = vk.CommandBufferBeginInfo{
-        .sType = .COMMAND_BUFFER_BEGIN_INFO,
         .flags = .{ .ONE_TIME_SUBMIT_BIT = 1 },
     };
 
@@ -1214,7 +1177,6 @@ fn endSingleTimeCommands(this: *const @This(), cmd_buf: vk.CommandBuffer) !void 
 
     const cmd_bufs = [_]vk.CommandBuffer{cmd_buf};
     const submit_infos = [_]vk.SubmitInfo{.{
-        .sType = .SUBMIT_INFO,
         .commandBufferCount = cmd_bufs.len,
         .pCommandBuffers = &cmd_bufs,
     }};
@@ -1383,7 +1345,6 @@ fn createCombinedBuffer(this: *@This()) !void {
     const qfis = this.device_info.queue_info.familyIndices();
 
     const i_create_info = vk.BufferCreateInfo{
-        .sType = .BUFFER_CREATE_INFO,
         .size = idx_size,
         .usage = .{ .TRANSFER_DST_BIT = 1, .INDEX_BUFFER_BIT = 1 },
         .sharingMode = .EXCLUSIVE,
@@ -1400,7 +1361,6 @@ fn createCombinedBuffer(this: *@This()) !void {
     vk.getBufferMemoryRequirements(this.device, this.index_buffer, &i_requirements);
 
     const v_create_info = vk.BufferCreateInfo{
-        .sType = .BUFFER_CREATE_INFO,
         .size = verts_size,
         .usage = .{ .TRANSFER_DST_BIT = 1, .VERTEX_BUFFER_BIT = 1 },
         .sharingMode = .EXCLUSIVE,
@@ -1452,7 +1412,6 @@ fn createCombinedBuffer(this: *@This()) !void {
     dlog("vreq: {}", .{v_requirements});
 
     const alloc_info: vk.MemoryAllocateInfo = .{
-        .sType = .MEMORY_ALLOCATE_INFO,
         .allocationSize = i_requirements.size + v_requirements.size + @max(i_requirements.alignment, v_requirements.alignment),
         .memoryTypeIndex = this.findMemoryType(i_requirements.memoryTypeBits, .{ .DEVICE_LOCAL_BIT = 1 }) orelse
             return error.FindMemoryTypeFailed,
@@ -1519,7 +1478,6 @@ fn createDescriptorPool(this: *@This()) !void {
     }};
 
     const pool_info = vk.DescriptorPoolCreateInfo{
-        .sType = .DESCRIPTOR_POOL_CREATE_INFO,
         .poolSizeCount = pool_sizes.len,
         .pPoolSizes = &pool_sizes,
         .maxSets = MAX_FRAMES_IN_FLIGHT,
@@ -1534,7 +1492,6 @@ fn createDescriptorSets(this: *@This()) !void {
     const layouts = [_]vk.DescriptorSetLayout{this.descriptor_set_layout} ** MAX_FRAMES_IN_FLIGHT;
 
     const alloc_info = vk.DescriptorSetAllocateInfo{
-        .sType = .DESCRIPTOR_SET_ALLOCATE_INFO,
         .descriptorPool = this.descriptor_pool,
         .descriptorSetCount = layouts.len,
         .pSetLayouts = &layouts,
@@ -1552,7 +1509,6 @@ fn createDescriptorSets(this: *@This()) !void {
         }};
 
         const descriptor_writes = [_]vk.WriteDescriptorSet{.{
-            .sType = .WRITE_DESCRIPTOR_SET,
             .dstSet = this.descriptor_sets[i],
             .dstBinding = 0,
             .dstArrayElement = 0,
@@ -1569,7 +1525,6 @@ fn createDescriptorSets(this: *@This()) !void {
 
 fn createCommandBuffers(this: *@This()) !void {
     const alloc_info = vk.CommandBufferAllocateInfo{
-        .sType = .COMMAND_BUFFER_ALLOCATE_INFO,
         .commandPool = this.command_pool,
         .level = .PRIMARY,
         .commandBufferCount = this.command_buffers.len,
@@ -1581,12 +1536,9 @@ fn createCommandBuffers(this: *@This()) !void {
 }
 
 fn createSyncObjects(this: *@This()) !void {
-    const sem_create_info = vk.SemaphoreCreateInfo{
-        .sType = .SEMAPHORE_CREATE_INFO,
-    };
+    const sem_create_info = vk.SemaphoreCreateInfo{};
 
     const fence_create_info = vk.FenceCreateInfo{
-        .sType = .FENCE_CREATE_INFO,
         .flags = .{ .SIGNALED = 1 },
     };
 
@@ -1604,7 +1556,7 @@ fn createSyncObjects(this: *@This()) !void {
 }
 
 fn recordCommandBuffer(this: *const @This(), cmd_buf: vk.CommandBuffer, image_index: u32) void {
-    if (vk.beginCommandBuffer(cmd_buf, &.{ .sType = .COMMAND_BUFFER_BEGIN_INFO }) != .SUCCESS) {
+    if (vk.beginCommandBuffer(cmd_buf, &.{}) != .SUCCESS) {
         @panic("beginCommandBuffer failed!");
     }
 
@@ -1614,7 +1566,6 @@ fn recordCommandBuffer(this: *const @This(), cmd_buf: vk.CommandBuffer, image_in
     // const clear_values = [_]vk.ClearValue{.{ .color = .{ .float32 = .{ 0.392, 0.584, 0.929, 1 } } }};
 
     const render_pass_info = vk.RenderPassBeginInfo{
-        .sType = .RENDER_PASS_BEGIN_INFO,
         .renderPass = this.render_pass,
         .framebuffer = this.framebuffers[image_index],
         .renderArea = .{
@@ -1711,7 +1662,6 @@ pub fn drawFrame(this: *@This()) void {
     const signal_semaphores = [_]vk.Semaphore{this.render_finished_semaphores[cfi]};
 
     const submit_infos = [_]vk.SubmitInfo{.{
-        .sType = .SUBMIT_INFO,
         .waitSemaphoreCount = wait_semaphores.len,
         .pWaitSemaphores = &wait_semaphores,
         .pWaitDstStageMask = &wait_stages,
@@ -1729,7 +1679,6 @@ pub fn drawFrame(this: *@This()) void {
     const image_indices = [swapchains.len]u32{image_index};
 
     const present_info = vk.PresentInfoKHR{
-        .sType = .PRESENT_INFO_KHR,
         .waitSemaphoreCount = signal_semaphores.len,
         .pWaitSemaphores = &signal_semaphores,
         .swapchainCount = swapchains.len,
@@ -1758,7 +1707,6 @@ pub fn drawFrame(this: *@This()) void {
 
 fn createShaderModule(this: *const @This(), code: []const u8) !vk.ShaderModule {
     const create_info = vk.ShaderModuleCreateInfo{
-        .sType = .SHADER_MODULE_CREATE_INFO,
         .codeSize = code.len,
         .pCode = @alignCast(@ptrCast(code.ptr)),
     };
