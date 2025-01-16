@@ -896,7 +896,9 @@ fn createGraphicsPipeline(this: *@This()) !void {
 
     const viewport_create_info = vk.PipelineViewportStateCreateInfo{
         .viewportCount = 1,
+        .pViewports = null,
         .scissorCount = 1,
+        .pScissors = null,
     };
 
     const rasterizer_create_info = vk.PipelineRasterizationStateCreateInfo{
