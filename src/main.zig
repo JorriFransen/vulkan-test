@@ -21,12 +21,12 @@ const CmdLineOptions = struct {
     pub const description = "Testing vulkan api";
 
     window_api: platform.WindowApi = .default,
-    glfw_window_api: platform.GlfwWindowApi = .default,
+    glfw_api: platform.GlfwWindowApi = .default,
 
-    pub const descriptions = .{ .glfw_window_api = "Specify the underlying api glfw should use" };
+    pub const descriptions = .{ .glfw_api = "Specify the underlying api glfw should use" };
 
     pub fn initOptions(this: *const @This()) Window.InitSystemOptions {
-        return .{ .window_api = this.window_api, .glfw_api = this.glfw_window_api };
+        return .{ .window_api = this.window_api, .glfw_api = this.glfw_api };
     }
 };
 
