@@ -10,7 +10,7 @@ pub const WindowApi = enum {
     glfw,
 };
 
-pub const GlfwWindowApi = enum {
+pub const GlfwApi = enum {
     default,
     win32,
     x11,
