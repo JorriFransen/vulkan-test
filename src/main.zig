@@ -14,21 +14,7 @@ pub const Window = platform.Window;
 const Renderer = @import("vulkan/vulkan.zig").Renderer;
 
 const options = @import("options");
-const flags = @import("flags");
-pub var cmd_line_options: CmdLineOptions = undefined;
-
-const CmdLineOptions = struct {
-    pub const description = "Testing vulkan api";
-
-    window_api: platform.WindowApi = .default,
-    glfw_api: platform.GlfwWindowApi = .default,
-
-    pub const descriptions = .{ .glfw_api = "Specify the underlying api glfw should use" };
-
-    pub fn initOptions(this: *const @This()) Window.InitSystemOptions {
-        return .{ .window_api = this.window_api, .glfw_api = this.glfw_api };
-    }
-};
+const cla = @import("command_line_args.zig");
 
 inline fn ll(t: options.@"log.Level") std.log.Level {
     assert(@typeInfo(std.log.Level).@"enum".fields.len == @typeInfo(options.@"log.Level").@"enum".fields.len);
@@ -44,12 +30,11 @@ pub const std_options = std.Options{
 };
 
 pub fn vMain() !u8 {
-    var args = try std.process.argsWithAllocator(alloc.gpa);
-    defer args.deinit();
-
-    cmd_line_options = flags.parseOrExit(&args, "vulkan-test", CmdLineOptions, .{});
-
-    const init_options = cmd_line_options.initOptions();
+    const cl_opts = cla.parse() catch |err| {
+        std.debug.assert(err == error.InvalidCommandLine);
+        std.process.exit(0);
+    };
+    const init_options = cl_opts.initOptions();
 
     var window = try Window.init(init_options.window_api);
     try window.initSystem(init_options);
