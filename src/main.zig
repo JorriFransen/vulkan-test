@@ -24,6 +24,10 @@ const CmdLineOptions = struct {
     glfw_window_api: platform.GlfwWindowApi = .default,
 
     pub const descriptions = .{ .glfw_window_api = "Specify the underlying api glfw should use" };
+
+    pub fn initOptions(this: *const @This()) Window.InitSystemOptions {
+        return .{ .window_api = this.window_api, .glfw_api = this.glfw_window_api };
+    }
 };
 
 inline fn ll(t: options.@"log.Level") std.log.Level {
@@ -45,9 +49,10 @@ pub fn vMain() !u8 {
 
     cmd_line_options = flags.parseOrExit(&args, "vulkan-test", CmdLineOptions, .{});
 
-    var window = try Window.init(cmd_line_options.window_api);
+    const init_options = cmd_line_options.initOptions();
 
-    try window.initSystem(.{});
+    var window = try Window.init(init_options.window_api);
+    try window.initSystem(init_options);
     defer window.deinitSystem();
 
     try window.open("Vulkan Test");
