@@ -29,11 +29,22 @@ pub const std_options = std.Options{
     },
 };
 
+pub const Options = struct {
+    window_api: platform.WindowApi = .default,
+    glfw_api: platform.GlfwApi = .default,
+    help: bool = false,
+
+    pub fn toInitOptions(this: *const Options) Window.InitSystemOptions {
+        return .{ .window_api = this.window_api, .glfw_api = this.glfw_api };
+    }
+};
+
 pub fn vMain() !u8 {
-    const cl_opts = cla.parse() catch |err| {
+    const cl_opts = cla.parse(Options) catch |err| {
         std.debug.assert(err == error.InvalidCommandLine);
-        std.process.exit(0);
+        std.process.exit(1);
     };
+    if (cl_opts.help) std.process.exit(0);
 
     const init_options = cl_opts.toInitOptions();
 

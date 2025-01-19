@@ -6,22 +6,6 @@ const Window = platform.Window;
 
 const std = @import("std");
 
-pub const Options = struct {
-    window_api: platform.WindowApi = .default,
-    glfw_api: platform.GlfwApi = .default,
-
-    fn fromParseResult(parsed: ParseResult) Options {
-        var result = Options{};
-        if (parsed.args.@"window-api") |api| result.window_api = api;
-        if (parsed.args.@"glfw-api") |api| result.glfw_api = api;
-        return result;
-    }
-
-    pub fn toInitOptions(this: *const Options) Window.InitSystemOptions {
-        return .{ .window_api = this.window_api, .glfw_api = this.glfw_api };
-    }
-};
-
 const ParseResult = clap.Result(clap.Help, &cl_params, parsers);
 
 const cl_params = clap.parseParamsComptime(
@@ -39,9 +23,9 @@ pub const CommandLineParseError = error{InvalidCommandLine};
 
 pub fn usage(writer: anytype) void {
     var args_it = std.process.args();
-    const name = args_it.next().?;
+    const name = std.fs.path.basename(args_it.next().?);
 
-    writer.print("Usage: {s}", .{name}) catch {};
+    writer.print("Usage: {s} ", .{name}) catch {};
     clap.usage(writer, clap.Help, &cl_params) catch {};
     writer.print("\n", .{}) catch {};
 }
@@ -51,7 +35,7 @@ pub fn help(writer: anytype) void {
     clap.help(writer, clap.Help, &cl_params, .{}) catch {};
 }
 
-pub fn parse() CommandLineParseError!Options {
+pub fn parse(comptime T: type) CommandLineParseError!T {
     var diag = clap.Diagnostic{};
     const result = clap.parse(clap.Help, &cl_params, parsers, .{
         .diagnostic = &diag,
@@ -79,10 +63,14 @@ pub fn parse() CommandLineParseError!Options {
 
     if (result.args.help != 0) {
         help(std.io.getStdOut().writer());
-        std.process.exit(0);
     }
 
-    return Options.fromParseResult(result);
+    const default = T{};
+    return .{
+        .window_api = result.args.@"window-api" orelse default.window_api,
+        .glfw_api = result.args.@"glfw-api" orelse default.glfw_api,
+        .help = result.args.help != 0,
+    };
 }
 
 fn printErr(comptime fmt: []const u8, args: anytype) void {
