@@ -34,7 +34,8 @@ pub fn vMain() !u8 {
         std.debug.assert(err == error.InvalidCommandLine);
         std.process.exit(0);
     };
-    const init_options = cl_opts.initOptions();
+
+    const init_options = cl_opts.toInitOptions();
 
     var window = try Window.init(init_options.window_api);
     try window.initSystem(init_options);

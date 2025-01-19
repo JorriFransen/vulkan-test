@@ -38,7 +38,7 @@ pub const Impl = union {
 
 pub const InitSystemOptions = struct {
     window_api: platform.WindowApi = .default,
-    glfw_api: platform.GlfwWindowApi = .default,
+    glfw_api: platform.GlfwApi = .default,
 };
 
 impl: Impl,

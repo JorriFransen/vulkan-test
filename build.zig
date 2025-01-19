@@ -32,8 +32,10 @@ pub fn build(b: *std.Build) !void {
     options.addOption(bool, "glfw_support", glfw_support);
     const options_mod = options.createModule();
 
-    const flags_dep = b.dependency("flags", .{ .target = target, .optimize = optimize });
-    const flags_mod = flags_dep.module("flags");
+    // const flags_dep = b.dependency("flags", .{ .target = target, .optimize = optimize });
+    // const flags_mod = flags_dep.module("flags");
+    const clap_dep = b.dependency("clap", .{ .target = target, .optimize = optimize });
+    const clap_mod = clap_dep.module("clap");
 
     const root_source_file = b.path("src/main.zig");
 
@@ -72,7 +74,7 @@ pub fn build(b: *std.Build) !void {
     const shaders = try Shaders.init(b, &exe.step, &shader_dirs);
     const shaders_mod = try shaders.emitShadersModule();
 
-    exe.root_module.addImport("flags", flags_mod);
+    exe.root_module.addImport("clap", clap_mod);
     exe.root_module.addImport("options", options_mod);
     exe.root_module.addImport("shaders", shaders_mod);
 
