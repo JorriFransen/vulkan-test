@@ -3,8 +3,8 @@
     .version = "0.0.1",
     .dependencies = .{
         .flags = .{
-            .url = "https://github.com/n0s4/flags/archive/refs/tags/v0.10.0.tar.gz",
-            .hash = "12200d3243c5919d6ae3254f991bdf95956f349ccd6d3463f9beb5454d300a0f1e64",
+            .url = "https://github.com/n0s4/flags/archive/b86a170e604d689a9d50cf9f83acb437d3a49caf.tar.gz",
+            .hash = "12208568f1875c10484968bb7cfa5a08c786feb2eb2f09d0631cedf6299d335f538a",
         },
         .glfw = .{
             .url = "https://github.com/slimsag/glfw/archive/refs/heads/master.tar.gz",
