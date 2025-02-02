@@ -19,25 +19,33 @@ const parsers = .{
     .GLFWApi = clap.parsers.enumeration(platform.GlfwApi),
 };
 
-pub const CommandLineParseError = error{InvalidCommandLine};
+pub const CommandLineParseError = error{InvalidCommandLine,OutOfMemory};
 
-pub fn usage(writer: anytype) void {
-    var args_it = std.process.args();
-    const name = std.fs.path.basename(args_it.next().?);
+pub fn usage(writer: anytype, exe_name: []const u8) void {
+    // var args_it = std.process.args();
 
-    writer.print("Usage: {s} ", .{name}) catch {};
+    writer.print("Usage: {s} ", .{exe_name}) catch {};
     clap.usage(writer, clap.Help, &cl_params) catch {};
     writer.print("\n", .{}) catch {};
 }
 
-pub fn help(writer: anytype) void {
-    usage(writer);
+pub fn help(writer: anytype, exe_name: []const u8) void {
+    usage(writer, exe_name);
     clap.help(writer, clap.Help, &cl_params, .{}) catch {};
 }
 
 pub fn parse(comptime T: type) CommandLineParseError!T {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    var arg_it = try std.process.ArgIterator.initWithAllocator(arena.allocator());
+    defer {
+        arg_it.deinit();
+        arena.deinit();
+    }
+
+    const exe_name = std.fs.path.basename(arg_it.next().?);
+
     var diag = clap.Diagnostic{};
-    const result = clap.parse(clap.Help, &cl_params, parsers, .{
+    var result = clap.parseEx(clap.Help, &cl_params, parsers , &arg_it, .{
         .diagnostic = &diag,
         .allocator = alloc.gpa,
     }) catch |err| {
@@ -56,13 +64,13 @@ pub fn parse(comptime T: type) CommandLineParseError!T {
             error.DoesntTakeValue => printErr("Argument '{s}{s}' doesn't take a value", msg_args),
         }
 
-        usage(std.io.getStdErr().writer());
+        usage(std.io.getStdErr().writer(), exe_name);
         return error.InvalidCommandLine;
     };
     defer result.deinit();
 
     if (result.args.help != 0) {
-        help(std.io.getStdOut().writer());
+        help(std.io.getStdOut().writer(), exe_name);
     }
 
     const default = T{};

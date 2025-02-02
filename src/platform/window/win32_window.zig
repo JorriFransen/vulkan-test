@@ -1,7 +1,7 @@
 const std = @import("std");
-const vk = @import("vulkan");
+const vk = @import("../../vulkan/vulkan.zig");
 const root = @import("root");
-const platform = @import("platform");
+const platform = @import("../../platform.zig");
 
 const assert = std.debug.assert;
 const W = std.unicode.utf8ToUtf16LeStringLiteral;

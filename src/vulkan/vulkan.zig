@@ -2,7 +2,7 @@ const std = @import("std");
 const dlog = std.log.debug;
 const assert = std.debug.assert;
 
-const platform = @import("platform");
+const platform = @import("../platform.zig");
 pub const x = platform.x;
 pub const win32 = platform.windows;
 
