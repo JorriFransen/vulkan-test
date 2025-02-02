@@ -96,21 +96,24 @@ const UniformBufferObject = extern struct {
 };
 
 const triangle_vertices = [_]Vertex{
-    .{ .pos = Vec2.new(-0.5, -0.5), .color = Vec3.new(1, 0, 0), .uv = Vec2.new(1, 0) },
-    .{ .pos = Vec2.new(0.5, -0.5), .color = Vec3.new(0, 1, 0), .uv = Vec2.new(0, 0) },
-    .{ .pos = Vec2.new(0.5, 0.5), .color = Vec3.new(0, 0, 1), .uv = Vec2.new(0, 1) },
+    .{ .pos = Vec3.new(-0.5, -0.5, 0), .color = Vec3.new(1, 0, 0), .uv = Vec2.new(1, 0) },
+    .{ .pos = Vec3.new(0.5, -0.5, 0), .color = Vec3.new(0, 1, 0), .uv = Vec2.new(0, 0) },
+    .{ .pos = Vec3.new(0.5, 0.5, 0), .color = Vec3.new(0, 0, 1), .uv = Vec2.new(0, 1) },
+    .{ .pos = Vec3.new(-0.5, 0.5, 0), .color = Vec3.new(1, 1, 1), .uv = Vec2.new(1, 1) },
 
-    // .{ .pos = .{ .x = 1.0, .y = 1.0 }, .color = .{ .x = 0, .y = 0, .z = 1 } },
-    .{ .pos = Vec2.new(-0.5, 0.5), .color = Vec3.new(1, 1, 1), .uv = Vec2.new(1, 1) },
-    // .{ .pos = .{ .x = -0.5, .y = -0.5 }, .color = .{ .x = 1, .y = 0, .z = 0 } },
+    .{ .pos = Vec3.new(-0.5, -0.5, -0.5), .color = Vec3.new(1, 0, 0), .uv = Vec2.new(1, 0) },
+    .{ .pos = Vec3.new(0.5, -0.5, -0.5), .color = Vec3.new(0, 1, 0), .uv = Vec2.new(0, 0) },
+    .{ .pos = Vec3.new(0.5, 0.5, -0.5), .color = Vec3.new(0, 0, 1), .uv = Vec2.new(0, 1) },
+    .{ .pos = Vec3.new(-0.5, 0.5, -0.5), .color = Vec3.new(1, 1, 1), .uv = Vec2.new(1, 1) },
 };
 
 const triangle_indices = [_]u16{
     0, 1, 2, 2, 3, 0,
+    4, 5, 6, 6, 7, 4,
 };
 
 const Vertex = struct {
-    pos: Vec2,
+    pos: Vec3,
     color: Vec3,
     uv: Vec2,
 

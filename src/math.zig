@@ -1,5 +1,7 @@
 const std = @import("std");
 
+pub const FORCE_DEPTH_ZERO_TO_ONE = true;
+
 pub const FLOAT_EPSILON = 0.00001;
 
 pub const degrees = std.math.radiansToDegrees;
@@ -168,21 +170,39 @@ pub fn MatFunctionsMixin(comptime C: usize, comptime R: usize, comptime T: type,
         pub fn perspective(fovy: T, a: T, n: T, f: T) Base {
             const s = 1 / @tan(fovy * 0.5);
 
-            return .{ .data = .{
-                s / a, 0, 0,                   0,
-                0,     s, 0,                   0,
-                0,     0, (n + f) / (n - f),   -1,
-                0,     0, 2 * f * n / (n - f), 0,
-            } };
+            if (FORCE_DEPTH_ZERO_TO_ONE)  {
+                return .{ .data = .{
+                    s / a, 0, 0,                  0,
+                    0,     s, 0,                  0,
+                    0,     0, f / (n - f),       -1,
+                    0,     0, -(f * n) / (f - n), 0,
+                } };
+            } else {
+                return .{ .data = .{
+                    s / a, 0, 0,                   0,
+                    0,     s, 0,                   0,
+                    0,     0, (n + f) / (n - f),   -1,
+                    0,     0, 2 * f * n / (n - f), 0,
+                } };
+            }
         }
 
         pub fn ortho(l: T, r: T, b: T, t: T, n: T, f: T) Base {
-            return .{ .data = .{
-                2 / (r - l),       0,                 0,                 0,
-                0,                 2 / (t - b),       0,                 0,
-                0,                 0,                 2 / (n - f),       0,
-                (l + r) / (l - r), (b + t) / (b - t), (f + n) / (n - f), 1,
-            } };
+            if (FORCE_DEPTH_ZERO_TO_ONE){
+                return .{ .data = .{
+                    2 / (r - l),         0,                   0,             0,
+                    0,                   2 / (t - b),         0,             0,
+                    0,                   0,                   - 1 / (f - n), 0,
+                    - (r + l) / (r - l), - (t + b) / (t - b), - n / (f - n), 1,
+                } };
+            } else {
+                return .{ .data = .{
+                    2 / (r - l),         0,                   0,                   0,
+                    0,                   2 / (t - b),         0,                   0,
+                    0,                   0,                   - 2 / (f - n),       0,
+                    - (r + l) / (r - l), - (t + b) / (t - b), - (f + n) / (f - n), 1,
+                } };
+            }
         }
 
         pub fn lookAt(eye: Vec3f32, to: Vec3f32, up: Vec3f32) Base {
@@ -191,10 +211,10 @@ pub fn MatFunctionsMixin(comptime C: usize, comptime R: usize, comptime T: type,
             const u = l.cross(f);
 
             return .{ .data = .{
-                l.x,        u.x,         -f.x,       0,
-                l.y,        u.y,         -f.y,       0,
-                l.z,        u.z,         -f.z,       0,
-                l.dot(eye), -u.dot(eye), f.dot(eye), 1,
+                l.x,        u.x,         -f.x,        0,
+                l.y,        u.y,         -f.y,        0,
+                l.z,        u.z,         -f.z,        0,
+                -l.dot(eye), -u.dot(eye), f.dot(eye), 1,
             } };
         }
 
