@@ -5,5 +5,6 @@
 /.vs
 
 /*.sln
+/*.cap
 
 /vk_translation.zig
