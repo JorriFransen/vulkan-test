@@ -87,6 +87,10 @@ texture_image_memory: vk.DeviceMemory = undefined,
 texture_image_view: vk.ImageView = undefined,
 texture_sampler: vk.Sampler = undefined,
 
+depth_image: vk.Image = undefined,
+depth_image_memory: vk.DeviceMemory = undefined,
+depth_image_view: vk.ImageView = undefined,
+
 timer: std.time.Timer = undefined,
 
 const UniformBufferObject = extern struct {
@@ -212,6 +216,7 @@ pub fn init(this: *@This(), window: *Window) !void {
     try this.createFrameBuffers();
     try this.createCommandPools();
     try this.createCommandBuffers();
+    try this.createDepthResources();
     try this.createTextureImage();
     try this.createTextureImageView();
     try this.createTextureSampler();
@@ -235,6 +240,10 @@ pub fn deinit(this: *const @This()) void {
     _ = vk.deviceWaitIdle(this.device);
 
     this.cleanupSwapchain();
+
+    vk.destroyImageView(this.device, this.depth_image_view, null);
+    vk.destroyImage(this.device, this.depth_image, null);
+    vk.freeMemory(this.device, this.depth_image_memory, null);
 
     vk.destroySampler(this.device, this.texture_sampler, null);
     vk.destroyImageView(this.device, this.texture_image_view, null);
@@ -788,6 +797,7 @@ fn createImageViews(this: *@This()) !void {
         this.image_views[i] = try this.createImageView(
             this.images[i],
             this.device_info.swapchain_info.surface_format.format,
+            .{ .COLOR_BIT = 1 },
         );
 }
 
@@ -1070,6 +1080,64 @@ fn createImage(this: *@This(), width: usize, height: usize, format: vk.Format, t
     return result;
 }
 
+fn findSupportedFormat(this: *@This(), candidates: []const vk.Format, tiling: vk.ImageTiling, features: vk.FormatFeatureFlags) !vk.Format {
+    for (candidates) |format| {
+        var props: vk.FormatProperties = undefined;
+        vk.getPhysicalDeviceFormatProperties(this.device_info.physical_device, format, &props);
+
+        const feat_int = @as(vk.Flags, @bitCast(features));
+
+        switch (tiling) {
+            .LINEAR => {
+                const lin_int = @as(vk.Flags, @bitCast(props.linearTilingFeatures));
+                if (lin_int & feat_int == feat_int) return format;
+            },
+            .OPTIMAL => {
+                const opt_int = @as(vk.Flags, @bitCast(props.optimalTilingFeatures));
+                if (opt_int & feat_int == feat_int) return format;
+            },
+            else => return error.FailedToFindSupportedFormat,
+        }
+    }
+
+    return error.FailedToFindSupportedFormat;
+}
+
+inline fn depthFormatHasStencilComponent(format: vk.Format) bool {
+    return format == .D32_SFLOAT_S8_UINT or format == .D24_UNORM_S8_UINT;
+}
+
+fn findDepthFormat(this: *@This()) !vk.Format {
+    return try this.findSupportedFormat(
+        &.{
+            .D32_SFLOAT,
+            .D32_SFLOAT_S8_UINT,
+            .D24_UNORM_S8_UINT,
+        },
+        .OPTIMAL,
+        .{ .DEPTH_STENCIL_ATTACHMENT_BIT = 1 },
+    );
+}
+
+fn createDepthResources(this: *@This()) !void {
+    const depth_format = try this.findDepthFormat();
+    dlog("Chosen depth format: {}", .{depth_format});
+
+    const extent = this.swapchain_extent;
+
+    this.depth_image = try this.createImage(
+        extent.width,
+        extent.height,
+        depth_format,
+        .OPTIMAL,
+        .{ .DEPTH_STENCIL_ATTACHMENT_BIT = 1 },
+        .{ .DEVICE_LOCAL_BIT = 1 },
+        &this.depth_image_memory,
+    );
+
+    this.depth_image_view = try this.createImageView(this.depth_image, depth_format, .{ .DEPTH_BIT = 1 });
+}
+
 fn createTextureImage(this: *@This()) !void {
     var width: c_int = undefined;
     var height: c_int = undefined;
@@ -1118,17 +1186,17 @@ fn createTextureImage(this: *@This()) !void {
 }
 
 fn createTextureImageView(this: *@This()) !void {
-    this.texture_image_view = try this.createImageView(this.texture_image, .R8G8B8A8_SRGB);
+    this.texture_image_view = try this.createImageView(this.texture_image, .R8G8B8A8_SRGB, .{ .COLOR_BIT = 1 });
 }
 
-fn createImageView(this: *@This(), image: vk.Image, format: vk.Format) !vk.ImageView {
+fn createImageView(this: *@This(), image: vk.Image, format: vk.Format, aspect_flags: vk.ImageAspectFlags) !vk.ImageView {
     const view_create_info = vk.ImageViewCreateInfo{
         .image = image,
         .viewType = .@"2D",
         .format = format,
         .components = .{ .r = .IDENTITY, .g = .IDENTITY, .b = .IDENTITY, .a = .IDENTITY },
         .subresourceRange = .{
-            .aspectMask = .{ .COLOR_BIT = 1 },
+            .aspectMask = aspect_flags,
             .baseMipLevel = 0,
             .levelCount = 1,
             .baseArrayLayer = 0,

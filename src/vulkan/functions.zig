@@ -108,3 +108,4 @@ pub const cmdPipelineBarrier = f("vkCmdPipelineBarrier", fn (commandBuffer: Comm
 pub const cmdCopyBufferToImage = f("vkCmdCopyBufferToImage", fn (commandBuffer: CommandBuffer, srcBuffer: Buffer, dstImage: vk.Image, dstImageLayout: vk.ImageLayout, regionCount: u32, pRegions: [*]const vk.BufferImageCopy) callconv(.C) void);
 pub const createSampler = f("vkCreateSampler", fn (device: Device, pCreateInfo: *const vk.SamplerCreateInfo, pAllocator: ?*const AllocationCallbacks, pSampler: *vk.Sampler) callconv(.C) Result);
 pub const destroySampler = f("vkDestroySampler", fn (device: Device, sampler: vk.Sampler, pAllocator: ?*const AllocationCallbacks) callconv(.C) void);
+pub const getPhysicalDeviceFormatProperties = f("vkGetPhysicalDeviceFormatProperties", fn(device: PhysicalDevice, format: vk.Format, properties: *vk.FormatProperties)callconv(.C) void);

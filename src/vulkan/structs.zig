@@ -992,3 +992,9 @@ pub const SamplerCreateInfo = extern struct {
     borderColor: s.BorderColor = @enumFromInt(0),
     unnormalizedCoordinates: s.Bool32 = s.FALSE,
 };
+
+pub const FormatProperties = extern struct {
+    linearTilingFeatures: s.FormatFeatureFlags = .{},
+    optimalTilingFeatures: s.FormatFeatureFlags = .{},
+    bufferFeatures: s.FormatFeatureFlags = .{},
+};
