@@ -213,10 +213,10 @@ pub fn init(this: *@This(), window: *Window) !void {
     try this.createRenderPass();
     try this.createDescriptorSetLayout();
     try this.createGraphicsPipeline();
-    try this.createFrameBuffers();
     try this.createCommandPools();
     try this.createCommandBuffers();
     try this.createDepthResources();
+    try this.createFrameBuffers();
     try this.createTextureImage();
     try this.createTextureImageView();
     try this.createTextureSampler();
@@ -240,10 +240,6 @@ pub fn deinit(this: *const @This()) void {
     _ = vk.deviceWaitIdle(this.device);
 
     this.cleanupSwapchain();
-
-    vk.destroyImageView(this.device, this.depth_image_view, null);
-    vk.destroyImage(this.device, this.depth_image, null);
-    vk.freeMemory(this.device, this.depth_image_memory, null);
 
     vk.destroySampler(this.device, this.texture_sampler, null);
     vk.destroyImageView(this.device, this.texture_image_view, null);
@@ -718,14 +714,20 @@ pub fn recreateSwapchain(this: *@This()) !void {
     }
 
     _ = vk.deviceWaitIdle(this.device);
+
     this.cleanupSwapchain();
 
     try this.createSwapchain();
     try this.createImageViews();
+    try this.createDepthResources();
     try this.createFrameBuffers();
 }
 
 pub fn cleanupSwapchain(this: *const @This()) void {
+    vk.destroyImageView(this.device, this.depth_image_view, null);
+    vk.destroyImage(this.device, this.depth_image, null);
+    vk.freeMemory(this.device, this.depth_image_memory, null);
+
     for (0..this.image_count) |i| vk.destroyFramebuffer(this.device, this.framebuffers[i], null);
     for (0..this.image_count) |i| vk.destroyImageView(this.device, this.image_views[i], null);
 
@@ -802,7 +804,7 @@ fn createImageViews(this: *@This()) !void {
 }
 
 fn createRenderPass(this: *@This()) !void {
-    const color_attachments = [_]vk.AttachmentDescription{.{
+    const color_attachment = vk.AttachmentDescription{
         .format = this.device_info.swapchain_info.surface_format.format,
         .samples = .{ .@"1_BIT" = 1 },
         .loadOp = .CLEAR,
@@ -811,11 +813,27 @@ fn createRenderPass(this: *@This()) !void {
         .stencilStoreOp = .DONT_CARE,
         .initialLayout = .UNDEFINED,
         .finalLayout = .PRESENT_SRC_KHR,
-    }};
+    };
 
     const color_attachment_refs = [_]vk.AttachmentReference{.{
         .attachment = 0,
         .layout = .COLOR_ATTACHMENT_OPTIMAL,
+    }};
+
+    const depth_attachment = vk.AttachmentDescription{
+        .format = try this.findDepthFormat(),
+        .samples = .{ .@"1_BIT" = 1 },
+        .loadOp = .CLEAR,
+        .storeOp = .DONT_CARE,
+        .stencilLoadOp = .DONT_CARE,
+        .stencilStoreOp = .DONT_CARE,
+        .initialLayout = .UNDEFINED,
+        .finalLayout = .DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+    };
+
+    const depth_attachment_refs = [_]vk.AttachmentReference{.{
+        .attachment = 1,
+        .layout = .DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
     }};
 
     const subpasses = [_]vk.SubpassDescription{.{
@@ -824,19 +842,25 @@ fn createRenderPass(this: *@This()) !void {
         .preserveAttachmentCount = 0,
         .colorAttachmentCount = color_attachment_refs.len,
         .pColorAttachments = &color_attachment_refs,
+        .pDepthStencilAttachment = &depth_attachment_refs,
     }};
 
     const dependencies = [_]vk.SubpassDependency{.{
         .srcSubpass = vk.SUBPASS_EXTERNAL,
         .dstSubpass = 0,
-        .srcStageMask = .{ .COLOR_ATTACHMENT_OUTPUT_BIT = 1 },
+        .srcStageMask = .{ .COLOR_ATTACHMENT_OUTPUT_BIT = 1, .EARLY_FRAGMENT_TESTS_BIT = 1 },
         .srcAccessMask = vk.AccessFlags.NONE,
-        .dstStageMask = .{ .COLOR_ATTACHMENT_OUTPUT_BIT = 1 },
-        .dstAccessMask = .{ .COLOR_ATTACHMENT_WRITE_BIT = 1 },
+        .dstStageMask = .{ .COLOR_ATTACHMENT_OUTPUT_BIT = 1, .EARLY_FRAGMENT_TESTS_BIT = 1 },
+        .dstAccessMask = .{ .COLOR_ATTACHMENT_WRITE_BIT = 1, .DEPTH_STENCIL_ATTACHMENT_WRITE_BIT = 1 },
     }};
+
+    const attachments = [_]vk.AttachmentDescription{
+        color_attachment, depth_attachment,
+    };
+
     const render_pass_create_info = vk.RenderPassCreateInfo{
-        .attachmentCount = color_attachments.len,
-        .pAttachments = &color_attachments,
+        .attachmentCount = attachments.len,
+        .pAttachments = &attachments,
         .subpassCount = subpasses.len,
         .pSubpasses = &subpasses,
         .dependencyCount = 1,
@@ -948,6 +972,16 @@ fn createGraphicsPipeline(this: *@This()) !void {
         .alphaToOneEnable = vk.FALSE,
     };
 
+    const depth_stencil_create_info = vk.PipelineDepthStencilStateCreateInfo{
+        .depthTestEnable = vk.TRUE,
+        .depthWriteEnable = vk.TRUE,
+        .depthCompareOp = .LESS,
+        .depthBoundsTestEnable = vk.FALSE,
+        .minDepthBounds = 0,
+        .maxDepthBounds = 1,
+        .stencilTestEnable = vk.FALSE,
+    };
+
     const color_blend_attachments = [_]vk.PipelineColorBlendAttachmentState{.{
         .colorWriteMask = vk.ColorComponentFlags{ .R_BIT = 1, .G_BIT = 1, .B_BIT = 1, .A_BIT = 1 },
         .blendEnable = vk.TRUE,
@@ -989,7 +1023,7 @@ fn createGraphicsPipeline(this: *@This()) !void {
         .pViewportState = &viewport_create_info,
         .pRasterizationState = &rasterizer_create_info,
         .pMultisampleState = &multisampling_create_info,
-        .pDepthStencilState = null,
+        .pDepthStencilState = &depth_stencil_create_info,
         .pColorBlendState = &blend_create_info,
         .pDynamicState = &dynamic_state_create_info,
         .layout = this.pipeline_layout,
@@ -1006,10 +1040,11 @@ fn createGraphicsPipeline(this: *@This()) !void {
 
 fn createFrameBuffers(this: *@This()) !void {
     for (0..this.image_count) |i| {
-        const attachments = [_]vk.ImageView{this.image_views[i]};
+        const attachments = [_]vk.ImageView{ this.image_views[i], this.depth_image_view };
+
         const framebuffer_create_info = vk.FramebufferCreateInfo{
             .renderPass = this.render_pass,
-            .attachmentCount = 1,
+            .attachmentCount = attachments.len,
             .pAttachments = &attachments,
             .width = this.swapchain_extent.width,
             .height = this.swapchain_extent.height,
@@ -1136,6 +1171,12 @@ fn createDepthResources(this: *@This()) !void {
     );
 
     this.depth_image_view = try this.createImageView(this.depth_image, depth_format, .{ .DEPTH_BIT = 1 });
+
+    dlog("Transitioning: {any}", .{this.depth_image});
+
+    // TODO: FIXME: This is not required here because it is done in the render pass
+    try this.transitionImageLayout(this.depth_image, depth_format, .UNDEFINED, .DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    try this.flushSetupCommands();
 }
 
 fn createTextureImage(this: *@This()) !void {
@@ -1346,6 +1387,14 @@ fn transitionImageLayout(this: *const @This(), image: vk.Image, format: vk.Forma
     var dst_access_mask = vk.AccessFlags{};
     var src_stage = vk.PipelineStageFlags{};
     var dst_stage = vk.PipelineStageFlags{};
+    var aspect_flags = vk.ImageAspectFlags{ .COLOR_BIT = 1 };
+
+    if (new_layout == .DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
+        aspect_flags = .{ .DEPTH_BIT = 1 };
+        if (depthFormatHasStencilComponent(format)) {
+            aspect_flags.STENCIL_BIT = 1;
+        }
+    }
 
     if (old_layout == .UNDEFINED and new_layout == .TRANSFER_DST_OPTIMAL) {
         dst_access_mask = .{ .TRANSFER_WRITE_BIT = 1 };
@@ -1356,6 +1405,10 @@ fn transitionImageLayout(this: *const @This(), image: vk.Image, format: vk.Forma
         dst_access_mask = .{ .SHADER_READ_BIT = 1 };
         src_stage = .{ .TRANSFER_BIT = 1 };
         dst_stage = .{ .FRAGMENT_SHADER_BIT = 1 };
+    } else if (old_layout == .UNDEFINED and new_layout == .DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
+        dst_access_mask = .{ .DEPTH_STENCIL_ATTACHMENT_READ_BIT = 1, .DEPTH_STENCIL_ATTACHMENT_WRITE_BIT = 1 };
+        src_stage = .{ .TOP_OF_PIPE_BIT = 1 };
+        dst_stage = .{ .EARLY_FRAGMENT_TESTS_BIT = 1 };
     } else {
         return error.UnsupportedLayoutTransition;
     }
@@ -1368,7 +1421,7 @@ fn transitionImageLayout(this: *const @This(), image: vk.Image, format: vk.Forma
         .dstQueueFamilyIndex = vk.QUEUE_FAMILY_IGNORED,
         .image = image,
         .subresourceRange = .{
-            .aspectMask = .{ .COLOR_BIT = 1 },
+            .aspectMask = aspect_flags,
             .baseMipLevel = 0,
             .levelCount = 1,
             .baseArrayLayer = 0,
@@ -1390,8 +1443,6 @@ fn transitionImageLayout(this: *const @This(), image: vk.Image, format: vk.Forma
         1,
         @ptrCast(&barrier),
     );
-
-    _ = format;
 }
 
 fn createVertexBuffer(this: *@This()) !void {
@@ -1746,7 +1797,10 @@ fn recordCommandBuffer(this: *const @This(), cmd_buf: vk.CommandBuffer, image_in
         @panic("beginCommandBuffer failed!");
     }
 
-    const clear_values = [_]vk.ClearValue{.{ .color = .{ .float32 = .{ 0, 0, 0, 0 } } }};
+    const clear_values = [_]vk.ClearValue{
+        .{ .color = .{ .float32 = .{ 0, 0, 0, 0 } } },
+        .{ .depthStencil = .{ .depth = 1.0, .stencil = 0 } },
+    };
 
     // cornflower blue
     // const clear_values = [_]vk.ClearValue{.{ .color = .{ .float32 = .{ 0.392, 0.584, 0.929, 1 } } }};
@@ -1758,7 +1812,7 @@ fn recordCommandBuffer(this: *const @This(), cmd_buf: vk.CommandBuffer, image_in
             .offset = .{ .x = 0, .y = 0 },
             .extent = this.swapchain_extent,
         },
-        .clearValueCount = 1,
+        .clearValueCount = clear_values.len,
         .pClearValues = &clear_values,
     };
 
