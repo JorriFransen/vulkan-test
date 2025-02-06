@@ -13,6 +13,7 @@ const vke = vk.extensions;
 const vkl = vk.loader;
 
 const stbi = @import("../stb/stb.zig").image;
+const tol = @import("../tol/tol.zig");
 
 const Vec2 = math.Vec2f32;
 const Vec3 = math.Vec3f32;
@@ -75,8 +76,8 @@ vertex_buffer: vk.Buffer = null,
 uniform_buffers: [MAX_FRAMES_IN_FLIGHT]vk.Buffer = .{null} ** MAX_FRAMES_IN_FLIGHT,
 uniform_buffers_mapped: [MAX_FRAMES_IN_FLIGHT][UBO_COUNT]*UniformBufferObject = undefined,
 
-// index_buffer_memory: vk.DeviceMemory = null,
-// vertex_buffer_memory: vk.DeviceMemory = null,
+index_buffer_memory: vk.DeviceMemory = null,
+vertex_buffer_memory: vk.DeviceMemory = null,
 uniform_buffers_memory: [MAX_FRAMES_IN_FLIGHT]vk.DeviceMemory = .{null} ** MAX_FRAMES_IN_FLIGHT,
 combined_buffer_memory: vk.DeviceMemory = null,
 
@@ -99,22 +100,25 @@ const UniformBufferObject = extern struct {
     proj: Mat4 align(16),
 };
 
-const triangle_vertices = [_]Vertex{
-    .{ .pos = Vec3.new(-0.5, -0.5, 0), .color = Vec3.new(1, 0, 0), .uv = Vec2.new(1, 0) },
-    .{ .pos = Vec3.new(0.5, -0.5, 0), .color = Vec3.new(0, 1, 0), .uv = Vec2.new(0, 0) },
-    .{ .pos = Vec3.new(0.5, 0.5, 0), .color = Vec3.new(0, 0, 1), .uv = Vec2.new(0, 1) },
-    .{ .pos = Vec3.new(-0.5, 0.5, 0), .color = Vec3.new(1, 1, 1), .uv = Vec2.new(1, 1) },
+// const triangle_vertices = [_]Vertex{
+//     .{ .pos = Vec3.new(-0.5, -0.5, 0), .color = Vec3.new(1, 0, 0), .uv = Vec2.new(1, 0) },
+//     .{ .pos = Vec3.new(0.5, -0.5, 0), .color = Vec3.new(0, 1, 0), .uv = Vec2.new(0, 0) },
+//     .{ .pos = Vec3.new(0.5, 0.5, 0), .color = Vec3.new(0, 0, 1), .uv = Vec2.new(0, 1) },
+//     .{ .pos = Vec3.new(-0.5, 0.5, 0), .color = Vec3.new(1, 1, 1), .uv = Vec2.new(1, 1) },
+//
+//     .{ .pos = Vec3.new(-0.5, -0.5, -0.5), .color = Vec3.new(1, 0, 0), .uv = Vec2.new(1, 0) },
+//     .{ .pos = Vec3.new(0.5, -0.5, -0.5), .color = Vec3.new(0, 1, 0), .uv = Vec2.new(0, 0) },
+//     .{ .pos = Vec3.new(0.5, 0.5, -0.5), .color = Vec3.new(0, 0, 1), .uv = Vec2.new(0, 1) },
+//     .{ .pos = Vec3.new(-0.5, 0.5, -0.5), .color = Vec3.new(1, 1, 1), .uv = Vec2.new(1, 1) },
+// };
+//
+// const triangle_indices = [_]u16{
+//     0, 1, 2, 2, 3, 0,
+//     4, 5, 6, 6, 7, 4,
+// };
 
-    .{ .pos = Vec3.new(-0.5, -0.5, -0.5), .color = Vec3.new(1, 0, 0), .uv = Vec2.new(1, 0) },
-    .{ .pos = Vec3.new(0.5, -0.5, -0.5), .color = Vec3.new(0, 1, 0), .uv = Vec2.new(0, 0) },
-    .{ .pos = Vec3.new(0.5, 0.5, -0.5), .color = Vec3.new(0, 0, 1), .uv = Vec2.new(0, 1) },
-    .{ .pos = Vec3.new(-0.5, 0.5, -0.5), .color = Vec3.new(1, 1, 1), .uv = Vec2.new(1, 1) },
-};
-
-const triangle_indices = [_]u16{
-    0, 1, 2, 2, 3, 0,
-    4, 5, 6, 6, 7, 4,
-};
+var vertices: []Vertex = undefined;
+var indices: []u32 = undefined;
 
 const Vertex = struct {
     pos: Vec3,
@@ -144,6 +148,9 @@ const Vertex = struct {
         break :blk result;
     };
 };
+
+const MODEL_PATH: [*:0]const u8 = "./res/viking_room.obj";
+const TEXTURE_PATH = "res/viking_room.png";
 
 const PDevInfo = struct {
     score: u32,
@@ -221,9 +228,10 @@ pub fn init(this: *@This(), window: *Window) !void {
     try this.createTextureImageView();
     try this.createTextureSampler();
 
-    // try this.createVertexBuffer();
-    // try this.createIndexBuffer();
-    try this.createCombinedBuffer();
+    try this.loadModel();
+    try this.createVertexBuffer();
+    try this.createIndexBuffer();
+    // try this.createCombinedBuffer();
 
     try this.createUniformBuffers();
     try this.createDescriptorPool();
@@ -247,10 +255,10 @@ pub fn deinit(this: *const @This()) void {
     vk.freeMemory(this.device, this.texture_image_memory, null);
 
     vk.destroyBuffer(this.device, this.vertex_buffer, null);
-    // vk.freeMemory(this.device, this.vertex_buffer_memory, null);
+    vk.freeMemory(this.device, this.vertex_buffer_memory, null);
 
     vk.destroyBuffer(this.device, this.index_buffer, null);
-    // vk.freeMemory(this.device, this.index_buffer_memory, null);
+    vk.freeMemory(this.device, this.index_buffer_memory, null);
 
     for (this.uniform_buffers) |ub| vk.destroyBuffer(this.device, ub, null);
     for (this.uniform_buffers_memory) |ubm| vk.freeMemory(this.device, ubm, null);
@@ -1186,7 +1194,7 @@ fn createTextureImage(this: *@This()) !void {
     var __channels: c_int = undefined;
 
     var pixels: [*]const u8 = undefined;
-    if (stbi.load("res/statue.jpg", &width, &height, &__channels, channels)) |p| {
+    if (stbi.load(TEXTURE_PATH, &width, &height, &__channels, channels)) |p| {
         pixels = p;
     } else {
         return error.stbi_loadFailed;
@@ -1445,8 +1453,23 @@ fn transitionImageLayout(this: *const @This(), image: vk.Image, format: vk.Forma
     );
 }
 
+fn loadModel(this: *@This()) !void {
+    _ = this;
+
+    var attrib: tol.Attrib = undefined;
+    var shapes: [*]tol.Shape = undefined;
+    var num_shapes: usize = undefined;
+    var materials: [*]tol.Material = undefined;
+    var num_materials: usize = undefined;
+
+    const result = tol.tinyobj_parse_obj(&attrib, @ptrCast(&shapes), &num_shapes, @ptrCast(&materials), &num_materials, MODEL_PATH, null, null, 0);
+    if (result != tol.SUCCESS) {
+        return error.TinyOBJ_ParseOjb_Failed;
+    }
+}
+
 fn createVertexBuffer(this: *@This()) !void {
-    const size = @sizeOf(@TypeOf(triangle_vertices));
+    const size = @sizeOf(@TypeOf(vertices));
 
     var staging_buffer_memory: vk.DeviceMemory = null;
     const staging_buffer = try this.createBuffer(size, .{ .TRANSFER_SRC_BIT = 1 }, .{
@@ -1458,11 +1481,11 @@ fn createVertexBuffer(this: *@This()) !void {
         vk.freeMemory(this.device, staging_buffer_memory, null);
     }
 
-    var data: *@TypeOf(triangle_vertices) = undefined;
+    var data: @TypeOf(vertices) = undefined;
     if (vk.mapMemory(this.device, staging_buffer_memory, 0, size, .{}, @ptrCast(&data)) != .SUCCESS) {
         return error.mapMemoryFailed;
     }
-    std.mem.copyForwards(@TypeOf(triangle_vertices[0]), data, &triangle_vertices);
+    std.mem.copyForwards(@TypeOf(vertices[0]), data, vertices);
     vk.unmapMemory(this.device, staging_buffer_memory);
 
     this.vertex_buffer = try this.createBuffer(
@@ -1477,7 +1500,7 @@ fn createVertexBuffer(this: *@This()) !void {
 }
 
 fn createIndexBuffer(this: *@This()) !void {
-    const size = @sizeOf(@TypeOf(triangle_indices));
+    const size = @sizeOf(@TypeOf(indices));
 
     var staging_buffer_memory: vk.DeviceMemory = null;
     const staging_buffer = try this.createBuffer(
@@ -1491,11 +1514,11 @@ fn createIndexBuffer(this: *@This()) !void {
         vk.freeMemory(this.device, staging_buffer_memory, null);
     }
 
-    var data: *@TypeOf(triangle_indices) = undefined;
+    var data: @TypeOf(indices) = undefined;
     if (vk.mapMemory(this.device, staging_buffer_memory, 0, size, .{}, @ptrCast(&data)) != .SUCCESS) {
         return error.MapMemoryFailed;
     }
-    std.mem.copyForwards(@TypeOf(triangle_indices[0]), data, &triangle_indices);
+    std.mem.copyForwards(@TypeOf(indices[0]), data, indices);
     vk.unmapMemory(this.device, staging_buffer_memory);
 
     this.index_buffer = try this.createBuffer(
@@ -1515,8 +1538,8 @@ fn makeSlice(comptime T: type, mem: []u8, offset: usize, len: usize) []T {
 }
 
 fn createCombinedBuffer(this: *@This()) !void {
-    const idx_size = @sizeOf(@TypeOf(triangle_indices));
-    const verts_size = @sizeOf(@TypeOf(triangle_vertices));
+    const idx_size = @sizeOf(@TypeOf(indices));
+    const verts_size = @sizeOf(@TypeOf(vertices));
 
     const qfis = this.device_info.queue_info.familyIndices();
 
@@ -1576,11 +1599,11 @@ fn createCombinedBuffer(this: *@This()) !void {
     const verts_offset = std.mem.alignForward(usize, idx_size, v_requirements.alignment);
 
     const data = _data[0..staging_size];
-    const idata = makeSlice(u16, data, 0, triangle_indices.len);
-    const vdata = makeSlice(Vertex, data, verts_offset, triangle_vertices.len);
+    const idata = makeSlice(u32, data, 0, indices.len);
+    const vdata = makeSlice(Vertex, data, verts_offset, vertices.len);
 
-    std.mem.copyForwards(@TypeOf(triangle_indices[0]), idata, &triangle_indices);
-    std.mem.copyForwards(@TypeOf(triangle_vertices[0]), vdata, &triangle_vertices);
+    std.mem.copyForwards(@TypeOf(indices[0]), idata, indices);
+    std.mem.copyForwards(@TypeOf(vertices[0]), vdata, vertices);
 
     vk.unmapMemory(this.device, staging_buffer_memory);
 
@@ -1839,12 +1862,12 @@ fn recordCommandBuffer(this: *const @This(), cmd_buf: vk.CommandBuffer, image_in
     const offsets = [_]vk.DeviceSize{0};
     vk.cmdBindVertexBuffers(cmd_buf, 0, 1, &vertex_buffers, &offsets);
 
-    assert(@sizeOf(@TypeOf(triangle_indices[0])) == 2);
-    vk.cmdBindIndexBuffer(cmd_buf, this.index_buffer, 0, .UINT16);
+    assert(@sizeOf(@TypeOf(indices[0])) == 4);
+    vk.cmdBindIndexBuffer(cmd_buf, this.index_buffer, 0, .UINT32);
 
     // vk.cmdDraw(cmd_buf, triangle_vertices.len, 1, 0, 0);
     vk.cmdBindDescriptorSets(cmd_buf, .GRAPHICS, this.pipeline_layout, 0, 1, &this.descriptor_sets[this.current_frame], 0, null);
-    vk.cmdDrawIndexed(cmd_buf, triangle_indices.len, 1, 0, 0, 0);
+    vk.cmdDrawIndexed(cmd_buf, @intCast(indices.len), 1, 0, 0, 0);
 
     vk.cmdEndRenderPass(cmd_buf);
 
