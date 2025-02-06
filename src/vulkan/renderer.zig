@@ -12,7 +12,7 @@ const vk = @import("vulkan.zig");
 const vke = vk.extensions;
 const vkl = vk.loader;
 
-const stbi = @import("../stb.zig").image;
+const stbi = @import("../stb/stb.zig").image;
 
 const Vec2 = math.Vec2f32;
 const Vec3 = math.Vec3f32;
