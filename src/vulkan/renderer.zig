@@ -76,8 +76,8 @@ vertex_buffer: vk.Buffer = null,
 uniform_buffers: [MAX_FRAMES_IN_FLIGHT]vk.Buffer = .{null} ** MAX_FRAMES_IN_FLIGHT,
 uniform_buffers_mapped: [MAX_FRAMES_IN_FLIGHT][UBO_COUNT]*UniformBufferObject = undefined,
 
-index_buffer_memory: vk.DeviceMemory = null,
-vertex_buffer_memory: vk.DeviceMemory = null,
+// index_buffer_memory: vk.DeviceMemory = null,
+// vertex_buffer_memory: vk.DeviceMemory = null,
 uniform_buffers_memory: [MAX_FRAMES_IN_FLIGHT]vk.DeviceMemory = .{null} ** MAX_FRAMES_IN_FLIGHT,
 combined_buffer_memory: vk.DeviceMemory = null,
 
@@ -94,33 +94,18 @@ depth_image_view: vk.ImageView = undefined,
 
 timer: std.time.Timer = undefined,
 
+vertices: std.ArrayList(Vertex) = undefined,
+indices: std.ArrayList(IndexType) = undefined,
+
+const IndexType = u32;
+
 const UniformBufferObject = extern struct {
     model: Mat4 align(16),
     view: Mat4 align(16),
     proj: Mat4 align(16),
 };
 
-// const triangle_vertices = [_]Vertex{
-//     .{ .pos = Vec3.new(-0.5, -0.5, 0), .color = Vec3.new(1, 0, 0), .uv = Vec2.new(1, 0) },
-//     .{ .pos = Vec3.new(0.5, -0.5, 0), .color = Vec3.new(0, 1, 0), .uv = Vec2.new(0, 0) },
-//     .{ .pos = Vec3.new(0.5, 0.5, 0), .color = Vec3.new(0, 0, 1), .uv = Vec2.new(0, 1) },
-//     .{ .pos = Vec3.new(-0.5, 0.5, 0), .color = Vec3.new(1, 1, 1), .uv = Vec2.new(1, 1) },
-//
-//     .{ .pos = Vec3.new(-0.5, -0.5, -0.5), .color = Vec3.new(1, 0, 0), .uv = Vec2.new(1, 0) },
-//     .{ .pos = Vec3.new(0.5, -0.5, -0.5), .color = Vec3.new(0, 1, 0), .uv = Vec2.new(0, 0) },
-//     .{ .pos = Vec3.new(0.5, 0.5, -0.5), .color = Vec3.new(0, 0, 1), .uv = Vec2.new(0, 1) },
-//     .{ .pos = Vec3.new(-0.5, 0.5, -0.5), .color = Vec3.new(1, 1, 1), .uv = Vec2.new(1, 1) },
-// };
-//
-// const triangle_indices = [_]u16{
-//     0, 1, 2, 2, 3, 0,
-//     4, 5, 6, 6, 7, 4,
-// };
-
-var vertices: []Vertex = undefined;
-var indices: []u32 = undefined;
-
-const Vertex = struct {
+const Vertex = extern struct {
     pos: Vec3,
     color: Vec3,
     uv: Vec2,
@@ -149,8 +134,10 @@ const Vertex = struct {
     };
 };
 
-const MODEL_PATH: [*:0]const u8 = "./res/viking_room.obj";
-const TEXTURE_PATH = "res/viking_room.png";
+const MODEL_PATH: [:0]const u8 = "./res/viking_room.obj";
+const TEXTURE_PATH: [:0]const u8 = "res/viking_room.png";
+// const MODEL_PATH: [:0]const u8 = "res/cube.obj";
+// const TEXTURE_PATH: [:0]const u8 = "res/cube.png";
 
 const PDevInfo = struct {
     score: u32,
@@ -229,9 +216,9 @@ pub fn init(this: *@This(), window: *Window) !void {
     try this.createTextureSampler();
 
     try this.loadModel();
-    try this.createVertexBuffer();
-    try this.createIndexBuffer();
-    // try this.createCombinedBuffer();
+    // try this.createVertexBuffer();
+    // try this.createIndexBuffer();
+    try this.createCombinedBuffer();
 
     try this.createUniformBuffers();
     try this.createDescriptorPool();
@@ -245,6 +232,9 @@ pub fn init(this: *@This(), window: *Window) !void {
 pub fn deinit(this: *const @This()) void {
     const dev = this.device;
 
+    this.vertices.deinit();
+    this.indices.deinit();
+
     _ = vk.deviceWaitIdle(this.device);
 
     this.cleanupSwapchain();
@@ -255,10 +245,10 @@ pub fn deinit(this: *const @This()) void {
     vk.freeMemory(this.device, this.texture_image_memory, null);
 
     vk.destroyBuffer(this.device, this.vertex_buffer, null);
-    vk.freeMemory(this.device, this.vertex_buffer_memory, null);
+    // vk.freeMemory(this.device, this.vertex_buffer_memory, null);
 
     vk.destroyBuffer(this.device, this.index_buffer, null);
-    vk.freeMemory(this.device, this.index_buffer_memory, null);
+    // vk.freeMemory(this.device, this.index_buffer_memory, null);
 
     for (this.uniform_buffers) |ub| vk.destroyBuffer(this.device, ub, null);
     for (this.uniform_buffers_memory) |ubm| vk.freeMemory(this.device, ubm, null);
@@ -1183,7 +1173,7 @@ fn createDepthResources(this: *@This()) !void {
     dlog("Transitioning: {any}", .{this.depth_image});
 
     // TODO: FIXME: This is not required here because it is done in the render pass
-    try this.transitionImageLayout(this.depth_image, depth_format, .UNDEFINED, .DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    // try this.transitionImageLayout(this.depth_image, depth_format, .UNDEFINED, .DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
     try this.flushSetupCommands();
 }
 
@@ -1454,83 +1444,132 @@ fn transitionImageLayout(this: *const @This(), image: vk.Image, format: vk.Forma
 }
 
 fn loadModel(this: *@This()) !void {
-    _ = this;
-
     var attrib: tol.Attrib = undefined;
-    var shapes: [*]tol.Shape = undefined;
-    var num_shapes: usize = undefined;
-    var materials: [*]tol.Material = undefined;
-    var num_materials: usize = undefined;
+    var shapes: []tol.Shape = undefined;
+    var materials: []tol.Material = undefined;
 
-    const result = tol.tinyobj_parse_obj(&attrib, @ptrCast(&shapes), &num_shapes, @ptrCast(&materials), &num_materials, MODEL_PATH, null, null, 0);
-    if (result != tol.SUCCESS) {
-        return error.TinyOBJ_ParseOjb_Failed;
+    try tol.parseObj(MODEL_PATH, &attrib, &shapes, &materials);
+    dlog("\n\nobj attribs: {}", .{attrib});
+    dlog("obj shapes[0]: {any}", .{shapes[0]});
+
+    const obj_vertices = attrib.faces[0..attrib.num_faces]; // attrib.num_faces is actually the number of vertices (3 per face)
+
+    const MapContext = struct {
+        pub inline fn hash(_: @This(), v: Vertex) u64 {
+            return std.hash.Wyhash.hash(0, slice(v));
+        }
+        pub inline fn eql(_: @This(), va: Vertex, vb: Vertex) bool {
+            return std.mem.eql(u8, slice(va), slice(vb));
+        }
+        inline fn slice(v: Vertex) []const u8 {
+            return @as([*]const u8, @ptrCast(&v))[0..@sizeOf(Vertex)];
+        }
+    };
+
+    var unique_vertices = std.HashMap(Vertex, IndexType, MapContext, std.hash_map.default_max_load_percentage).init(alloc.gpa);
+    defer unique_vertices.deinit();
+
+    this.vertices = try std.ArrayList(Vertex).initCapacity(alloc.gpa, attrib.num_texcoords);
+    this.indices = try std.ArrayList(IndexType).initCapacity(alloc.gpa, obj_vertices.len);
+
+    std.debug.assert(shapes.len == 1); // length member of shapes doesn't reflect vertex count after triangulation
+
+    for (obj_vertices) |f| {
+        const vi: usize = @intCast(f.v_idx);
+        const ti: usize = @intCast(f.vt_idx);
+
+        const vertex = Vertex{
+            .pos = .{
+                .x = attrib.vertices[3 * vi + 0],
+                .y = attrib.vertices[3 * vi + 1],
+                .z = attrib.vertices[3 * vi + 2],
+            },
+            .uv = .{
+                .x = attrib.texcoords[2 * ti + 0],
+                .y = 1 - attrib.texcoords[2 * ti + 1],
+            },
+            .color = Vec3.initS(1),
+        };
+
+        if (!unique_vertices.contains(vertex)) {
+            try unique_vertices.put(vertex, @intCast(this.vertices.items.len));
+            try this.vertices.append(vertex);
+        }
+
+        try this.indices.append(unique_vertices.get(vertex).?);
     }
+
+    dlog("vertices.len: {}", .{this.vertices.items.len});
+    dlog("indices.len: {}", .{this.indices.items.len});
+
+    tol.tinyobj_attrib_free(&attrib);
+    if (shapes.len != 0) tol.tinyobj_shapes_free(shapes.ptr, shapes.len);
+    if (materials.len != 0) tol.tinyobj_materials_free(materials.ptr, materials.len);
 }
 
-fn createVertexBuffer(this: *@This()) !void {
-    const size = @sizeOf(@TypeOf(vertices));
+// fn createVertexBuffer(this: *@This()) !void {
+//     const size = @sizeOf(Vertex) * this.vertices.len;
+//
+//     var staging_buffer_memory: vk.DeviceMemory = null;
+//     const staging_buffer = try this.createBuffer(size, .{ .TRANSFER_SRC_BIT = 1 }, .{
+//         .HOST_VISIBLE_BIT = 1,
+//         .HOST_COHERENT_BIT = 1,
+//     }, &staging_buffer_memory);
+//     defer {
+//         vk.destroyBuffer(this.device, staging_buffer, null);
+//         vk.freeMemory(this.device, staging_buffer_memory, null);
+//     }
+//
+//     var data: [*]Vertex = undefined;
+//     if (vk.mapMemory(this.device, staging_buffer_memory, 0, size, .{}, @ptrCast(&data)) != .SUCCESS) {
+//         return error.mapMemoryFailed;
+//     }
+//     std.mem.copyForwards(@TypeOf(this.vertices[0]), data[0..this.vertices.len], this.vertices);
+//     vk.unmapMemory(this.device, staging_buffer_memory);
+//
+//     this.vertex_buffer = try this.createBuffer(
+//         size,
+//         .{ .TRANSFER_DST_BIT = 1, .VERTEX_BUFFER_BIT = 1 },
+//         .{ .DEVICE_LOCAL_BIT = 1 },
+//         &this.vertex_buffer_memory,
+//     );
+//
+//     try this.copyBuffer(staging_buffer, 0, this.vertex_buffer, size);
+//     try this.flushSetupCommands();
+// }
 
-    var staging_buffer_memory: vk.DeviceMemory = null;
-    const staging_buffer = try this.createBuffer(size, .{ .TRANSFER_SRC_BIT = 1 }, .{
-        .HOST_VISIBLE_BIT = 1,
-        .HOST_COHERENT_BIT = 1,
-    }, &staging_buffer_memory);
-    defer {
-        vk.destroyBuffer(this.device, staging_buffer, null);
-        vk.freeMemory(this.device, staging_buffer_memory, null);
-    }
-
-    var data: @TypeOf(vertices) = undefined;
-    if (vk.mapMemory(this.device, staging_buffer_memory, 0, size, .{}, @ptrCast(&data)) != .SUCCESS) {
-        return error.mapMemoryFailed;
-    }
-    std.mem.copyForwards(@TypeOf(vertices[0]), data, vertices);
-    vk.unmapMemory(this.device, staging_buffer_memory);
-
-    this.vertex_buffer = try this.createBuffer(
-        size,
-        .{ .TRANSFER_DST_BIT = 1, .VERTEX_BUFFER_BIT = 1 },
-        .{ .DEVICE_LOCAL_BIT = 1 },
-        &this.vertex_buffer_memory,
-    );
-
-    try this.copyBuffer(staging_buffer, 0, this.vertex_buffer, size);
-    try this.flushSetupCommands();
-}
-
-fn createIndexBuffer(this: *@This()) !void {
-    const size = @sizeOf(@TypeOf(indices));
-
-    var staging_buffer_memory: vk.DeviceMemory = null;
-    const staging_buffer = try this.createBuffer(
-        size,
-        .{ .TRANSFER_SRC_BIT = 1 },
-        .{ .HOST_VISIBLE_BIT = 1, .HOST_COHERENT_BIT = 1 },
-        &staging_buffer_memory,
-    );
-    defer {
-        vk.destroyBuffer(this.device, staging_buffer, null);
-        vk.freeMemory(this.device, staging_buffer_memory, null);
-    }
-
-    var data: @TypeOf(indices) = undefined;
-    if (vk.mapMemory(this.device, staging_buffer_memory, 0, size, .{}, @ptrCast(&data)) != .SUCCESS) {
-        return error.MapMemoryFailed;
-    }
-    std.mem.copyForwards(@TypeOf(indices[0]), data, indices);
-    vk.unmapMemory(this.device, staging_buffer_memory);
-
-    this.index_buffer = try this.createBuffer(
-        size,
-        .{ .TRANSFER_DST_BIT = 1, .INDEX_BUFFER_BIT = 1 },
-        .{ .DEVICE_LOCAL_BIT = 1 },
-        &this.index_buffer_memory,
-    );
-
-    try this.copyBuffer(staging_buffer, 0, this.index_buffer, size);
-    try this.flushSetupCommands();
-}
+// fn createIndexBuffer(this: *@This()) !void {
+//     const size = @sizeOf(IndexType) * this.indices.len;
+//
+//     var staging_buffer_memory: vk.DeviceMemory = null;
+//     const staging_buffer = try this.createBuffer(
+//         size,
+//         .{ .TRANSFER_SRC_BIT = 1 },
+//         .{ .HOST_VISIBLE_BIT = 1, .HOST_COHERENT_BIT = 1 },
+//         &staging_buffer_memory,
+//     );
+//     defer {
+//         vk.destroyBuffer(this.device, staging_buffer, null);
+//         vk.freeMemory(this.device, staging_buffer_memory, null);
+//     }
+//
+//     var data: @TypeOf(this.indices) = undefined;
+//     if (vk.mapMemory(this.device, staging_buffer_memory, 0, size, .{}, @ptrCast(&data)) != .SUCCESS) {
+//         return error.MapMemoryFailed;
+//     }
+//     std.mem.copyForwards(@TypeOf(this.indices[0]), data, this.indices);
+//     vk.unmapMemory(this.device, staging_buffer_memory);
+//
+//     this.index_buffer = try this.createBuffer(
+//         size,
+//         .{ .TRANSFER_DST_BIT = 1, .INDEX_BUFFER_BIT = 1 },
+//         .{ .DEVICE_LOCAL_BIT = 1 },
+//         &this.index_buffer_memory,
+//     );
+//
+//     try this.copyBuffer(staging_buffer, 0, this.index_buffer, size);
+//     try this.flushSetupCommands();
+// }
 
 fn makeSlice(comptime T: type, mem: []u8, offset: usize, len: usize) []T {
     const offset_ptr: *u8 = &mem[offset];
@@ -1538,8 +1577,8 @@ fn makeSlice(comptime T: type, mem: []u8, offset: usize, len: usize) []T {
 }
 
 fn createCombinedBuffer(this: *@This()) !void {
-    const idx_size = @sizeOf(@TypeOf(indices));
-    const verts_size = @sizeOf(@TypeOf(vertices));
+    const idx_size = @sizeOf(IndexType) * this.indices.items.len;
+    const verts_size = @sizeOf(Vertex) * this.vertices.items.len;
 
     const qfis = this.device_info.queue_info.familyIndices();
 
@@ -1599,11 +1638,11 @@ fn createCombinedBuffer(this: *@This()) !void {
     const verts_offset = std.mem.alignForward(usize, idx_size, v_requirements.alignment);
 
     const data = _data[0..staging_size];
-    const idata = makeSlice(u32, data, 0, indices.len);
-    const vdata = makeSlice(Vertex, data, verts_offset, vertices.len);
+    const idata = makeSlice(IndexType, data, 0, this.indices.items.len);
+    const vdata = makeSlice(Vertex, data, verts_offset, this.vertices.items.len);
 
-    std.mem.copyForwards(@TypeOf(indices[0]), idata, indices);
-    std.mem.copyForwards(@TypeOf(vertices[0]), vdata, vertices);
+    std.mem.copyForwards(@TypeOf(this.indices.items[0]), idata, this.indices.items);
+    std.mem.copyForwards(@TypeOf(this.vertices.items[0]), vdata, this.vertices.items);
 
     vk.unmapMemory(this.device, staging_buffer_memory);
 
@@ -1862,12 +1901,12 @@ fn recordCommandBuffer(this: *const @This(), cmd_buf: vk.CommandBuffer, image_in
     const offsets = [_]vk.DeviceSize{0};
     vk.cmdBindVertexBuffers(cmd_buf, 0, 1, &vertex_buffers, &offsets);
 
-    assert(@sizeOf(@TypeOf(indices[0])) == 4);
+    assert(@sizeOf(@TypeOf(this.indices.items[0])) == 4);
     vk.cmdBindIndexBuffer(cmd_buf, this.index_buffer, 0, .UINT32);
 
     // vk.cmdDraw(cmd_buf, triangle_vertices.len, 1, 0, 0);
     vk.cmdBindDescriptorSets(cmd_buf, .GRAPHICS, this.pipeline_layout, 0, 1, &this.descriptor_sets[this.current_frame], 0, null);
-    vk.cmdDrawIndexed(cmd_buf, @intCast(indices.len), 1, 0, 0, 0);
+    vk.cmdDrawIndexed(cmd_buf, @intCast(this.indices.items.len), 1, 0, 0, 0);
 
     vk.cmdEndRenderPass(cmd_buf);
 
@@ -1877,11 +1916,12 @@ fn recordCommandBuffer(this: *const @This(), cmd_buf: vk.CommandBuffer, image_in
 }
 
 fn updateUniformBuffer(this: *@This(), image_index: usize) void {
-    const elapsed = @as(f32, @floatFromInt(this.timer.read())) / 1000_000_000.0;
+    // const elapsed = @as(f32, @floatFromInt(this.timer.read())) / 1000_000_000.0;
 
     const extent = Vec2.new(@floatFromInt(this.swapchain_extent.width), @floatFromInt(this.swapchain_extent.height));
 
-    const model = Mat4.rotation_z(@floatCast(elapsed * math.radians(90)));
+    // const model = Mat4.rotation_z(@floatCast(elapsed * math.radians(90)));
+    const model = Mat4.identity;
     const proj = Mat4.perspective(math.radians(45), extent.x / extent.y, 0.1, 10);
     const view = Mat4.lookAt(Vec3.new(2, 2, 2), Vec3.new(0, 0, 0), Vec3.new(0, 0, 1));
 

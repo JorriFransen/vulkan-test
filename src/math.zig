@@ -57,6 +57,9 @@ pub fn VecFunctionsMixin(comptime N: usize, comptime T: type, comptime Base: typ
         pub inline fn vector(this: Base) V {
             return @bitCast(this);
         }
+        pub inline fn initS(v: T) Base {
+            return @bitCast(@as(V, @splat(v)));
+        }
         pub inline fn add(a: Base, b: Base) Base {
             return initV(a.vector() + b.vector());
         }
@@ -170,11 +173,11 @@ pub fn MatFunctionsMixin(comptime C: usize, comptime R: usize, comptime T: type,
         pub fn perspective(fovy: T, a: T, n: T, f: T) Base {
             const s = 1 / @tan(fovy * 0.5);
 
-            if (FORCE_DEPTH_ZERO_TO_ONE)  {
+            if (FORCE_DEPTH_ZERO_TO_ONE) {
                 return .{ .data = .{
                     s / a, 0, 0,                  0,
                     0,     s, 0,                  0,
-                    0,     0, f / (n - f),       -1,
+                    0,     0, f / (n - f),        -1,
                     0,     0, -(f * n) / (f - n), 0,
                 } };
             } else {
@@ -188,19 +191,19 @@ pub fn MatFunctionsMixin(comptime C: usize, comptime R: usize, comptime T: type,
         }
 
         pub fn ortho(l: T, r: T, b: T, t: T, n: T, f: T) Base {
-            if (FORCE_DEPTH_ZERO_TO_ONE){
+            if (FORCE_DEPTH_ZERO_TO_ONE) {
                 return .{ .data = .{
-                    2 / (r - l),         0,                   0,             0,
-                    0,                   2 / (t - b),         0,             0,
-                    0,                   0,                   - 1 / (f - n), 0,
-                    - (r + l) / (r - l), - (t + b) / (t - b), - n / (f - n), 1,
+                    2 / (r - l),        0,                  0,            0,
+                    0,                  2 / (t - b),        0,            0,
+                    0,                  0,                  -1 / (f - n), 0,
+                    -(r + l) / (r - l), -(t + b) / (t - b), -n / (f - n), 1,
                 } };
             } else {
                 return .{ .data = .{
-                    2 / (r - l),         0,                   0,                   0,
-                    0,                   2 / (t - b),         0,                   0,
-                    0,                   0,                   - 2 / (f - n),       0,
-                    - (r + l) / (r - l), - (t + b) / (t - b), - (f + n) / (f - n), 1,
+                    2 / (r - l),        0,                  0,                  0,
+                    0,                  2 / (t - b),        0,                  0,
+                    0,                  0,                  -2 / (f - n),       0,
+                    -(r + l) / (r - l), -(t + b) / (t - b), -(f + n) / (f - n), 1,
                 } };
             }
         }
@@ -211,9 +214,9 @@ pub fn MatFunctionsMixin(comptime C: usize, comptime R: usize, comptime T: type,
             const u = l.cross(f);
 
             return .{ .data = .{
-                l.x,        u.x,         -f.x,        0,
-                l.y,        u.y,         -f.y,        0,
-                l.z,        u.z,         -f.z,        0,
+                l.x,         u.x,         -f.x,       0,
+                l.y,         u.y,         -f.y,       0,
+                l.z,         u.z,         -f.z,       0,
                 -l.dot(eye), -u.dot(eye), f.dot(eye), 1,
             } };
         }
