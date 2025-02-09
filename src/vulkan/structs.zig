@@ -907,7 +907,7 @@ pub const CopyDescriptorSet = extern struct {
 };
 
 pub const ImageCreateInfo = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType = .IMAGE_CREATE_INFO,
     pNext: ?*const anyopaque = null,
     flags: s.ImageCreateFlags = std.mem.zeroes(s.ImageCreateFlags),
     imageType: s.ImageType = std.mem.zeroes(s.ImageType),
@@ -925,7 +925,7 @@ pub const ImageCreateInfo = extern struct {
 };
 
 pub const ImageMemoryBarrier = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType = .IMAGE_MEMORY_BARRIER,
     pNext: ?*const anyopaque = null,
     srcAccessMask: s.AccessFlags = .{},
     dstAccessMask: s.AccessFlags = .{},
@@ -938,7 +938,7 @@ pub const ImageMemoryBarrier = extern struct {
 };
 
 pub const BufferMemoryBarrier = extern struct {
-    sType: s.StructureType,
+    sType: s.StructureType = .BUFFER_MEMORY_BARRIER,
     pNext: ?*const anyopaque = null,
     srcAccessMask: s.AccessFlags = .{},
     dstAccessMask: s.AccessFlags = .{},
@@ -950,7 +950,7 @@ pub const BufferMemoryBarrier = extern struct {
 };
 
 pub const MemoryBarrier = extern struct {
-    sType: s.StructureType = std.mem.zeroes(s.StructureType),
+    sType: s.StructureType = .MEMORY_BARRIER,
     pNext: ?*const anyopaque = null,
     srcAccessMask: s.AccessFlags = .{},
     dstAccessMask: s.AccessFlags = .{},
@@ -997,4 +997,11 @@ pub const FormatProperties = extern struct {
     linearTilingFeatures: s.FormatFeatureFlags = .{},
     optimalTilingFeatures: s.FormatFeatureFlags = .{},
     bufferFeatures: s.FormatFeatureFlags = .{},
+};
+
+pub const ImageBlit = extern struct {
+    srcSubresource: ImageSubresourceLayers,
+    srcOffsets: [2]Offset3D,
+    dstSubresource: ImageSubresourceLayers,
+    dstOffsets: [2]Offset3D,
 };

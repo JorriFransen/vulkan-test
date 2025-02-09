@@ -83,6 +83,7 @@ combined_buffer_memory: vk.DeviceMemory = null,
 
 setup_command_buffer: vk.CommandBuffer = null,
 
+mip_levels: u32 = undefined,
 texture_image: vk.Image = undefined,
 texture_image_memory: vk.DeviceMemory = undefined,
 texture_image_view: vk.ImageView = undefined,
@@ -798,6 +799,7 @@ fn createImageViews(this: *@This()) !void {
             this.images[i],
             this.device_info.swapchain_info.surface_format.format,
             .{ .COLOR_BIT = 1 },
+            1,
         );
 }
 
@@ -1068,12 +1070,11 @@ fn createCommandPools(this: *@This()) !void {
     }
 }
 
-fn createImage(this: *@This(), width: usize, height: usize, format: vk.Format, tiling: vk.ImageTiling, usage: vk.ImageUsageFlags, properties: vk.MemoryPropertyFlags, memory: *vk.DeviceMemory) !vk.Image {
+fn createImage(this: *@This(), width: usize, height: usize, mip_levels: u32, format: vk.Format, tiling: vk.ImageTiling, usage: vk.ImageUsageFlags, properties: vk.MemoryPropertyFlags, memory: *vk.DeviceMemory) !vk.Image {
     const image_info = vk.ImageCreateInfo{
-        .sType = .IMAGE_CREATE_INFO,
         .imageType = .@"2D",
         .extent = .{ .width = @intCast(width), .height = @intCast(height), .depth = 1 },
-        .mipLevels = 1,
+        .mipLevels = mip_levels,
         .arrayLayers = 1,
         .format = format,
         .tiling = tiling,
@@ -1095,7 +1096,6 @@ fn createImage(this: *@This(), width: usize, height: usize, format: vk.Format, t
     vk.getImageMemoryRequirements(this.device, result, &mem_req);
 
     const alloc_info = vk.MemoryAllocateInfo{
-        .sType = .MEMORY_ALLOCATE_INFO,
         .allocationSize = mem_req.size,
         .memoryTypeIndex = this.findMemoryType(mem_req.memoryTypeBits, properties) orelse {
             return error.FindMemoryTypeFailed;
@@ -1161,6 +1161,7 @@ fn createDepthResources(this: *@This()) !void {
     this.depth_image = try this.createImage(
         extent.width,
         extent.height,
+        1,
         depth_format,
         .OPTIMAL,
         .{ .DEPTH_STENCIL_ATTACHMENT_BIT = 1 },
@@ -1168,12 +1169,12 @@ fn createDepthResources(this: *@This()) !void {
         &this.depth_image_memory,
     );
 
-    this.depth_image_view = try this.createImageView(this.depth_image, depth_format, .{ .DEPTH_BIT = 1 });
+    this.depth_image_view = try this.createImageView(this.depth_image, depth_format, .{ .DEPTH_BIT = 1 }, 1);
 
     dlog("Transitioning: {any}", .{this.depth_image});
 
     // TODO: FIXME: This is not required here because it is done in the render pass
-    // try this.transitionImageLayout(this.depth_image, depth_format, .UNDEFINED, .DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    try this.transitionImageLayout(this.depth_image, depth_format, .UNDEFINED, .DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 1);
     try this.flushSetupCommands();
 }
 
@@ -1192,6 +1193,10 @@ fn createTextureImage(this: *@This()) !void {
     defer stbi.free(pixels);
 
     const size: vk.DeviceSize = @intCast(width * height * channels);
+    const ml_f: f32 = @floor(@log2(@as(f32, @floatFromInt(@max(width, height))))) + 1;
+    this.mip_levels = @intFromFloat(ml_f);
+
+    dlog("Mip levels: {}", .{this.mip_levels});
 
     var staging_buffer_mem: vk.DeviceMemory = undefined;
     const staging_buffer = try this.createBuffer(size, .{ .TRANSFER_SRC_BIT = 1 }, .{ .HOST_VISIBLE_BIT = 1, .HOST_COHERENT_BIT = 1 }, &staging_buffer_mem);
@@ -1208,27 +1213,116 @@ fn createTextureImage(this: *@This()) !void {
     std.mem.copyForwards(u8, data[0..size], pixels[0..size]);
     vk.unmapMemory(this.device, staging_buffer_mem);
 
+    const format = vk.Format.R8G8B8A8_SRGB;
+
     this.texture_image = try this.createImage(
         @intCast(width),
         @intCast(height),
-        .R8G8B8A8_SRGB,
+        this.mip_levels,
+        format,
         .OPTIMAL,
-        .{ .TRANSFER_DST_BIT = 1, .SAMPLED_BIT = 1 },
+        .{ .TRANSFER_SRC_BIT = 1, .TRANSFER_DST_BIT = 1, .SAMPLED_BIT = 1 },
         .{ .DEVICE_LOCAL_BIT = 1 },
         &this.texture_image_memory,
     );
 
-    try this.transitionImageLayout(this.texture_image, .R8G8B8A8_SRGB, .UNDEFINED, .TRANSFER_DST_OPTIMAL);
+    try this.transitionImageLayout(this.texture_image, format, .UNDEFINED, .TRANSFER_DST_OPTIMAL, this.mip_levels);
     this.copyBufferToImage(staging_buffer, this.texture_image, @intCast(width), @intCast(height));
-    try this.transitionImageLayout(this.texture_image, .R8G8B8A8_SRGB, .TRANSFER_DST_OPTIMAL, .SHADER_READ_ONLY_OPTIMAL);
+    // try this.transitionImageLayout(this.texture_image, .R8G8B8A8_SRGB, .TRANSFER_DST_OPTIMAL, .SHADER_READ_ONLY_OPTIMAL, this.mip_levels);
+
+    // This will transition the layout to SHADER_READ_ONLY_OPTIMAL
+    try this.generateMipmaps(this.setup_command_buffer, this.texture_image, format, @intCast(width), @intCast(height), this.mip_levels);
     try this.flushSetupCommands();
 }
 
-fn createTextureImageView(this: *@This()) !void {
-    this.texture_image_view = try this.createImageView(this.texture_image, .R8G8B8A8_SRGB, .{ .COLOR_BIT = 1 });
+fn generateMipmaps(this: *@This(), cmd_buf: vk.CommandBuffer, image: vk.Image, image_format: vk.Format, width: usize, height: usize, mip_levels: u32) !void {
+    var format_props: vk.FormatProperties = undefined;
+    vk.getPhysicalDeviceFormatProperties(this.device_info.physical_device, image_format, &format_props);
+
+    // Check 'optimalTilingFeatures' since the image is created with 'optimal' tiling.
+    if (format_props.optimalTilingFeatures.SAMPLED_IMAGE_FILTER_LINEAR_BIT != 1) {
+        // FIXME: TODO: Don't do this at runtime, use stb_image_resize to do this in software, or search for a format that supports linear blit.
+        return error.TextureFormatDoesntSupportLinearBlit;
+    }
+
+    var barrier = vk.ImageMemoryBarrier{
+        .image = image,
+        .srcQueueFamilyIndex = vk.QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = vk.QUEUE_FAMILY_IGNORED,
+        .subresourceRange = .{
+            .aspectMask = .{ .COLOR_BIT = 1 },
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+            .levelCount = 1,
+        },
+    };
+
+    var mip_width = width;
+    var mip_height = height;
+
+    for (1..mip_levels) |i| {
+        barrier.subresourceRange.baseMipLevel = @intCast(i - 1);
+        barrier.oldLayout = .TRANSFER_DST_OPTIMAL;
+        barrier.newLayout = .TRANSFER_SRC_OPTIMAL;
+        barrier.srcAccessMask = .{ .TRANSFER_WRITE_BIT = 1 };
+        barrier.dstAccessMask = .{ .TRANSFER_READ_BIT = 1 };
+
+        vk.cmdPipelineBarrier(cmd_buf, .{ .TRANSFER_BIT = 1 }, .{ .TRANSFER_BIT = 1 }, .{}, 0, null, 0, null, 1, &barrier);
+
+        const blit = vk.ImageBlit{
+            .srcOffsets = .{
+                .{ .x = 0, .y = 0, .z = 0 },
+                .{ .x = @intCast(mip_width), .y = @intCast(mip_height), .z = 1 },
+            },
+            .srcSubresource = .{
+                .aspectMask = .{ .COLOR_BIT = 1 },
+                .mipLevel = @intCast(i - 1),
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+            .dstOffsets = .{
+                .{ .x = 0, .y = 0, .z = 0 },
+                .{
+                    .x = if (mip_width > 1) @intCast(mip_width / 2) else 1,
+                    .y = if (mip_height > 1) @intCast(mip_height / 2) else 1,
+                    .z = 1,
+                },
+            },
+            .dstSubresource = .{
+                .aspectMask = .{ .COLOR_BIT = 1 },
+                .mipLevel = @intCast(i),
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+        };
+
+        vk.cmdBlitImage(cmd_buf, image, .TRANSFER_SRC_OPTIMAL, image, .TRANSFER_DST_OPTIMAL, 1, @ptrCast(&blit), .LINEAR);
+
+        barrier.oldLayout = .TRANSFER_SRC_OPTIMAL;
+        barrier.newLayout = .SHADER_READ_ONLY_OPTIMAL;
+        barrier.srcAccessMask = .{ .TRANSFER_READ_BIT = 1 };
+        barrier.dstAccessMask = .{ .SHADER_READ_BIT = 1 };
+
+        vk.cmdPipelineBarrier(cmd_buf, .{ .TRANSFER_BIT = 1 }, .{ .FRAGMENT_SHADER_BIT = 1 }, .{}, 0, null, 0, null, 1, &barrier);
+
+        if (mip_width > 1) mip_width /= 2;
+        if (mip_height > 1) mip_height /= 2;
+    }
+
+    barrier.subresourceRange.baseMipLevel = mip_levels - 1;
+    barrier.oldLayout = .TRANSFER_DST_OPTIMAL;
+    barrier.newLayout = .SHADER_READ_ONLY_OPTIMAL;
+    barrier.srcAccessMask = .{ .TRANSFER_WRITE_BIT = 1 };
+    barrier.dstAccessMask = .{ .SHADER_READ_BIT = 1 };
+
+    vk.cmdPipelineBarrier(cmd_buf, .{ .TRANSFER_BIT = 1 }, .{ .FRAGMENT_SHADER_BIT = 1 }, .{}, 0, null, 0, null, 1, &barrier);
 }
 
-fn createImageView(this: *@This(), image: vk.Image, format: vk.Format, aspect_flags: vk.ImageAspectFlags) !vk.ImageView {
+fn createTextureImageView(this: *@This()) !void {
+    this.texture_image_view = try this.createImageView(this.texture_image, .R8G8B8A8_SRGB, .{ .COLOR_BIT = 1 }, this.mip_levels);
+}
+
+fn createImageView(this: *@This(), image: vk.Image, format: vk.Format, aspect_flags: vk.ImageAspectFlags, mip_levels: u32) !vk.ImageView {
     const view_create_info = vk.ImageViewCreateInfo{
         .image = image,
         .viewType = .@"2D",
@@ -1237,7 +1331,7 @@ fn createImageView(this: *@This(), image: vk.Image, format: vk.Format, aspect_fl
         .subresourceRange = .{
             .aspectMask = aspect_flags,
             .baseMipLevel = 0,
-            .levelCount = 1,
+            .levelCount = mip_levels,
             .baseArrayLayer = 0,
             .layerCount = 1,
         },
@@ -1267,7 +1361,7 @@ fn createTextureSampler(this: *@This()) !void {
         .mipmapMode = .LINEAR,
         .mipLodBias = 0,
         .minLod = 0,
-        .maxLod = 0,
+        .maxLod = @floatFromInt(this.mip_levels),
     };
 
     if (vk.createSampler(this.device, &sampler_info, null, &this.texture_sampler) != .SUCCESS) {
@@ -1380,7 +1474,7 @@ fn copyBufferToImage(this: *const @This(), buf: vk.Buffer, img: vk.Image, width:
     vk.cmdCopyBufferToImage(this.setup_command_buffer, buf, img, .TRANSFER_DST_OPTIMAL, 1, @ptrCast(&region));
 }
 
-fn transitionImageLayout(this: *const @This(), image: vk.Image, format: vk.Format, old_layout: vk.ImageLayout, new_layout: vk.ImageLayout) !void {
+fn transitionImageLayout(this: *const @This(), image: vk.Image, format: vk.Format, old_layout: vk.ImageLayout, new_layout: vk.ImageLayout, mip_levels: u32) !void {
     var src_access_mask = vk.AccessFlags{};
     var dst_access_mask = vk.AccessFlags{};
     var src_stage = vk.PipelineStageFlags{};
@@ -1412,7 +1506,6 @@ fn transitionImageLayout(this: *const @This(), image: vk.Image, format: vk.Forma
     }
 
     const barrier = vk.ImageMemoryBarrier{
-        .sType = .IMAGE_MEMORY_BARRIER,
         .oldLayout = old_layout,
         .newLayout = new_layout,
         .srcQueueFamilyIndex = vk.QUEUE_FAMILY_IGNORED,
@@ -1421,7 +1514,7 @@ fn transitionImageLayout(this: *const @This(), image: vk.Image, format: vk.Forma
         .subresourceRange = .{
             .aspectMask = aspect_flags,
             .baseMipLevel = 0,
-            .levelCount = 1,
+            .levelCount = mip_levels,
             .baseArrayLayer = 0,
             .layerCount = 1,
         },
