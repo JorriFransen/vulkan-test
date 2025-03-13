@@ -32,8 +32,6 @@ pub fn build(b: *std.Build) !void {
     options.addOption(bool, "glfw_support", glfw_support);
     const options_mod = options.createModule();
 
-    // const flags_dep = b.dependency("flags", .{ .target = target, .optimize = optimize });
-    // const flags_mod = flags_dep.module("flags");
     const clap_dep = b.dependency("clap", .{ .target = target, .optimize = optimize });
     const clap_mod = clap_dep.module("clap");
 
