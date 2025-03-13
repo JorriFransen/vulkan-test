@@ -6,5 +6,6 @@
 
 /*.sln
 /*.cap
+/*.rdbg
 
 /vk_translation.zig

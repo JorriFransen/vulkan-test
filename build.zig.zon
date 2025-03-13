@@ -7,11 +7,10 @@
             .url = "https://github.com/Hejsil/zig-clap/archive/068c38f89814079635692c7d0be9f58508c86173.tar.gz",
             .hash = "clap-0.7.0-AAAAALT7AQD_FKU-mlQxHJsOZlr-2iyCz9b1fn4bkHaL",
         },
-        // We will move away from this in zig 15
-        // .glfw = .{
-        //     .url = "https://github.com/slimsag/glfw/archive/refs/heads/master.tar.gz",
-        //     .hash = "12207be469bad84baed2ede75cf89ede37e1ed5ee8be62a54d2b2112c5f56a44cc89",
-        // },
+        .glfw = .{
+            .url = "https://github.com/JorriFransen/glfw-zig-build/archive/refs/heads/3.4-zig.tar.gz",
+            .hash = "glfw_zig-3.4.0-AAAAANqGPAAF-odY-vSUMU-hXK-rUGrMa_bcJPg--mec",
+        },
     },
     .paths = .{
         "src/",

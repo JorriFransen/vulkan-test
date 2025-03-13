@@ -52,7 +52,6 @@ pub fn build(b: *std.Build) !void {
     exe.addCSourceFile(.{ .file = b.path("src/stb/stb_image.c") });
     exe.addCSourceFile(.{ .file = b.path("src/tol/tol.c") });
 
-    // Can't get wayland to work on nixos when building ourselves
     if (glfw_support) {
         if (glfw_system) {
             exe.linkSystemLibrary2("glfw", .{ .preferred_link_mode = .static });

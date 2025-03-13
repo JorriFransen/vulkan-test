@@ -15,9 +15,9 @@ const dlog = Window.dlog;
 const elog = Window.elog;
 
 pub fn initSystem(options: Window.InitSystemOptions) Window.InitSystemError!void {
-    const wayland_support = glfw.glfwPlatformSupported(.WAYLAND) == glfw.TRUE;
-    const x11_support = glfw.glfwPlatformSupported(.X11) == glfw.TRUE;
-    const win32_support = glfw.glfwPlatformSupported(.WIN32) == glfw.TRUE;
+    const wayland_support = glfw.platformSupported(.WAYLAND) == glfw.TRUE;
+    const x11_support = glfw.platformSupported(.X11) == glfw.TRUE;
+    const win32_support = glfw.platformSupported(.WIN32) == glfw.TRUE;
 
     var glfw_api = options.glfw_api;
     if (glfw_api == .default) {
@@ -49,14 +49,14 @@ pub fn initSystem(options: Window.InitSystemOptions) Window.InitSystemError!void
         .x11 => glfw.Platform.X11,
     };
 
-    glfw.glfwInitHint(glfw.PLATFORM, @intFromEnum(glfw_platform));
+    glfw.initHint(glfw.PLATFORM, @intFromEnum(glfw_platform));
     dlog("using glfw platform: {s}", .{@tagName(glfw_platform)});
 
-    if (glfw.glfwInit() == 0) {
+    if (glfw.init() == 0) {
         elog("glfwInit() failed...", .{});
 
         var cstr: [*:0]const u8 = undefined;
-        const code = glfw.glfwGetError(&cstr);
+        const code = glfw.getError(&cstr);
         elog("glfw err: {}: {s}", .{ code, cstr });
 
         return error.nativeInitFailed;
@@ -64,38 +64,38 @@ pub fn initSystem(options: Window.InitSystemOptions) Window.InitSystemError!void
 }
 
 pub fn deinitSystem() void {
-    glfw.glfwTerminate();
+    glfw.terminate();
 }
 
-handle: ?*glfw.GLFWwindow = null,
+handle: glfw.Window = null,
 new_fb_size: ?struct { c_int, c_int } = null,
 
 framebuffer_resize_callback: ?Window.FrameBufferResizeCallback = null,
 key_callback: ?Window.KeyCallback = null,
 
 pub fn open(this: *@This(), title: [:0]const u8) Window.OpenError!void {
-    glfw.glfwWindowHint(glfw.CLIENT_API, glfw.NO_API);
+    glfw.windowHint(glfw.CLIENT_API, glfw.NO_API);
 
-    glfw.glfwWindowHintString(glfw.WAYLAND_APP_ID, "my_app_id");
+    glfw.windowHintString(glfw.WAYLAND_APP_ID, "my_app_id");
 
-    var handle: *glfw.GLFWwindow = undefined;
+    var handle: glfw.Window = undefined;
 
-    if (glfw.glfwCreateWindow(800, 600, title, null, null)) |h| {
+    if (glfw.createWindow(800, 600, title, null, null)) |h| {
         handle = h;
     } else {
         var cstr: [*:0]const u8 = undefined;
-        const code = glfw.glfwGetError(&cstr);
+        const code = glfw.getError(&cstr);
         elog("glfw err: {}: {s}", .{ code, cstr });
         return error.NativeCreateFailed;
     }
 
-    const glfw_platform = glfw.glfwGetPlatform();
+    const glfw_platform = glfw.getPlatform();
     dlog("glfw platform: {}", .{glfw_platform});
 
-    _ = glfw.glfwSetKeyCallback(handle, keyCallback);
-    _ = glfw.glfwSetFramebufferSizeCallback(handle, framebufferResizeCallback);
+    _ = glfw.setKeyCallback(handle, keyCallback);
+    _ = glfw.setFramebufferSizeCallback(handle, framebufferResizeCallback);
 
-    glfw.glfwSetWindowUserPointer(handle, this);
+    glfw.setWindowUserPointer(handle, this);
 
     this.* = .{
         .handle = handle,
@@ -104,25 +104,25 @@ pub fn open(this: *@This(), title: [:0]const u8) Window.OpenError!void {
 }
 
 pub fn close(this: *const @This()) void {
-    glfw.glfwDestroyWindow(this.handle);
+    glfw.destroyWindow(this.handle);
 }
 
 pub fn shouldClose(this: *const @This()) bool {
-    const res = glfw.glfwWindowShouldClose(this.handle);
+    const res = glfw.windowShouldClose(this.handle);
     return res != 0;
 }
 
 pub fn requestClose(this: *@This()) void {
-    glfw.glfwSetWindowShouldClose(this.handle, 1);
+    glfw.setWindowShouldClose(this.handle, 1);
 }
 
 pub fn pollEvents(this: *@This()) void {
-    glfw.glfwPollEvents();
+    glfw.pollEvents();
     this.handleEvents();
 }
 
 pub fn waitEvents(this: *@This()) void {
-    glfw.glfwWaitEvents();
+    glfw.waitEvents();
     this.handleEvents();
 }
 
@@ -139,15 +139,15 @@ fn handleEvents(this: *@This()) void {
 }
 
 pub fn requiredVulkanInstanceExtensions() error{VulkanApiUnavailable}![]const [*:0]const u8 {
-    assert(glfw.glfwVulkanSupported() == 1);
+    assert(glfw.vulkanSupported() == 1);
     var count: u32 = undefined;
-    const ext = glfw.glfwGetRequiredInstanceExtensions(&count) orelse return error.VulkanApiUnavailable;
+    const ext = glfw.getRequiredInstanceExtensions(&count) orelse return error.VulkanApiUnavailable;
     return @as([]const [*:0]const u8, @ptrCast(ext[0..count]));
 }
 
 pub fn createVulkanSurface(this: *const @This(), instance: vk.Instance) Window.CreateVulkanSurfaceError!vk.SurfaceKHR {
     var surface: vk.SurfaceKHR = undefined;
-    if (glfw.glfwCreateWindowSurface(instance, this.handle, null, &surface) != .SUCCESS) {
+    if (glfw.createWindowSurface(instance, this.handle, null, &surface) != .SUCCESS) {
         elog("glfwCreateWindowSurface failed!", .{});
         return error.NativeCreateSurfaceFailed;
     }
@@ -156,7 +156,7 @@ pub fn createVulkanSurface(this: *const @This(), instance: vk.Instance) Window.C
     // var surface: vk.SurfaceKHR = undefined;
     // dlog("createVulkanSurface()", .{});
     //
-    // const display = glfw.glfwGetX11Display();
+    // const display = glfw.getX11Display();
     // dlog("Got x11 display!", .{});
     // const connection = x.getXCBConnection(display);
     // dlog("Got xcb connection!", .{});
@@ -164,7 +164,7 @@ pub fn createVulkanSurface(this: *const @This(), instance: vk.Instance) Window.C
     // const create_info = vk.XcbSurfaceCreateInfoKHR{
     //     .sType = .XCB_SURFACE_CREATE_INFO_KHR,
     //     .connection = connection,
-    //     .window = @intCast(glfw.glfwGetX11Window(this.handle)),
+    //     .window = @intCast(glfw.getX11Window(this.handle)),
     // };
     //
     // if (vk.createXcbSurfaceKHR(instance, &create_info, null, &surface) != .SUCCESS) {
@@ -177,8 +177,8 @@ pub fn createVulkanSurface(this: *const @This(), instance: vk.Instance) Window.C
     // var surface: vk.SurfaceKHR = undefined;
     // const create_info = vk.XlibSurfaceCreateInfoKHR{
     //     .sType = .XLIB_SURFACE_CREATE_INFO_KHR,
-    //     .dpy = glfw.glfwGetX11Display(),
-    //     .window = glfw.glfwGetX11Window(this.handle),
+    //     .dpy = glfw.getX11Display(),
+    //     .window = glfw.getX11Window(this.handle),
     // };
     //
     // if (vk.createXlibSurfaceKHR(instance, &create_info, null, &surface) != .SUCCESS) {
@@ -192,7 +192,7 @@ pub fn createVulkanSurface(this: *const @This(), instance: vk.Instance) Window.C
 pub fn framebufferSize(this: *const @This()) Window.Size {
     var width: c_int = undefined;
     var height: c_int = undefined;
-    glfw.glfwGetFramebufferSize(this.handle, &width, &height);
+    glfw.getFramebufferSize(this.handle, &width, &height);
     return .{ .width = width, .height = height };
 }
 
@@ -204,7 +204,7 @@ pub fn setKeyCallback(this: *@This(), callback: Window.KeyCallback) void {
     this.key_callback = callback;
 }
 
-fn keyCallback(gwindow: ?*glfw.GLFWwindow, gkey: glfw.Key, scancode: c_int, gaction: glfw.Action, mods: c_int) callconv(.C) void {
+fn keyCallback(gwindow: glfw.Window, gkey: glfw.Key, scancode: c_int, gaction: glfw.Action, mods: c_int) callconv(.C) void {
     _ = mods;
 
     const action: platform.KeyAction = switch (gaction) {
@@ -213,7 +213,7 @@ fn keyCallback(gwindow: ?*glfw.GLFWwindow, gkey: glfw.Key, scancode: c_int, gact
         .repeat => .repeat,
     };
 
-    const impl: *@This() = @alignCast(@ptrCast(glfw.glfwGetWindowUserPointer(gwindow)));
+    const impl: *@This() = @alignCast(@ptrCast(glfw.getWindowUserPointer(gwindow)));
     assert(gwindow == impl.handle);
 
     if (impl.key_callback) |cb| {
@@ -224,8 +224,8 @@ fn keyCallback(gwindow: ?*glfw.GLFWwindow, gkey: glfw.Key, scancode: c_int, gact
     }
 }
 
-fn framebufferResizeCallback(gwindow: ?*glfw.GLFWwindow, width: c_int, height: c_int) callconv(.C) void {
-    const this: *@This() = @alignCast(@ptrCast(glfw.glfwGetWindowUserPointer(gwindow)));
+fn framebufferResizeCallback(gwindow: glfw.Window, width: c_int, height: c_int) callconv(.C) void {
+    const this: *@This() = @alignCast(@ptrCast(glfw.getWindowUserPointer(gwindow)));
     assert(gwindow == this.handle);
 
     this.new_fb_size = .{ width, height };
