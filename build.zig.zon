@@ -9,7 +9,7 @@
         },
         .glfw = .{
             .url = "https://github.com/JorriFransen/glfw-zig-build/archive/refs/heads/3.4-zig.tar.gz",
-            .hash = "glfw_zig-3.4.0-AAAAANqGPAAF-odY-vSUMU-hXK-rUGrMa_bcJPg--mec",
+            .hash = "glfw_zig-3.4.0-qhyek6iLPAC3JO6gx_A2pKSH5Jqe5JeGYYMZQPRRyDb9",
         },
     },
     .paths = .{

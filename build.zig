@@ -21,8 +21,8 @@ pub fn build(b: *std.Build) !void {
     const window_verbose = b.option(std.log.Level, "window-log", "Set window log level") orelse .info;
     const vulkan_verbose = b.option(std.log.Level, "vulkan-log", "Set vulkan log level") orelse .info;
     const timing = b.option(bool, "timing", "Enable timing reports") orelse false;
-    const glfw_system = target.result.os.tag != .windows;
-    const glfw_support = b.option(bool, "glfw-support", "Build with glfw suport") orelse glfw_system;
+    const glfw_default = target.result.os.tag != .windows;
+    const glfw_support = b.option(bool, "glfw-support", "Build with glfw suport") orelse glfw_default;
 
     const options = b.addOptions();
     options.addOption(std.log.Level, "log_level", log_level);
@@ -53,13 +53,9 @@ pub fn build(b: *std.Build) !void {
     exe.addCSourceFile(.{ .file = b.path("src/tol/tol.c") });
 
     if (glfw_support) {
-        if (glfw_system) {
-            exe.linkSystemLibrary2("glfw", .{ .preferred_link_mode = .static });
-        } else {
-            const glfw_dep = b.dependency("glfw", .{ .target = target, .optimize = optimize });
-            const glfw_lib = glfw_dep.artifact("glfw");
-            exe.linkLibrary(glfw_lib);
-        }
+        const glfw_dep = b.dependency("glfw", .{ .target = target, .optimize = optimize, .x11 = true, .wayland = true });
+        const glfw_lib = glfw_dep.artifact("glfw");
+        exe.linkLibrary(glfw_lib);
     }
 
     if (target.result.os.tag == .linux) {

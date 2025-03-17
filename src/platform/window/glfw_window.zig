@@ -45,7 +45,6 @@ pub fn initSystem(options: Window.InitSystemOptions) Window.InitSystemError!void
         },
         .win32 => glfw.Platform.WIN32,
         .wayland => glfw.Platform.WAYLAND,
-        // .wayland => glfw.Platform.X11,
         .x11 => glfw.Platform.X11,
     };
 
