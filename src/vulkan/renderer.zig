@@ -146,6 +146,7 @@ const PDevInfo = struct {
     queue_info: QueueFamilyInfo,
     swapchain_info: SwapchainInfo,
     physical_device: vk.PhysicalDevice,
+    msaa_samples: vk.SampleCountFlags,
 };
 
 const QueueFamilyInfo = struct {
@@ -495,6 +496,7 @@ fn choosePhysicalDevice(instance: vk.Instance, surface: vk.SurfaceKHR) !PDevInfo
             .queue_info = queue_info,
             .swapchain_info = swapchain_info,
             .physical_device = null,
+            .msaa_samples = getmaxUsableSampleCount(props),
         };
 
         const new_best = if (suitable_device_found) info.score > best_device_info.score else true;
@@ -514,6 +516,23 @@ fn choosePhysicalDevice(instance: vk.Instance, surface: vk.SurfaceKHR) !PDevInfo
     ilog("using device: {} ({s})", .{ best_device_index, best_device_info.properties.deviceName });
 
     return best_device_info;
+}
+
+fn getmaxUsableSampleCount(props: vk.PhysicalDeviceProperties) vk.SampleCountFlags {
+    const _counts =
+        @as(vk.Flags, @bitCast(props.limits.framebufferColorSampleCounts)) &
+        @as(vk.Flags, @bitCast(props.limits.framebufferDepthSampleCounts));
+
+    const counts: vk.SampleCountFlags = @bitCast(_counts);
+
+    if (counts.@"64_BIT" == 1) return .{ .@"64_BIT" = 1 };
+    if (counts.@"32_BIT" == 1) return .{ .@"32_BIT" = 1 };
+    if (counts.@"16_BIT" == 1) return .{ .@"16_BIT" = 1 };
+    if (counts.@"8_BIT" == 1) return .{ .@"8_BIT" = 1 };
+    if (counts.@"4_BIT" == 1) return .{ .@"4_BIT" = 1 };
+    if (counts.@"2_BIT" == 1) return .{ .@"2_BIT" = 1 };
+
+    return .{ .@"1_BIT" = 1 };
 }
 
 fn queryQueueFamiliesInfo(pdev: vk.PhysicalDevice, surface: vk.SurfaceKHR) !?QueueFamilyInfo {
