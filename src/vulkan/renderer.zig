@@ -5,7 +5,7 @@ const builtin = @import("builtin");
 const alloc = @import("../alloc.zig");
 const builtin_shaders = @import("shaders");
 const math = @import("../math.zig");
-const options = @import("options");
+const compile_options = @import("options");
 const platform = @import("../platform.zig");
 const Window = platform.Window;
 const vk = @import("vulkan.zig");
@@ -35,6 +35,7 @@ const MAX_FRAMES_IN_FLIGHT = 2;
 const MAX_SWAPCHAIN_IMAGES = 8;
 const UBO_COUNT = 1;
 
+options: Options = undefined,
 window: *Window = undefined,
 instance: vk.Instance = null,
 surface: vk.SurfaceKHR = null,
@@ -92,6 +93,10 @@ texture_sampler: vk.Sampler = undefined,
 depth_image: vk.Image = undefined,
 depth_image_memory: vk.DeviceMemory = undefined,
 depth_image_view: vk.ImageView = undefined,
+
+color_image: vk.Image = undefined,
+color_image_memory: vk.DeviceMemory = undefined,
+color_image_view: vk.ImageView = undefined,
 
 timer: std.time.Timer = undefined,
 
@@ -187,7 +192,14 @@ const required_device_extensions: []const [*:0]const u8 = &.{
     vk.KHR_SWAPCHAIN_EXTENSION_NAME,
 };
 
-pub fn init(this: *@This(), window: *Window) !void {
+pub const Options = struct {
+    enable_sample_shading: bool = false,
+    min_sample_shading: f32 = 0.2,
+};
+
+pub fn init(this: *@This(), window: *Window, options: Options) !void {
+    this.options = options;
+
     const instance = try createInstance(window);
     const debug_messenger = createDebugMessenger(instance);
     const surface = try window.createVulkanSurface(instance);
@@ -211,6 +223,7 @@ pub fn init(this: *@This(), window: *Window) !void {
     try this.createGraphicsPipeline();
     try this.createCommandPools();
     try this.createCommandBuffers();
+    try this.createColorResources();
     try this.createDepthResources();
     try this.createFrameBuffers();
     try this.createTextureImage();
@@ -698,6 +711,7 @@ fn createLogicalDevice(this: *@This()) !void {
 
     const device_features = vk.PhysicalDeviceFeatures{
         .samplerAnisotropy = vk.TRUE,
+        .sampleRateShading = if (this.options.enable_sample_shading) vk.TRUE else vk.FALSE,
     };
 
     const device_create_info = vk.DeviceCreateInfo{
@@ -737,6 +751,7 @@ pub fn recreateSwapchain(this: *@This()) !void {
 
     try this.createSwapchain();
     try this.createImageViews();
+    try this.createColorResources();
     try this.createDepthResources();
     try this.createFrameBuffers();
 }
@@ -745,6 +760,10 @@ pub fn cleanupSwapchain(this: *const @This()) void {
     vk.destroyImageView(this.device, this.depth_image_view, null);
     vk.destroyImage(this.device, this.depth_image, null);
     vk.freeMemory(this.device, this.depth_image_memory, null);
+
+    vk.destroyImageView(this.device, this.color_image_view, null);
+    vk.destroyImage(this.device, this.color_image, null);
+    vk.freeMemory(this.device, this.color_image_memory, null);
 
     for (0..this.image_count) |i| vk.destroyFramebuffer(this.device, this.framebuffers[i], null);
     for (0..this.image_count) |i| vk.destroyImageView(this.device, this.image_views[i], null);
@@ -825,13 +844,13 @@ fn createImageViews(this: *@This()) !void {
 fn createRenderPass(this: *@This()) !void {
     const color_attachment = vk.AttachmentDescription{
         .format = this.device_info.swapchain_info.surface_format.format,
-        .samples = .{ .@"1_BIT" = 1 },
+        .samples = this.device_info.msaa_samples,
         .loadOp = .CLEAR,
         .storeOp = .STORE,
         .stencilLoadOp = .DONT_CARE,
         .stencilStoreOp = .DONT_CARE,
         .initialLayout = .UNDEFINED,
-        .finalLayout = .PRESENT_SRC_KHR,
+        .finalLayout = .COLOR_ATTACHMENT_OPTIMAL,
     };
 
     const color_attachment_refs = [_]vk.AttachmentReference{.{
@@ -841,7 +860,7 @@ fn createRenderPass(this: *@This()) !void {
 
     const depth_attachment = vk.AttachmentDescription{
         .format = try this.findDepthFormat(),
-        .samples = .{ .@"1_BIT" = 1 },
+        .samples = this.device_info.msaa_samples,
         .loadOp = .CLEAR,
         .storeOp = .DONT_CARE,
         .stencilLoadOp = .DONT_CARE,
@@ -855,11 +874,28 @@ fn createRenderPass(this: *@This()) !void {
         .layout = .DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
     }};
 
+    const color_attachment_resolve = vk.AttachmentDescription{
+        .format = this.device_info.swapchain_info.surface_format.format,
+        .samples = .{ .@"1_BIT" = 1 },
+        .loadOp = .DONT_CARE,
+        .storeOp = .STORE,
+        .stencilLoadOp = .DONT_CARE,
+        .stencilStoreOp = .DONT_CARE,
+        .initialLayout = .UNDEFINED,
+        .finalLayout = .PRESENT_SRC_KHR,
+    };
+
+    const color_attachment_resolve_refs = [_]vk.AttachmentReference{.{
+        .attachment = 2,
+        .layout = .COLOR_ATTACHMENT_OPTIMAL,
+    }};
+
     const subpasses = [_]vk.SubpassDescription{.{
         .pipelineBindPoint = .GRAPHICS,
         .inputAttachmentCount = 0,
         .preserveAttachmentCount = 0,
         .colorAttachmentCount = color_attachment_refs.len,
+        .pResolveAttachments = &color_attachment_resolve_refs,
         .pColorAttachments = &color_attachment_refs,
         .pDepthStencilAttachment = &depth_attachment_refs,
     }};
@@ -874,7 +910,9 @@ fn createRenderPass(this: *@This()) !void {
     }};
 
     const attachments = [_]vk.AttachmentDescription{
-        color_attachment, depth_attachment,
+        color_attachment,
+        depth_attachment,
+        color_attachment_resolve,
     };
 
     const render_pass_create_info = vk.RenderPassCreateInfo{
@@ -983,9 +1021,10 @@ fn createGraphicsPipeline(this: *@This()) !void {
     };
 
     const multisampling_create_info = vk.PipelineMultisampleStateCreateInfo{
-        .sampleShadingEnable = vk.FALSE,
-        .rasterizationSamples = .{ .@"1_BIT" = 1 },
-        .minSampleShading = 1,
+        .sampleShadingEnable = if (this.options.enable_sample_shading) vk.TRUE else vk.FALSE,
+        .minSampleShading = this.options.min_sample_shading,
+
+        .rasterizationSamples = this.device_info.msaa_samples,
         .pSampleMask = null,
         .alphaToCoverageEnable = vk.FALSE,
         .alphaToOneEnable = vk.FALSE,
@@ -1059,7 +1098,7 @@ fn createGraphicsPipeline(this: *@This()) !void {
 
 fn createFrameBuffers(this: *@This()) !void {
     for (0..this.image_count) |i| {
-        const attachments = [_]vk.ImageView{ this.image_views[i], this.depth_image_view };
+        const attachments = [_]vk.ImageView{ this.color_image_view, this.depth_image_view, this.image_views[i] };
 
         const framebuffer_create_info = vk.FramebufferCreateInfo{
             .renderPass = this.render_pass,
@@ -1089,7 +1128,7 @@ fn createCommandPools(this: *@This()) !void {
     }
 }
 
-fn createImage(this: *@This(), width: usize, height: usize, mip_levels: u32, format: vk.Format, tiling: vk.ImageTiling, usage: vk.ImageUsageFlags, properties: vk.MemoryPropertyFlags, memory: *vk.DeviceMemory) !vk.Image {
+fn createImage(this: *@This(), width: usize, height: usize, mip_levels: u32, num_samples: vk.SampleCountFlags, format: vk.Format, tiling: vk.ImageTiling, usage: vk.ImageUsageFlags, properties: vk.MemoryPropertyFlags, memory: *vk.DeviceMemory) !vk.Image {
     const image_info = vk.ImageCreateInfo{
         .imageType = .@"2D",
         .extent = .{ .width = @intCast(width), .height = @intCast(height), .depth = 1 },
@@ -1100,7 +1139,7 @@ fn createImage(this: *@This(), width: usize, height: usize, mip_levels: u32, for
         .initialLayout = .UNDEFINED,
         .usage = usage,
         .sharingMode = .EXCLUSIVE,
-        .samples = .{ .@"1_BIT" = 1 },
+        .samples = num_samples,
         .queueFamilyIndexCount = 0,
         .pQueueFamilyIndices = null,
     };
@@ -1171,6 +1210,14 @@ fn findDepthFormat(this: *@This()) !vk.Format {
     );
 }
 
+fn createColorResources(this: *@This()) !void {
+    const color_format = this.device_info.swapchain_info.surface_format.format;
+
+    this.color_image = try this.createImage(this.swapchain_extent.width, this.swapchain_extent.height, 1, this.device_info.msaa_samples, color_format, .OPTIMAL, .{ .TRANSIENT_ATTACHMENT_BIT = 1, .COLOR_ATTACHMENT_BIT = 1 }, .{ .DEVICE_LOCAL_BIT = 1 }, &this.color_image_memory);
+
+    this.color_image_view = try this.createImageView(this.color_image, color_format, .{ .COLOR_BIT = 1 }, 1);
+}
+
 fn createDepthResources(this: *@This()) !void {
     const depth_format = try this.findDepthFormat();
     dlog("Chosen depth format: {}", .{depth_format});
@@ -1181,6 +1228,7 @@ fn createDepthResources(this: *@This()) !void {
         extent.width,
         extent.height,
         1,
+        this.device_info.msaa_samples,
         depth_format,
         .OPTIMAL,
         .{ .DEPTH_STENCIL_ATTACHMENT_BIT = 1 },
@@ -1238,6 +1286,7 @@ fn createTextureImage(this: *@This()) !void {
         @intCast(width),
         @intCast(height),
         this.mip_levels,
+        .{ .@"1_BIT" = 1 },
         format,
         .OPTIMAL,
         .{ .TRANSFER_SRC_BIT = 1, .TRANSFER_DST_BIT = 1, .SAMPLED_BIT = 1 },
@@ -2145,7 +2194,7 @@ fn vk_debug_callback(message_severity: vk.DebugUtilsMessageSeverityFlagsEXT, mes
     const args = .{callback_data.pMessage};
 
     if (message_severity.VERBOSE_BIT_EXT == 1) {
-        if (@intFromEnum(options.vulkan_log_level) >= @intFromEnum(options.@"log.Level".debug)) log.debug(fmt, args);
+        if (@intFromEnum(compile_options.vulkan_log_level) >= @intFromEnum(compile_options.@"log.Level".debug)) log.debug(fmt, args);
     } else if (message_severity.WARNING_BIT_EXT == 1) {
         log.warn(fmt, args);
     } else if (message_severity.ERROR_BIT_EXT == 1) {

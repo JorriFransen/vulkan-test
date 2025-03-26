@@ -56,7 +56,7 @@ pub fn vMain() !u8 {
     defer window.close();
 
     var renderer: Renderer = undefined;
-    try renderer.init(&window);
+    try renderer.init(&window, .{});
     defer renderer.deinit();
 
     window.setFramebufferResizeCallback(.{ .fun = framebufferResizeCallback, .user_data = &renderer });
